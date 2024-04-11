@@ -601,6 +601,29 @@ public class SimpleProjectsFixture
             .Should().BeEquivalentTo("message.txt");
     }
 
+    [Test]
+    public void Global_package_references()
+    {
+        var analyzer = GetProjectAnalyzer("GlobalPackageReference/GlobalPackageReference.csproj", new());
+
+        var references = analyzer.Build().Single().PackageReferences;
+        var reference = references["StyleCop.Analyzers"];
+        var version = reference["Version"];
+
+        version.Should().Be("1.2.0-beta.556");
+    }
+
+    private static IProjectAnalyzer GetProjectAnalyzer(string projectFile, StringWriter log)
+    {
+        var analyzer = GetProjectAnalyzer("GlobalPackageReference/GlobalPackageReference.csproj", new());
+
+        var references = analyzer.Build().Single().PackageReferences;
+        var reference = references["StyleCop.Analyzers"];
+        var version = reference["Version"];
+
+        version.Should().Be("1.2.0-beta.556");
+    }
+
     private static IProjectAnalyzer GetProjectAnalyzer(string projectFile, StringWriter log)
     {
         IProjectAnalyzer analyzer = new AnalyzerManager(
