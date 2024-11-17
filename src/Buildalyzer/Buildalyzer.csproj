@@ -12,6 +12,8 @@
 ToBeReleased
 - Drop Buildalyzer.EmptyDisposable. (BREAKING)
 - Publish SBOM.
+- Introduction of SolutionInfo and ProjectInfo.
+- Marked IAnalyzerManger.SolutionFile and IAnalyzer.SolutionFilePath as obsolete.
 ]]>
     </PackageReleaseNotes>
   </PropertyGroup>

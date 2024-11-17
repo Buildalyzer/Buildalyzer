@@ -9,9 +9,14 @@ public interface IAnalyzerManager
 
     IReadOnlyDictionary<string, IProjectAnalyzer> Projects { get; }
 
-    SolutionFile SolutionFile { get; }
+    /// <inheritdoc cref="Buildalyzer.SolutionInfo" />
+    SolutionInfo? SolutionInfo { get; }
 
-    string SolutionFilePath { get; }
+    [Obsolete("Use SolutionInfo instead.")]
+    SolutionFile? SolutionFile { get; }
+
+    [Obsolete("Use SolutionInfo.Path instead.")]
+    string? SolutionFilePath { get; }
 
     /// <summary>
     /// Analyzes an MSBuild binary log file.
