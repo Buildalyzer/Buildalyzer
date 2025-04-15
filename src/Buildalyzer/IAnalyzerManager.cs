@@ -1,5 +1,5 @@
-using Microsoft.Build.Construction;
 using Microsoft.Extensions.Logging;
+using Microsoft.VisualStudio.SolutionPersistence.Model;
 
 namespace Buildalyzer;
 
@@ -9,7 +9,7 @@ public interface IAnalyzerManager
 
     IReadOnlyDictionary<string, IProjectAnalyzer> Projects { get; }
 
-    SolutionFile SolutionFile { get; }
+    SolutionModel SolutionFile { get; }
 
     string SolutionFilePath { get; }
 

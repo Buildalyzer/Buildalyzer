@@ -3,6 +3,7 @@ using Buildalyzer.Environment;
 using Microsoft.Build.Construction;
 using Microsoft.Build.Logging;
 using Microsoft.Extensions.Logging;
+using Microsoft.VisualStudio.SolutionPersistence.Model;
 
 namespace Buildalyzer;
 
@@ -46,7 +47,7 @@ public interface IProjectAnalyzer
     /// </summary>
     Guid ProjectGuid { get; }
 
-    ProjectInSolution ProjectInSolution { get; }
+    SolutionProjectModel ProjectInSolution { get; }
 
     string SolutionDirectory { get; }
 

@@ -1,21 +1,18 @@
 extern alias StructuredLogger;
 using System.Collections.Concurrent;
 using System.IO;
+using System.Threading;
 using Buildalyzer.Logging;
-using Microsoft.Build.Construction;
 using Microsoft.Extensions.Logging;
+using Microsoft.VisualStudio.SolutionPersistence;
+using Microsoft.VisualStudio.SolutionPersistence.Model;
+using Microsoft.VisualStudio.SolutionPersistence.Serializer;
 using StructuredLogger::Microsoft.Build.Logging.StructuredLogger;
 
 namespace Buildalyzer;
 
 public class AnalyzerManager : IAnalyzerManager
 {
-    internal static readonly SolutionProjectType[] SupportedProjectTypes =
-    [
-        SolutionProjectType.KnownToBeMSBuildFormat,
-        SolutionProjectType.WebProject
-    ];
-
     private readonly ConcurrentDictionary<string, IProjectAnalyzer> _projects = new ConcurrentDictionary<string, IProjectAnalyzer>();
 
     public IReadOnlyDictionary<string, IProjectAnalyzer> Projects => _projects;
@@ -37,7 +34,7 @@ public class AnalyzerManager : IAnalyzerManager
 
     public string SolutionFilePath { get; }
 
-    public SolutionFile SolutionFile { get; }
+    public SolutionModel SolutionFile { get; }
 
     public AnalyzerManager(AnalyzerManagerOptions options = null)
         : this(null, options)
@@ -52,17 +49,28 @@ public class AnalyzerManager : IAnalyzerManager
         if (!string.IsNullOrEmpty(solutionFilePath))
         {
             SolutionFilePath = NormalizePath(solutionFilePath);
-            SolutionFile = SolutionFile.Parse(SolutionFilePath);
+            if (SolutionSerializers.GetSerializerByMoniker(SolutionFilePath) is ISolutionSerializer serializer)
+            {
+                SolutionFile = serializer.OpenAsync(SolutionFilePath, CancellationToken.None).GetAwaiter().GetResult();
+                SolutionFile.DistillProjectConfigurations();
+            }
+            else
+            {
+                throw new ArgumentException($"The solution file {solutionFilePath} is not supported.");
+            }
 
             // Initialize all the projects in the solution
-            foreach (ProjectInSolution projectInSolution in SolutionFile.ProjectsInOrder)
+            foreach (var projectInSolution in SolutionFile.SolutionProjects)
             {
-                if (!SupportedProjectTypes.Contains(projectInSolution.ProjectType)
-                    || (options?.ProjectFilter != null && !options.ProjectFilter(projectInSolution)))
+                if (options?.ProjectFilter != null && !options.ProjectFilter(projectInSolution))
                 {
                     continue;
                 }
-                GetProject(projectInSolution.AbsolutePath, projectInSolution);
+                if (!Path.IsPathRooted(projectInSolution.FilePath))
+                {
+                    projectInSolution.FilePath = Path.GetFullPath(projectInSolution.FilePath);
+                }
+                GetProject(projectInSolution.FilePath, projectInSolution);
             }
         }
     }
@@ -104,7 +112,7 @@ public class AnalyzerManager : IAnalyzerManager
         };
     }
 
-    private IProjectAnalyzer GetProject(string projectFilePath, ProjectInSolution projectInSolution)
+    private IProjectAnalyzer GetProject(string projectFilePath, SolutionProjectModel projectInSolution)
     {
         Guard.NotNull(projectFilePath);
 

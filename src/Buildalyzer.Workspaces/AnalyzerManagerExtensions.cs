@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.Build.Construction;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
+using Microsoft.VisualStudio.SolutionPersistence.Model;
 
 namespace Buildalyzer.Workspaces;
 
@@ -43,8 +43,8 @@ public static class AnalyzerManagerExtensions
             workspace.AddSolution(solutionInfo);
 
             // Sort the projects so the order that they're added to the workspace in the same order as the solution file
-            List<ProjectInSolution> projectsInOrder = [.. manager.SolutionFile.ProjectsInOrder];
-            results = [.. results.OrderBy(p => projectsInOrder.FindIndex(g => g.AbsolutePath == p.ProjectFilePath))];
+            List<SolutionProjectModel> projectsInOrder = [.. manager.SolutionFile.SolutionProjects];
+            results = results.OrderBy(p => projectsInOrder.FindIndex(g => g.FilePath == p.ProjectFilePath)).ToList();
         }
 
         // Add each result to the new workspace (sorted in solution order above, if we have a solution)

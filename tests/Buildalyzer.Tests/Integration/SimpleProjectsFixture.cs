@@ -484,7 +484,7 @@ public class SimpleProjectsFixture
             new AnalyzerManagerOptions
             {
                 LogWriter = log,
-                ProjectFilter = x => x.AbsolutePath.Contains("Core")
+                ProjectFilter = x => x.FilePath.Contains("Core")
             });
 
         // Then
