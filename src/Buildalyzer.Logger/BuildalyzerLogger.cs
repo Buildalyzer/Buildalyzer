@@ -13,7 +13,7 @@ public class BuildalyzerLogger : PipeLogger
     public override void Initialize(IEventSource eventSource)
     {
         // Parse the parameters
-        string[] parameters = Parameters.Split(';').Select(x => x.Trim()).ToArray();
+        string[] parameters = [..(Parameters?.Split(';').Select(x => x.Trim())).OfType<string>()];
         if (parameters.Length != 2)
         {
             throw new LoggerException("Unexpected number of parameters");
