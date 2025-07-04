@@ -10,7 +10,7 @@ public class Analyzer_Build
     public void Detects_failing_build_on_single_target()
     {
         using var ctx = Context.ForProject(@"BuildWithError\BuildWithError.csproj");
-        var results = ctx.Analyzer.Build(new EnvironmentOptions());
+        var results = ctx.Analyzer.Build(new EnvironmentOptions() { DesignTime = false });
 
         Console.WriteLine(ctx.Log);
 
@@ -22,7 +22,7 @@ public class Analyzer_Build
     public void Detects_failing_build_on_multi_targets()
     {
         using var ctx = Context.ForProject(@"BuildWithError\BuildWithError.MultiTarget.csproj");
-        var results = ctx.Analyzer.Build(new EnvironmentOptions());
+        var results = ctx.Analyzer.Build(new EnvironmentOptions() { DesignTime = false });
 
         Console.WriteLine(ctx.Log);
 
