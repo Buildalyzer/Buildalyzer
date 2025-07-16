@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-12]
+        os: [windows-latest, ubuntu-latest, macos-latest]
     steps:
       - name: Process Test Results
         uses: dorny/test-reporter@v1

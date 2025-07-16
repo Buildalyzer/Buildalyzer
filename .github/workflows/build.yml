@@ -10,22 +10,20 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, ubuntu-latest]
+        os: [windows-latest, ubuntu-latest, macos-latest]
     env:
       # https://github.com/NuGet/Home/issues/11548
       # https://twitter.com/xoofx/status/1488617114940452872?s=20&t=BKSN4j9rP6fOyg8l7aW0eg
       NUGET_CERT_REVOCATION_MODE: offline
     steps:
       - name: Get Source
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Install .NET Core SDK
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
-          include-prerelease: true
           dotnet-version: |
-            3.1.x
             8.0.x
             9.0.x
       - name: Build and Test
