@@ -17,14 +17,14 @@ ToBeReleased
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Build" Version="17.10.4" />
-    <PackageReference Include="Microsoft.Build.Tasks.Core" Version="17.10.29" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="[4,)" />
-    <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic" Version="[4,)" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
-    <PackageReference Include="MSBuild.StructuredLogger" Version="2.2.158" Aliases="StructuredLogger" />
-    <PackageReference Include="MsBuildPipeLogger.Server" Version="1.1.6" />
-    <PackageReference Include="NuGet.Frameworks" Version="6.9.1" />
+    <PackageReference Include="Microsoft.Build" />
+    <PackageReference Include="Microsoft.Build.Tasks.Core" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+    <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="MSBuild.StructuredLogger" Aliases="StructuredLogger" />
+    <PackageReference Include="MsBuildPipeLogger.Server" />
+    <PackageReference Include="NuGet.Frameworks" />
   </ItemGroup>
 
   <ItemGroup>

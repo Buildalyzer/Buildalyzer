@@ -8,28 +8,25 @@
   </PropertyGroup>
 
   <ItemGroup Label="Test versions">
-    <PackageReference Include="FSharp.Compiler.Service" Version="*" />
-    <PackageReference Update="Microsoft.CodeAnalysis.CSharp" Version="4.*" />
-    <PackageReference Update="Microsoft.CodeAnalysis.VisualBasic" Version="4.*" />
+    <PackageReference Include="FSharp.Compiler.Service" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FluentAssertions" Version="6.12.2" />
-    <PackageReference Include="LibGit2Sharp" Version="0.30.0" />
-    
-    <PackageReference Include="MsBuildPipeLogger.Logger" Version="1.1.6" GeneratePathProperty="true" />
-    <PackageReference Include="NUnit" Version="4.2.2" />
-    <PackageReference Include="Shouldly" Version="4.2.1" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="LibGit2Sharp" />
+    <PackageReference Include="MsBuildPipeLogger.Logger" GeneratePathProperty="true" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="Shouldly" />
   </ItemGroup>
 
   <ItemGroup Label="Build tools">
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="*" PrivateAssets="all" />
-    <PackageReference Include="NUnit3TestAdapter" Version="*" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" PrivateAssets="all" />
+    <PackageReference Include="NUnit3TestAdapter" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup Label="Analyzers">
-    <PackageReference Include="FluentAssertions.Analyzers" Version="*" PrivateAssets="all" />
-    <PackageReference Include="NUnit.Analyzers" Version="*" PrivateAssets="all" />
+    <PackageReference Include="FluentAssertions.Analyzers" PrivateAssets="all" />
+    <PackageReference Include="NUnit.Analyzers" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
