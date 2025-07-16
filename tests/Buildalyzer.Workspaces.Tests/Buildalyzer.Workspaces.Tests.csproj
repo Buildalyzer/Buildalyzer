@@ -8,21 +8,20 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FluentAssertions" Version="6.12.2" />
-    <PackageReference Include="MsBuildPipeLogger.Logger" Version="1.1.6" GeneratePathProperty="true" />
-    <PackageReference Include="NUnit" Version="4.2.2" />
-    <PackageReference Include="Shouldly" Version="4.2.1" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="MsBuildPipeLogger.Logger" GeneratePathProperty="true" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="Shouldly" />
   </ItemGroup>
 
   <ItemGroup Label="Build tools">
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="*" PrivateAssets="all" />
-    <PackageReference Include="NUnit3TestAdapter" Version="*" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" PrivateAssets="all" />
+    <PackageReference Include="NUnit3TestAdapter" PrivateAssets="all" />
   </ItemGroup>
 
-
   <ItemGroup Label="Analyzers">
-    <PackageReference Include="FluentAssertions.Analyzers" Version="*" PrivateAssets="all" />
-    <PackageReference Include="NUnit.Analyzers" Version="*" PrivateAssets="all" />
+    <PackageReference Include="FluentAssertions.Analyzers" PrivateAssets="all" />
+    <PackageReference Include="NUnit.Analyzers" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

@@ -18,7 +18,7 @@ public class ProjectAnalyzerExtensionsFixture
     {
         using var ctx = Context.ForProject(@"SdkNetStandardProject\SdkNetStandardProject.csproj");
 
-        var workspace = ctx.Analyzer.GetWorkspace();
+        using var workspace = ctx.Analyzer.GetWorkspace();
 
         ctx.Log.ToString().Should().NotContain("Workspace failed");
         workspace.CurrentSolution.Projects.First().Documents.First().Should().BeEquivalentTo(new { Name = "Class1.cs" });
@@ -180,24 +180,20 @@ public class ProjectAnalyzerExtensionsFixture
         diagnostics.ShouldBeEmpty();
     }
 
-    [Test(Description = "Test C#12 features https://github.com/phmonte/Buildalyzer/issues/281")]
-
+    [Test(Description = "Test C#12 features https://github.com/Buildalyzer/Buildalyzer/issues/281")]
     public async Task SupportsLangVersion12Features()
     {
-        // Given
-        StringWriter log = new StringWriter();
-        IProjectAnalyzer analyzer = GetProjectAnalyzer(@"projects\SdkNet8CS12FeaturesProject\SdkNet8CS12FeaturesProject.csproj", log);
-        AdhocWorkspace workspace = analyzer.GetWorkspace();
-        Project project = workspace.CurrentSolution.Projects.Single();
+        using var context = Context.ForProject(@"SdkNet8CS12FeaturesProject\SdkNet8CS12FeaturesProject.csproj");
+        using var workspace = context.Analyzer.GetWorkspace();
 
-        // When
-        Compilation compilation = await project.GetCompilationAsync();
+        var project = workspace.CurrentSolution.Projects.Single();
 
-        Diagnostic[] diagnostics = compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToArray();
+        var errors = (await project.GetCompilationAsync())!
+            .GetDiagnostics()
+            .Where(d => d.Severity == DiagnosticSeverity.Error);
 
-        diagnostics.ShouldBeEmpty();
+        errors.Should().BeEmpty();
     }
-
 
     [Test(Description = "Test Reference Alias support")]
 
