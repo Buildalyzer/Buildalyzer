@@ -5,9 +5,9 @@ using Buildalyzer.Construction;
 using Buildalyzer.Environment;
 using Buildalyzer.Logger;
 using Buildalyzer.Logging;
-using Microsoft.Build.Construction;
 using Microsoft.Build.Logging;
 using Microsoft.Extensions.Logging;
+using Microsoft.VisualStudio.SolutionPersistence.Model;
 using MsBuildPipeLogger;
 using ILogger = Microsoft.Build.Framework.ILogger;
 
@@ -30,7 +30,7 @@ public class ProjectAnalyzer : IProjectAnalyzer
 
     public string SolutionDirectory { get; }
 
-    public ProjectInSolution ProjectInSolution { get; }
+    public SolutionProjectModel ProjectInSolution { get; }
 
     /// <inheritdoc/>
     public Guid ProjectGuid { get; }
@@ -49,7 +49,7 @@ public class ProjectAnalyzer : IProjectAnalyzer
     public bool IgnoreFaultyImports { get; set; } = true;
 
     // The project file path should already be normalized
-    internal ProjectAnalyzer(AnalyzerManager manager, string projectFilePath, ProjectInSolution projectInSolution)
+    internal ProjectAnalyzer(AnalyzerManager manager, string projectFilePath, SolutionProjectModel projectInSolution)
     {
         Manager = manager;
         Logger = Manager.LoggerFactory?.CreateLogger<ProjectAnalyzer>();
@@ -62,7 +62,7 @@ public class ProjectAnalyzer : IProjectAnalyzer
         // Get (or create) a project GUID
         ProjectGuid = projectInSolution == null
             ? Buildalyzer.ProjectGuid.Create(ProjectFile.Name)
-            : Guid.Parse(projectInSolution.ProjectGuid);
+            : projectInSolution.Id;
 
         // Set the solution directory global property
         SetGlobalProperty(MsBuildProperties.SolutionDir, SolutionDirectory);
