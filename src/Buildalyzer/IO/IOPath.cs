@@ -1,4 +1,3 @@
-#nullable enable
 
 using System.ComponentModel;
 using System.IO;
@@ -23,13 +22,16 @@ public readonly struct IOPath : IEquatable<IOPath>, IFormattable
 
     private IOPath(string path) => _path = path;
 
+    /// <summary>Indicates that the path has been set.</summary>
+    public bool HasValue => _path is not null;
+
     /// <summary>Creates a <see cref="DirectoryInfo"/> based on the path.</summary>
     [Pure]
-    public DirectoryInfo Directory() => new(ToString());
+    public DirectoryInfo? Directory() => HasValue ? new(ToString()) : null;
 
     /// <summary>Creates a <see cref="FileInfo"/> based on the path.</summary>
     [Pure]
-    public FileInfo File() => new(ToString());
+    public FileInfo? File() => HasValue ? new(ToString()) : null;
 
     /// <summary>Creates a new path.</summary>
     [Pure]

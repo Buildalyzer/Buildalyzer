@@ -1,4 +1,3 @@
-#nullable enable
 
 namespace Buildalyzer;
 
@@ -9,14 +8,14 @@ internal static class IEnumerableExtensions
         => enumerable?
             .Cast<object>()
             .Select(AsDictionaryEntry)
-        ?? Array.Empty<DictionaryEntry>();
+        ?? [];
 
     private static DictionaryEntry AsDictionaryEntry(object? obj) => obj switch
     {
         DictionaryEntry entry => entry,
-        KeyValuePair<string, object?> strObj => new DictionaryEntry(strObj.Key, strObj.Value),
-        KeyValuePair<string, string> strStr => new DictionaryEntry(strStr.Key, strStr.Value),
-        KeyValuePair<object, object?> objObj => new DictionaryEntry(objObj.Key, objObj.Value),
+        KeyValuePair<string, object?> kvp => new(kvp.Key, kvp.Value),
+        KeyValuePair<string, string?> kvp => new(kvp.Key, kvp.Value),
+        KeyValuePair<object, object?> kvp => new(kvp.Key, kvp.Value),
         _ => throw new InvalidOperationException($"Could not determine enumerable dictionary entry type for {obj?.GetType()}."),
     };
 }

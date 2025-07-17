@@ -1,4 +1,3 @@
-#nullable enable
 
 using Microsoft.Build.Framework;
 
@@ -8,6 +7,9 @@ namespace Buildalyzer;
 [DebuggerTypeProxy(typeof(Diagnostics.CollectionDebugView<CompilerItems>))]
 public sealed class CompilerItemsCollection : IReadOnlyCollection<CompilerItems>
 {
+    /// <summary>Gets an empty <see cref="CompilerItemsCollection"/>.</summary>
+    public static readonly CompilerItemsCollection Empty = new();
+
     [DebuggerBrowsable(DebuggerBrowsableState.Never)]
     private readonly Dictionary<string, IReadOnlyCollection<ITaskItem>> _values = new Dictionary<string, IReadOnlyCollection<ITaskItem>>(StringComparer.OrdinalIgnoreCase);
 
@@ -40,7 +42,7 @@ public sealed class CompilerItemsCollection : IReadOnlyCollection<CompilerItems>
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     [Pure]
-    internal static CompilerItemsCollection FromDictionaryEntries(IEnumerable properties)
+    internal static CompilerItemsCollection FromDictionaryEntries(IEnumerable? properties)
     {
         CompilerItemsCollection props = new CompilerItemsCollection();
 

@@ -1,4 +1,3 @@
-#nullable enable
 
 using Microsoft.Build.Framework;
 
@@ -22,7 +21,7 @@ public readonly struct CompilerItems : IReadOnlyCollection<ITaskItem>
 
     public readonly string Key;
 
-    public IReadOnlyCollection<ITaskItem> Values => _values ?? Array.Empty<ITaskItem>();
+    public IReadOnlyCollection<ITaskItem> Values => _values ?? [];
 
     public int Count => Values.Count;
 
