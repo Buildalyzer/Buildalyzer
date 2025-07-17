@@ -1,7 +1,9 @@
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.IO.Compression;
 using Buildalyzer.Environment;
+using Buildalyzer.IO;
 using Buildalyzer.TestTools;
 using FluentAssertions;
 using Shouldly;
@@ -89,6 +91,40 @@ public class SimpleProjectsFixture
         var results = ctx.Analyzer.Build(new EnvironmentOptions());
 
         results.BuildEventArguments.Should().HaveCount(18);
+
+        var summeries = BuildEventHandlers.Default.Handle(results.BuildEventArguments);
+
+        var summary = summeries.Single(s => s.SourceFiles.Any());
+        var result = results.Single();
+
+        summary.Should().BeEquivalentTo(
+        new
+        {
+            result.TargetFramework,
+            result.Succeeded,
+            SourceFiles = result.SourceFiles.Select(IOPath.Parse).ToImmutableArray(),
+            AdditionalFiles = result.AdditionalFiles.Select(IOPath.Parse).ToImmutableArray(),
+        });
+    }
+
+    [Test]
+    public void Collects_Build_with_errors()
+    {
+        using var ctx = Context.ForProject(@"BuildWithError\BuildWithError.csproj");
+        var results = ctx.Analyzer.Build(new EnvironmentOptions { DesignTime = false });
+        var summeries = BuildEventHandlers.Default.Handle(results.BuildEventArguments);
+        var summary = summeries.Single(s => s.SourceFiles.Any());
+        var result = results.Single();
+
+        summary.Should().BeEquivalentTo(
+        new
+        {
+            result.TargetFramework,
+            result.Succeeded,
+            SourceFiles = result.SourceFiles.Select(IOPath.Parse).ToImmutableArray(),
+            AdditionalFiles = result.AdditionalFiles.Select(IOPath.Parse).ToImmutableArray(),
+            Errors = new { Count = 3 },
+        });
     }
 
     [Test]

@@ -1,5 +1,3 @@
-using System;
-
 namespace Buildalyzer;
 
 internal static class FSharpCommandLineParser
@@ -8,7 +6,7 @@ internal static class FSharpCommandLineParser
     public static string[]? SplitCommandLineIntoArguments(string? commandLine)
         => commandLine?.Split(Splitters, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries) is { Length: > 0 } args
         && First(args[0]).ToArray() is { Length: >= 1 } first
-            ? first.Concat(args[1..]).ToArray()
+            ? [..first, ..args[1..]]
             : null;
 
     [Pure]
