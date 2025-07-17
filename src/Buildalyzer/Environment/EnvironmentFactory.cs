@@ -167,7 +167,7 @@ public class EnvironmentFactory
         {
             // Could not find the tools path, possibly due to https://github.com/Microsoft/msbuild/issues/2369
             // Try to poll for it. From https://github.com/KirillOsenkov/MSBuildStructuredLog/blob/4649f55f900a324421bad5a714a2584926a02138/src/StructuredLogViewer/MSBuildLocator.cs
-            List<DirectoryInfo> msBuildDirectories = new List<DirectoryInfo>();
+            List<DirectoryInfo> msBuildDirectories = [];
 
             // Search in the x86 program files
             string programFilesX86 = System.Environment.GetFolderPath(System.Environment.SpecialFolder.ProgramFilesX86);

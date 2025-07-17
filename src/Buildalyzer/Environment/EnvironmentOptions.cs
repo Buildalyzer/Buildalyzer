@@ -11,7 +11,7 @@ public class EnvironmentOptions
     /// <summary>
     /// The default targets to build.
     /// </summary>
-    public List<string> TargetsToBuild { get; } = new List<string> { "Clean", "Build" };
+    public List<string> TargetsToBuild { get; } = ["Clean", "Build"];
 
     /// <summary>
     /// Indicates that a design-time build should be performed.
@@ -55,7 +55,7 @@ public class EnvironmentOptions
     /// <summary>
     /// Additional MSBuild command-line arguments to use.
     /// </summary>
-    public IList<string> Arguments { get; } = new List<string>();
+    public IList<string> Arguments { get; } = [];
 
     /// <summary>
     /// Specifies an alternate working directory to use for the build instead of the project file directory.

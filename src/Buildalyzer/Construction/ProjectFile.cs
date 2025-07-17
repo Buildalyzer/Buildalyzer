@@ -12,11 +12,11 @@ public class ProjectFile : IProjectFile
     /// <summary>
     /// These imports are known to require a .NET Framework host and build tools.
     /// </summary>
-    public static readonly string[] ImportsThatRequireNetFramework = new string[]
-    {
+    public static readonly string[] ImportsThatRequireNetFramework =
+    [
         "Microsoft.Portable.CSharp.targets",
         "Microsoft.Windows.UI.Xaml.CSharp.targets"
-    };
+    ];
 
     private readonly XDocument _document;
     private readonly XElement _projectElement;
@@ -89,7 +89,7 @@ public class ProjectFile : IProjectFile
         {
             allTargetFrameworks = targetFrameworksValues
                 .Where(x => x != null)
-                .SelectMany(x => x.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).Select(v => v.Trim()));
+                .SelectMany(x => x.Split([';'], StringSplitOptions.RemoveEmptyEntries).Select(v => v.Trim()));
         }
         if (targetFrameworkValues != null)
         {

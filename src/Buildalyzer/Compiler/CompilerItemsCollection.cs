@@ -52,7 +52,7 @@ public sealed class CompilerItemsCollection : IReadOnlyCollection<CompilerItems>
                 if (!props._values.TryGetValue(key, out IReadOnlyCollection<ITaskItem>? values)
                     || values is not List<ITaskItem> editable)
                 {
-                    editable = new List<ITaskItem>();
+                    editable = [];
                     props._values[key] = editable;
                 }
                 editable.Add(task);

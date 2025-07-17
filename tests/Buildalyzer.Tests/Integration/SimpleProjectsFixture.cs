@@ -18,15 +18,15 @@ public class SimpleProjectsFixture
     private const bool BinaryLog = false;
 
     private static readonly EnvironmentPreference[] Preferences =
-    {
+    [
 #if Is_Windows
         EnvironmentPreference.Framework,
 #endif
         EnvironmentPreference.Core
-    };
+    ];
 
     private static readonly string[] ProjectFiles =
-    {
+    [
 #if Is_Windows
         @"LegacyFrameworkProject\LegacyFrameworkProject.csproj",
         @"LegacyFrameworkProjectWithReference\LegacyFrameworkProjectWithReference.csproj",
@@ -61,7 +61,7 @@ public class SimpleProjectsFixture
         // of custom build tooling and tasks/targets because the behavior and log output is not consistent
         // See https://github.com/daveaglick/Buildalyzer/issues/210
         // @"FunctionApp\FunctionApp.csproj",
-    };
+    ];
 
     [Test]
     public void Builds_DesignTime(
