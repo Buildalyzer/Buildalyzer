@@ -30,7 +30,7 @@ public static class Compiler
             {
                 Text = commandLine,
                 CompilerLocation = location,
-                Arguments = args.ToImmutableArray(),
+                Arguments = [.. args],
             };
 
             static CompilerCommand Parse(string? baseDir, string? root, string[] args, CompilerLanguage language) => language switch
@@ -83,9 +83,9 @@ public static class Compiler
 
             return new()
             {
-                MetadataReferences = metadataReferences.ToImmutableArray(),
-                PreprocessorSymbolNames = preprocessorSymbolNames.ToImmutableArray(),
-                SourceFiles = sourceFiles.ToImmutableArray(),
+                MetadataReferences = [.. metadataReferences],
+                PreprocessorSymbolNames = [.. preprocessorSymbolNames],
+                SourceFiles = [.. sourceFiles],
             };
         }
     }
@@ -97,14 +97,14 @@ public static class Compiler
 
             => command with
             {
-                AnalyzerReferences = arguments.AnalyzerReferences.Select(AsIOPath).ToImmutableArray(),
-                AnalyzerConfigPaths = arguments.AnalyzerConfigPaths.Select(IOPath.Parse).ToImmutableArray(),
-                MetadataReferences = arguments.MetadataReferences.Select(m => m.Reference).ToImmutableArray(),
+                AnalyzerReferences = [.. arguments.AnalyzerReferences.Select(AsIOPath)],
+                AnalyzerConfigPaths = [.. arguments.AnalyzerConfigPaths.Select(IOPath.Parse)],
+                MetadataReferences = [.. arguments.MetadataReferences.Select(m => m.Reference)],
                 Aliases = arguments.MetadataReferences.Where(m => !m.Properties.Aliases.IsEmpty).ToImmutableDictionary(m => m.Reference, m => m.Properties.Aliases),
-                PreprocessorSymbolNames = arguments.ParseOptions.PreprocessorSymbolNames.ToImmutableArray(),
-                SourceFiles = arguments.SourceFiles.Select(AsIOPath).ToImmutableArray(),
-                AdditionalFiles = arguments.AdditionalFiles.Select(AsIOPath).ToImmutableArray(),
-                EmbeddedFiles = arguments.EmbeddedFiles.Select(AsIOPath).ToImmutableArray(),
+                PreprocessorSymbolNames = [.. arguments.ParseOptions.PreprocessorSymbolNames],
+                SourceFiles = [.. arguments.SourceFiles.Select(AsIOPath)],
+                AdditionalFiles = [.. arguments.AdditionalFiles.Select(AsIOPath)],
+                EmbeddedFiles = [.. arguments.EmbeddedFiles.Select(AsIOPath)],
             };
     }
 

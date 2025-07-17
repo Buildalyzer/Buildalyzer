@@ -99,7 +99,7 @@ public class ProjectFile : IProjectFile
         }
         if (allTargetFrameworks != null)
         {
-            string[] distinctTargetFrameworks = allTargetFrameworks.Distinct().ToArray();
+            string[] distinctTargetFrameworks = [.. allTargetFrameworks.Distinct()];
             if (distinctTargetFrameworks.Length > 0)
             {
                 // Only return if we actually found any
@@ -119,7 +119,7 @@ public class ProjectFile : IProjectFile
                 if (TargetFrameworkIdentifierToTargetFramework.TryGetValue(value.Item1, out (string, bool) targetFramework))
                 {
                     // Append the TargetFrameworkVersion, stripping non-digits (this probably isn't correct in some cases)
-                    return targetFramework.Item1 + new string(value.Item2.Where(x => char.IsDigit(x) || (targetFramework.Item2 && x == '.')).ToArray());
+                    return targetFramework.Item1 + new string([.. value.Item2.Where(x => char.IsDigit(x) || (targetFramework.Item2 && x == '.'))]);
                 }
 
                 // Otherwise ¯\_(ツ)_/¯

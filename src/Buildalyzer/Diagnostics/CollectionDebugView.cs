@@ -12,5 +12,5 @@ internal sealed class CollectionDebugView<T>(IEnumerable<T> enumeration)
     /// By doing this, it is always in sync with the current state of the enumeration.
     /// </remarks>
     [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
-    public T[] Items => _enumeration.ToArray();
+    public T[] Items => [.. _enumeration];
 }

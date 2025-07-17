@@ -59,7 +59,7 @@ public static class AnalyzerResultExtensions
         ProjectId projectId = ProjectId.CreateFromSerialized(analyzerResult.ProjectGuid);
 
         // Cache the project references
-        analyzerResult.Manager.WorkspaceProjectReferences[projectId.Id] = analyzerResult.ProjectReferences.ToArray();
+        analyzerResult.Manager.WorkspaceProjectReferences[projectId.Id] = [.. analyzerResult.ProjectReferences];
 
         // Create and add the project, but only if it's a support Roslyn project type
         ProjectInfo projectInfo = GetProjectInfo(analyzerResult, workspace, projectId);

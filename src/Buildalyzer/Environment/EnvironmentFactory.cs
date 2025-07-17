@@ -112,7 +112,7 @@ public class EnvironmentFactory
         return new BuildEnvironment(
             options.DesignTime,
             options.Restore,
-            options.TargetsToBuild.ToArray(),
+            [.. options.TargetsToBuild],
             msBuildExePath,
             options.DotnetExePath,
             options.Arguments,
@@ -151,7 +151,7 @@ public class EnvironmentFactory
         return new BuildEnvironment(
             options.DesignTime,
             options.Restore,
-            options.TargetsToBuild.ToArray(),
+            [.. options.TargetsToBuild],
             msBuildExePath,
             options.DotnetExePath,
             options.Arguments,

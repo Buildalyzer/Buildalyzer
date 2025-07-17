@@ -16,8 +16,8 @@ internal sealed class ProcessDataCollector : IDisposable
     }
 
     public ProcessData Data => new(
-        Output.ToImmutableArray(),
-        Error.ToImmutableArray());
+        [.. Output],
+        [.. Error]);
 
     private void OutputDataReceived(object? sender, DataReceivedEventArgs e) => Add(e.Data, Output);
 

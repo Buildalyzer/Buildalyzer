@@ -662,7 +662,7 @@ public class SimpleProjectsFixture
             {
                 LogWriter = log
             });
-        List<IProjectAnalyzer> projects = manager.Projects.Values.ToList();
+        List<IProjectAnalyzer> projects = [.. manager.Projects.Values];
 
         // When
         List<IAnalyzerResults> analyzerResults = projects
@@ -735,7 +735,7 @@ public class SimpleProjectsFixture
             {
                 LogWriter = log
             });
-        List<IProjectAnalyzer> projects = manager.Projects.Values.ToList();
+        List<IProjectAnalyzer> projects = [.. manager.Projects.Values];
 
         // When
         List<IAnalyzerResults> analyzerResults = projects
