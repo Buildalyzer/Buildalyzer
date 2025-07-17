@@ -39,7 +39,7 @@ public class AnalyzerResults : IAnalyzerResults
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    private class TargetFrameworkComparer : IComparer<string>
+    private sealed class TargetFrameworkComparer : IComparer<string>
     {
         public static TargetFrameworkComparer Instance { get; } = new TargetFrameworkComparer();
 

@@ -92,7 +92,7 @@ public static class AnalyzerResultExtensions
         // Add any project references not already added
         if (addProjectReferences)
         {
-            foreach (ProjectAnalyzer referencedAnalyzer in GetReferencedAnalyzerProjects(analyzerResult))
+            foreach (var referencedAnalyzer in GetReferencedAnalyzerProjects(analyzerResult))
             {
                 // Check if the workspace contains the project inside the loop since adding one might also add this one due to transitive references
                 if (!workspace.CurrentSolution.Projects.Any(x => x.FilePath == referencedAnalyzer.ProjectFile.Path))

@@ -165,7 +165,7 @@ public class AnalyzerResult : IAnalyzerResult
         CompilerCommand = Compiler.CommandLine.Parse(new FileInfo(ProjectFilePath).Directory, commandLine, CompilerLanguage.FSharp);
     }
 
-    private class ProjectItemItemSpecEqualityComparer : IEqualityComparer<IProjectItem>
+    private sealed class ProjectItemItemSpecEqualityComparer : IEqualityComparer<IProjectItem>
     {
         public bool Equals(IProjectItem x, IProjectItem y) => x.ItemSpec.Equals(y.ItemSpec, StringComparison.OrdinalIgnoreCase);
 
