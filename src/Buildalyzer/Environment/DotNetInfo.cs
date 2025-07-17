@@ -1,4 +1,3 @@
-
 namespace Buildalyzer.Environment;
 
 /// <summary>Information about the .NET environment.</summary>

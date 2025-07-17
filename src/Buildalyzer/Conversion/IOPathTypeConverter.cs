@@ -1,4 +1,3 @@
-
 using System.ComponentModel;
 using System.Globalization;
 using Buildalyzer.IO;

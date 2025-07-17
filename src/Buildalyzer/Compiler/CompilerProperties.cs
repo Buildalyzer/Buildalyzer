@@ -1,4 +1,3 @@
-
 namespace Buildalyzer;
 
 [DebuggerDisplay("Count = {Count}")]

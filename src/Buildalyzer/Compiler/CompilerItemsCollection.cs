@@ -1,4 +1,3 @@
-
 using Microsoft.Build.Framework;
 
 namespace Buildalyzer;

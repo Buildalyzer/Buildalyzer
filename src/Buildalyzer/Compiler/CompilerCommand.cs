@@ -1,4 +1,3 @@
-
 using System.IO;
 using Buildalyzer.IO;
 using Microsoft.CodeAnalysis;

@@ -1,4 +1,3 @@
-
 namespace Buildalyzer;
 
 internal static class IEnumerableExtensions

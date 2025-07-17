@@ -1,4 +1,3 @@
-
 using Microsoft.CodeAnalysis.VisualBasic;
 
 namespace Buildalyzer;

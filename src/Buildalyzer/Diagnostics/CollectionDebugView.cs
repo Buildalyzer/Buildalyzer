@@ -1,4 +1,3 @@
-
 namespace Buildalyzer.Diagnostics;
 
 /// <summary>Allows the debugger to display collections.</summary>

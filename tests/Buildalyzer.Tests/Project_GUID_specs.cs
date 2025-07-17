@@ -1,4 +1,3 @@
-
 using Buildalyzer;
 using FluentAssertions;
 

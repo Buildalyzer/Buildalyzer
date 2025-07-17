@@ -1,4 +1,3 @@
-
 namespace Buildalyzer;
 
 public readonly struct CompilerProperty
