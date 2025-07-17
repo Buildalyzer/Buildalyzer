@@ -21,6 +21,7 @@ public sealed class FSharpBuildCommandHandler : BuildEventHandlerBase<BuildMessa
                 Command = command,
                 SourceFiles = command.SourceFiles,
                 AdditionalFiles = command.AdditionalFiles,
+                EmbeddedFiles = command.EmbeddedFiles,
                 Events = analysis.Events.Add(e),
             };
         });

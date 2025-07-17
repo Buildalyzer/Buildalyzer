@@ -1,5 +1,6 @@
 using Buildalyzer.IO;
 using Microsoft.Build.Framework;
+using Microsoft.CodeAnalysis;
 
 namespace Buildalyzer;
 
@@ -15,6 +16,15 @@ public record ProjectAnalysis
 
     /// <summary>The parsed compiler command.</summary>
     public CompilerCommand? Command { get; init; }
+
+    /// <summary>The compiler properties.</summary>
+    public CompilerProperties Properties { get; init; } = CompilerProperties.Empty;
+
+    /// <summary>The compiler items.</summary>
+    public CompilerItemsCollection Items { get; init; } = CompilerItemsCollection.Empty;
+
+    /// <summary>The target framework of the project compilation.</summary>
+    public string? TargetFramework { get; init; }
 
     /// <summary>Indiciated if the build succeeded (null if not finalized).</summary>
     public bool? Succeeded { get; init; }
@@ -33,6 +43,9 @@ public record ProjectAnalysis
 
     /// <summary>The available addtional files for further analysis.</summary>
     public ImmutableArray<IOPath> AdditionalFiles { get; init; } = [];
+
+    /// <summary>The available embedded files for further analysis.</summary>
+    public ImmutableArray<IOPath> EmbeddedFiles { get; init; } = [];
 
     /// <summary>Build errors.</summary>
     public ImmutableArray<BuildErrorEventArgs> Errors { get; init; } = [];

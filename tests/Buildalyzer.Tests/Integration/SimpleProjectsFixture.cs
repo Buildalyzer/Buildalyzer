@@ -101,8 +101,7 @@ public class SimpleProjectsFixture
         summary.Should().BeEquivalentTo(
         new
         {
-            // TODO: TargetFramewor,
-            //result.TargetFramework,
+            result.TargetFramework,
             result.Succeeded,
             SourceFiles = result.SourceFiles.Select(IOPath.Parse).ToImmutableArray(),
             AdditionalFiles = result.AdditionalFiles.Select(IOPath.Parse).ToImmutableArray(),
@@ -121,8 +120,7 @@ public class SimpleProjectsFixture
         summary.Should().BeEquivalentTo(
         new
         {
-            // TODO: TargetFramewor,
-            //result.TargetFramework,
+            result.TargetFramework,
             result.Succeeded,
             SourceFiles = result.SourceFiles.Select(IOPath.Parse).ToImmutableArray(),
             AdditionalFiles = result.AdditionalFiles.Select(IOPath.Parse).ToImmutableArray(),
