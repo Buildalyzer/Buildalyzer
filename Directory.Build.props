@@ -8,6 +8,7 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <DebugType>portable</DebugType>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
@@ -20,6 +21,7 @@
     <LangVersion>12</LangVersion>
     <Nullable>enable</Nullable>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <NuGetAuditMode>all</NuGetAuditMode>
     <IsPublishable>false</IsPublishable>
   </PropertyGroup>
 
@@ -58,7 +60,7 @@
   </ItemGroup>
 
   <ItemGroup Label="Analyzers">
-    <PackageReference Include="DotNetProjectFile.Analyzers" Version="*" PrivateAssets="all" Condition="'$(TargetFramework)'=='net8.0'" />
+    <PackageReference Include="DotNetProjectFile.Analyzers" Version="*" PrivateAssets="all" />
     <PackageReference Include="IDisposableAnalyzers" Version="*" PrivateAssets="all"/>
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="*" PrivateAssets="all" />
     <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" Version="*" PrivateAssets="all"/>
