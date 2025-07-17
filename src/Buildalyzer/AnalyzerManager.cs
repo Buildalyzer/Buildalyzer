@@ -16,7 +16,7 @@ public class AnalyzerManager : IAnalyzerManager
         SolutionProjectType.WebProject
     ];
 
-    private readonly ConcurrentDictionary<string, IProjectAnalyzer> _projects = new ConcurrentDictionary<string, IProjectAnalyzer>();
+    private readonly ConcurrentDictionary<string, IProjectAnalyzer> _projects = new();
 
     public IReadOnlyDictionary<string, IProjectAnalyzer> Projects => _projects;
 
@@ -32,7 +32,7 @@ public class AnalyzerManager : IAnalyzerManager
     /// This cache exists in <see cref="AnalyzerManager"/> so that it's lifetime can be controlled and it can be collected when <see cref="AnalyzerManager"/> goes out of scope.
     /// </summary>
 #pragma warning disable SA1401 // Fields should be private
-    internal ConcurrentDictionary<Guid, string[]> WorkspaceProjectReferences = new ConcurrentDictionary<Guid, string[]>();
+    internal ConcurrentDictionary<Guid, string[]> WorkspaceProjectReferences = new();
 #pragma warning restore SA1401 // Fields should be private
 
     public string SolutionFilePath { get; }

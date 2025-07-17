@@ -5,7 +5,7 @@ namespace Buildalyzer.Workspaces.Tests;
 // See https://github.com/xunit/xunit/issues/164
 internal class SafeStringWriter : StringWriter
 {
-    private readonly object _lock = new object();
+    private readonly object _lock = new();
 
     public override void Write(char value)
     {

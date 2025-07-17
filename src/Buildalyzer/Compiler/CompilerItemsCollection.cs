@@ -10,7 +10,7 @@ public sealed class CompilerItemsCollection : IReadOnlyCollection<CompilerItems>
     public static readonly CompilerItemsCollection Empty = new();
 
     [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-    private readonly Dictionary<string, IReadOnlyCollection<ITaskItem>> _values = new Dictionary<string, IReadOnlyCollection<ITaskItem>>(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, IReadOnlyCollection<ITaskItem>> _values = new(StringComparer.OrdinalIgnoreCase);
 
     private CompilerItemsCollection()
     {

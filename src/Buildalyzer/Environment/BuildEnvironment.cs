@@ -132,8 +132,7 @@ public sealed class BuildEnvironment
     /// return a <see cref="Microsoft.Build.Execution.ProjectInstance"/> without building the project.
     /// </param>
     /// <returns>A new build environment with the specified targets.</returns>
-    public BuildEnvironment WithTargetsToBuild(params string[] targets) =>
-        new BuildEnvironment(
+    public BuildEnvironment WithTargetsToBuild(params string[] targets) => new(
             DesignTime,
             Restore,
             targets,

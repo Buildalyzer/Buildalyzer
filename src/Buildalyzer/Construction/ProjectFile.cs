@@ -134,7 +134,7 @@ public class ProjectFile : IProjectFile
     // See also https://blog.stephencleary.com/2012/05/framework-profiles-in-net.html
     // Can't handle ".NETPortable" because those split out as complex "portable-" TargetFramework
     // Value = (TargetFramework, preserve dots in version)
-    private static readonly Dictionary<string, (string, bool)> TargetFrameworkIdentifierToTargetFramework = new Dictionary<string, (string, bool)>
+    private static readonly Dictionary<string, (string, bool)> TargetFrameworkIdentifierToTargetFramework = new()
     {
         { ".NETStandard", ("netstandard", true) },
         { ".NETCoreApp", ("netcoreapp", true) },

@@ -7,8 +7,8 @@ namespace Buildalyzer;
 [DebuggerDisplay("{DebuggerDisplay}")]
 public class AnalyzerResult : IAnalyzerResult
 {
-    private readonly Dictionary<string, string> _properties = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, IProjectItem[]> _items = new Dictionary<string, IProjectItem[]>(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _properties = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, IProjectItem[]> _items = new(StringComparer.OrdinalIgnoreCase);
     private readonly Guid _projectGuid;
 
     public CompilerCommand CompilerCommand { get; private set; }

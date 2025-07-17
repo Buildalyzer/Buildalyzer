@@ -18,9 +18,9 @@ public class ProjectAnalyzer : IProjectAnalyzer
     private readonly List<ILogger> _buildLoggers = [];
 
     // Project-specific global properties and environment variables
-    private readonly ConcurrentDictionary<string, string> _globalProperties = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, string> _globalProperties = new(StringComparer.OrdinalIgnoreCase);
 
-    private readonly ConcurrentDictionary<string, string> _environmentVariables = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, string> _environmentVariables = new(StringComparer.OrdinalIgnoreCase);
 
     public AnalyzerManager Manager { get; }
 

@@ -5,7 +5,7 @@ namespace Buildalyzer;
 
 public class AnalyzerResults : IAnalyzerResults
 {
-    private readonly ConcurrentDictionary<string, IAnalyzerResult> _results = new ConcurrentDictionary<string, IAnalyzerResult>();
+    private readonly ConcurrentDictionary<string, IAnalyzerResult> _results = new();
 
     private bool? _overallSuccess = null;
 
