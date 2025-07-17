@@ -6,9 +6,15 @@ namespace Buildalyzer.Handling;
 public sealed class FSharpBuildCommandHandler : BuildEventHandlerBase<BuildMessageEventArgs>
 {
     /// <inheritdoc />
+    /// <remarks>
+    /// The check on <see cref="FSharpCommandLineParser.SplitCommandLineIntoArguments(string?)"/>
+    /// is performed to filter out messages similar to:
+    /// Microsoft (R) F# Compiler version 13.9.300.0 for F# 9.0
+    /// Which are communicated on TargetName = restore.
+    /// </remarks>
     protected override bool CanHandle(BuildMessageEventArgs e, BuildEventHandlerContext context)
-        => e.Message is { Length: > 0 }
-        && e.SenderName.IsMatch("Fsc");
+        => e.SenderName.IsMatch("Fsc")
+        && FSharpCommandLineParser.SplitCommandLineIntoArguments(e.Message) is { Length: > 0 };
 
     /// <inheritdoc />
     protected override void Apply(BuildMessageEventArgs e, BuildEventHandlerContext context)
@@ -25,4 +31,4 @@ public sealed class FSharpBuildCommandHandler : BuildEventHandlerBase<BuildMessa
                 Events = analysis.Events.Add(e),
             };
         });
-    }
+}

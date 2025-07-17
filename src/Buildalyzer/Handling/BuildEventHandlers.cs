@@ -12,6 +12,7 @@ public static class BuildEventHandlers
         new VisualBasicBuildCommandHandler(),
         new ProjectStartedHandler(),
         new ProjectFinshedHandler(),
+        new TargetStartedHandler(),
     ];
 
     [Pure]

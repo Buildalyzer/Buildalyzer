@@ -20,12 +20,18 @@ public sealed class ProjectStartedHandler : BuildEventHandlerBase<ProjectStarted
                 ?? properties.TryGet(ProjectFileNames.TargetFrameworkIdentifier)
                 ?? properties.TryGet(ProjectFileNames.TargetFrameworkVersion);
 
+            // Restore is not communicated via TargetStarted, but is important to know.
+            var targetName = analysis.TargetName is null && e.TargetNames is "Restore"
+                ? e.TargetNames
+                : analysis.TargetName;
+
             return analysis with
             {
                 ProjectFile = projectFile,
                 Properties = properties,
                 Items = items,
                 TargetFramework = tfm is { } prop ? prop.StringValue : null,
+                TargetName = targetName,
                 Started = e.Timestamp,
                 Events = analysis.Events.Add(e),
             };

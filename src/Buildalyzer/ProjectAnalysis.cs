@@ -1,6 +1,5 @@
 using Buildalyzer.IO;
 using Microsoft.Build.Framework;
-using Microsoft.CodeAnalysis;
 
 namespace Buildalyzer;
 
@@ -25,6 +24,9 @@ public record ProjectAnalysis
 
     /// <summary>The target framework of the project compilation.</summary>
     public string? TargetFramework { get; init; }
+
+    /// <summary>The target name of the project.</summary>
+    public string? TargetName { get; init; }
 
     /// <summary>Indiciated if the build succeeded (null if not finalized).</summary>
     public bool? Succeeded { get; init; }
