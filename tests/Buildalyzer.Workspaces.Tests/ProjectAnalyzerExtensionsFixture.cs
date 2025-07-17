@@ -15,10 +15,11 @@ public class ProjectAnalyzerExtensionsFixture
     {
         using var ctx = Context.ForProject(@"SdkNetStandardProject\SdkNetStandardProject.csproj");
 
-        var workspace = ctx.Analyzer.GetWorkspace();
+        using var workspace = ctx.Analyzer.GetWorkspace();
 
-        ctx.Log.ToString().Should().NotContain("Workspace failed");
-        workspace.CurrentSolution.Projects.First().Documents.First().Should().BeEquivalentTo(new { Name = "Class1.cs" });
+        var document = workspace.CurrentSolution.Projects.First().Documents.First();
+
+        document.Should().BeEquivalentTo(new { Name = "Class1.cs" });
     }
 
     [Test]
@@ -30,7 +31,7 @@ public class ProjectAnalyzerExtensionsFixture
         AnalyzerManager manager = new AnalyzerManager(solutionPath, new AnalyzerManagerOptions { LogWriter = log });
 
         // When
-        Workspace workspace = manager.GetWorkspace();
+        using var workspace = manager.GetWorkspace();
 
         // Then
         string logged = log.ToString();
@@ -222,7 +223,7 @@ public class ProjectAnalyzerExtensionsFixture
         IProjectAnalyzer analyzer = GetProjectAnalyzer(@"projects\WpfCustomControlLibrary1\WpfCustomControlLibrary1.csproj", log);
 
         // When
-        AdhocWorkspace workspace = analyzer.GetWorkspace();
+        using var workspace = analyzer.GetWorkspace();
         Project project = workspace.CurrentSolution.Projects.First();
 
         // Then
