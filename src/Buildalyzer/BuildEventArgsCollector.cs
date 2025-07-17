@@ -21,7 +21,10 @@ internal sealed class BuildEventArgsCollector : IReadOnlyCollection<BuildEventAr
     public bool IsEmpty => Count == 0;
 
     /// <inheritdoc />
-    public IEnumerator<BuildEventArgs> GetEnumerator() => Bag.GetEnumerator();
+    /// <remarks>
+    /// Ordered by timestamp, as the bag does not ensure the chronical order itself.
+    /// </remarks>
+    public IEnumerator<BuildEventArgs> GetEnumerator() => Bag.OrderBy(e => e.Timestamp).GetEnumerator();
 
     /// <inheritdoc />
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -37,6 +40,7 @@ internal sealed class BuildEventArgsCollector : IReadOnlyCollection<BuildEventAr
         if (!Disposed)
         {
             Server.AnyEventRaised -= EventRaised;
+            Bag.Clear();
             Disposed = true;
         }
     }
