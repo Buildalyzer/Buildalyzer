@@ -7,7 +7,7 @@ public sealed class BuildErrorHandler : BuildEventHandlerBase<BuildErrorEventArg
 {
     /// <inheritdoc />
     protected override void Apply(BuildErrorEventArgs e, BuildEventHandlerContext context)
-        => context.Update(e, analysis => analysis with 
+        => context.Update(e, analysis => analysis with
         {
             Errors = analysis.Errors.Add(e),
             Events = analysis.Events.Add(e),
