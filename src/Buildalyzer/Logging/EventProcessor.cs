@@ -28,7 +28,7 @@ internal class EventProcessor : IDisposable
         _manager = manager;
         _analyzer = analyzer;
         _logger = manager.LoggerFactory?.CreateLogger<EventProcessor>();
-        _buildLoggers = buildLoggers ?? Array.Empty<Microsoft.Build.Framework.ILogger>();
+        _buildLoggers = buildLoggers ?? [];
         _eventSource = eventSource;
         _analyze = analyze;
 

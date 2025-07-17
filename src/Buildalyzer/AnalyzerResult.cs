@@ -141,7 +141,7 @@ public class AnalyzerResult : IAnalyzerResult
         // Add items
         foreach (var items in propertiesAndItems.Items)
         {
-            _items[items.Key] = items.Values.Select(task => new ProjectItem(task)).ToArray();
+            _items[items.Key] = [.. items.Values.Select(task => new ProjectItem(task))];
         }
     }
 

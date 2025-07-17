@@ -125,8 +125,7 @@ public class ProjectFile : IProjectFile
                 // Otherwise ¯\_(ツ)_/¯
                 return null;
             })
-            .Where(x => x != null).ToArray()
-                ?? Array.Empty<string>();
+            .Where(x => x != null).ToArray() ?? [];
     }
 
     // Map from TargetFrameworkIdentifier back to a TargetFramework

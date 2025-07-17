@@ -104,7 +104,7 @@ public static class AnalyzerResultExtensions
 
         // By now all the references of this project have been recursively added, so resolve any remaining transitive project references
         Project project = workspace.CurrentSolution.GetProject(projectId);
-        HashSet<ProjectReference> referencedProjects = new HashSet<ProjectReference>(project.ProjectReferences);
+        HashSet<ProjectReference> referencedProjects = [.. project.ProjectReferences];
         HashSet<ProjectId> visitedProjectIds = [];
         Stack<ProjectReference> projectReferenceStack = new Stack<ProjectReference>(project.ProjectReferences);
         while (projectReferenceStack.Count > 0)
