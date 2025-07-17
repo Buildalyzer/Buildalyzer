@@ -71,7 +71,7 @@ public class AnalyzerResult : IAnalyzerResult
     public string[] References =>
         CompilerCommand?.MetadataReferences.ToArray() ?? [];
 
-    public ImmutableDictionary<string, ImmutableArray<string>> ReferenceAliases => 
+    public ImmutableDictionary<string, ImmutableArray<string>> ReferenceAliases =>
         CompilerCommand?.Aliases ?? ImmutableDictionary<string, ImmutableArray<string>>.Empty;
 
     public string[] AnalyzerReferences =>

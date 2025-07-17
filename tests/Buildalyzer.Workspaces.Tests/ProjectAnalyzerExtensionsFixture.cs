@@ -198,7 +198,6 @@ public class ProjectAnalyzerExtensionsFixture
         diagnostics.ShouldBeEmpty();
     }
 
-
     [Test(Description = "Test Reference Alias support")]
 
     public async Task SupportAssemblyAliases()

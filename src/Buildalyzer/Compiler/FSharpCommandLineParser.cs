@@ -6,7 +6,7 @@ internal static class FSharpCommandLineParser
     public static string[]? SplitCommandLineIntoArguments(string? commandLine)
         => commandLine?.Split(Splitters, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries) is { Length: > 0 } args
         && First(args[0]).ToArray() is { Length: >= 1 } first
-            ? [..first, ..args[1..]]
+            ? [.. first, .. args[1..]]
             : null;
 
     [Pure]
