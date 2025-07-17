@@ -1,5 +1,4 @@
 using Buildalyzer;
-using FluentAssertions;
 
 namespace Project_GUID_specs;
 

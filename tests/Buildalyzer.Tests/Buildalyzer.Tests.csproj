@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FluentAssertions" Version="6.12.2" />
+    <PackageReference Include="AwesomeAssertions" Version="9.1.0" />
     <PackageReference Include="LibGit2Sharp" Version="0.30.0" />
     
     <PackageReference Include="MsBuildPipeLogger.Logger" Version="1.1.6" GeneratePathProperty="true" />
@@ -28,7 +28,7 @@
   </ItemGroup>
 
   <ItemGroup Label="Analyzers">
-    <PackageReference Include="FluentAssertions.Analyzers" Version="*" PrivateAssets="all" />
+    <PackageReference Include="AwesomeAssertions.Analyzers" Version="9.0.0" PrivateAssets="all" />
     <PackageReference Include="NUnit.Analyzers" Version="*" PrivateAssets="all" />
   </ItemGroup>
 

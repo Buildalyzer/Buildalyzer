@@ -1,11 +1,8 @@
-using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.IO.Compression;
 using Buildalyzer.Environment;
-using Buildalyzer.IO;
 using Buildalyzer.TestTools;
-using FluentAssertions;
 using Shouldly;
 
 namespace Buildalyzer.Tests.Integration;

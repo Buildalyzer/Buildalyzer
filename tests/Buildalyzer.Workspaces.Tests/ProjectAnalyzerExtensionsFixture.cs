@@ -1,10 +1,7 @@
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using Buildalyzer.TestTools;
-using FluentAssertions;
 using Microsoft.CodeAnalysis;
-using NUnit.Framework;
 using Shouldly;
 
 namespace Buildalyzer.Workspaces.Tests;

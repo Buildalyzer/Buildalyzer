@@ -1,6 +1,5 @@
 using Buildalyzer.Environment;
 using Buildalyzer.TestTools;
-using FluentAssertions;
 
 namespace Failing_builds;
 

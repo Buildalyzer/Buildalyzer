@@ -1,7 +1,5 @@
 using Buildalyzer.TestTools;
 using Buildalyzer.Workspaces;
-using FluentAssertions;
-using NUnit.Framework;
 
 namespace Failing_builds;
 

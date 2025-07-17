@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using Buildalyzer.IO;
-using FluentAssertions;
 using FSharp.Compiler.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.FSharp.Collections;
