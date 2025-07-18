@@ -56,7 +56,7 @@ public class AnalyzerManager : IAnalyzerManager
 
         var path = IOPath.Parse(solutionFilePath);
 
-        if (path.File().Exists)
+        if (path.File()?.Exists is true)
         {
             SolutionInfo = SolutionInfo.Load(path, Filter);
 
