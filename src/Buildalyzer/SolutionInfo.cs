@@ -1,4 +1,4 @@
-﻿#pragma warning disable CA1710 // Identifiers should have correct suffix: being a collection is not its main purpose.
+#pragma warning disable CA1710 // Identifiers should have correct suffix: being a collection is not its main purpose.
 
 using Buildalyzer.IO;
 using Microsoft.Build.Construction;
@@ -17,10 +17,9 @@ public sealed class SolutionInfo : IReadOnlyCollection<ProjectInfo>
     {
         Path = path;
         File = file;
-        Projects = file.ProjectsInOrder
+        Projects = [.. file.ProjectsInOrder
             .Where(p => (filter?.Invoke(p) ?? true) && System.IO.File.Exists(p.AbsolutePath))
-            .Select(ProjectInfo.New)
-            .ToImmutableArray();
+            .Select(ProjectInfo.New)];
 
         _lookup = Projects.ToDictionary(p => p.Guid, p => p);
     }
@@ -32,7 +31,7 @@ public sealed class SolutionInfo : IReadOnlyCollection<ProjectInfo>
     internal SolutionFile File { get; }
 
     /// <inheritdoc cref="SolutionFile.SolutionConfigurations" />
-    public IReadOnlyList<SolutionConfigurationInSolution> Configurations => File.SolutionConfigurations;
+    public ImmutableArray<SolutionConfigurationInSolution> Configurations => [.. File.SolutionConfigurations];
 
     /// <summary>The projects in the solution.</summary>
     public ImmutableArray<ProjectInfo> Projects { get; }

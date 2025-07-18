@@ -1,4 +1,4 @@
-﻿using Buildalyzer.Construction;
+using Buildalyzer.Construction;
 using Buildalyzer.IO;
 using Microsoft.Build.Construction;
 
@@ -24,7 +24,7 @@ public sealed class ProjectInfo
     public IProjectFile File { get; }
 
     [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-    private string DebuggerDisplay => $"{Path.File().Name}, TFM = {string.Join(", ", File.TargetFrameworks)}";
+    private string DebuggerDisplay => $"{Path.File()?.Name}, TFM = {string.Join(", ", File.TargetFrameworks)}";
 
     /// <summary>Loads the <see cref="ProjectInfo"/> from disk.</summary>
     /// <param name="path">
@@ -32,9 +32,9 @@ public sealed class ProjectInfo
     /// </param>
     [Pure]
     public static ProjectInfo Load(IOPath path)
-        => new(path, ProjectGuid.Create(path.File().Name));
+        => new(path, ProjectGuid.Create(path.File()?.Name));
 
     [Pure]
     internal static ProjectInfo New(ProjectInSolution proj)
-        => new(IOPath.Parse(proj.AbsolutePath), Guid.Parse(proj.ProjectGuid));
+        => new(IOPath.Parse(Guard.NotNull(proj).AbsolutePath), Guid.Parse(proj.ProjectGuid));
 }
