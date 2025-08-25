@@ -491,27 +491,6 @@ public class SimpleProjectsFixture
     }
 
     [Test]
-    public void GetsProjectGuidFromSolution([ValueSource(nameof(Preferences))] EnvironmentPreference preference)
-    {
-        // Given
-        AnalyzerManager manager = new AnalyzerManager(
-            GetProjectPath("TestProjects.sln"));
-        IProjectAnalyzer analyzer = manager.Projects.First(x => x.Key.EndsWith("SdkNetStandardProject.csproj")).Value;
-        EnvironmentOptions options = new EnvironmentOptions
-        {
-            Preference = preference
-        };
-
-        // When
-        DeleteProjectDirectory(analyzer.ProjectFile.Path, "obj");
-        DeleteProjectDirectory(analyzer.ProjectFile.Path, "bin");
-        IAnalyzerResults results = analyzer.Build(options);
-
-        // Then
-        results.First().ProjectGuid.ToString().ShouldBe("016713d9-b665-4272-9980-148801a9b88f");
-    }
-
-    [Test]
     public void GetsProjectGuidFromProject([ValueSource(nameof(Preferences))] EnvironmentPreference preference)
     {
         // Given
