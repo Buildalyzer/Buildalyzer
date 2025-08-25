@@ -10,7 +10,8 @@ public abstract class Context : IDisposable
     public static ProjectFileTestContext ForProject(string path) => new(GetProjectPath(path));
 
     [Pure]
-    public static SolutionFileTestContext ForSolution(string path) => new(GetProjectPath(path));
+    public static SolutionFileTestContext ForSolution(string path, Action<AnalyzerManagerOptions>? options = null)
+        => new(GetProjectPath(path), options);
 
     private static FileInfo GetProjectPath(string file)
     {

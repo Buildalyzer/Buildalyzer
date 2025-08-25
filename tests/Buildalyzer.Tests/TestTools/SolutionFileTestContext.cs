@@ -9,8 +9,15 @@ namespace Buildalyzer.TestTools;
 /// </remarks>
 public sealed class SolutionFileTestContext : Context
 {
-    internal SolutionFileTestContext(FileInfo solutionFile)
-        : base(solutionFile, c => new(solutionFile.FullName, new AnalyzerManagerOptions { LogWriter = c.Log }))
+    internal SolutionFileTestContext(
+        FileInfo solutionFile,
+        Action<AnalyzerManagerOptions>? update)
+        : base(solutionFile, c =>
+        {
+            var options = new AnalyzerManagerOptions { LogWriter = c.Log };
+            update?.Invoke(options);
+            return new(solutionFile.FullName, options);
+        })
     {
     }
 }
