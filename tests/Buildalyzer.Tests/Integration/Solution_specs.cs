@@ -19,6 +19,20 @@ public class Resolves
         results.Single().ProjectGuid.Should().Be("016713d9-b665-4272-9980-148801a9b88f");
     }
 
+    [Test]
+    public void Project_GUID_from_SLNX([ValueSource(nameof(Preferences))] EnvironmentPreference preference)
+    {
+        using var ctx = Context.ForSolution("TestProjects.slnx");
+
+        ctx.Manager.Projects.Should().HaveCount(30);
+
+        var analyzer = ctx.Manager.Projects.First(x => x.Key.EndsWith("SdkNetStandardProject.csproj")).Value;
+
+        var results = analyzer.Build(new EnvironmentOptions { Preference = preference });
+
+        results.Single().ProjectGuid.Should().Be("afc5f1d6-f485-9d71-eb6f-2af9bd127256");
+    }
+
     /// <remarks>
     /// Builds a lot of projects that should all succeed.
     /// </remarks>

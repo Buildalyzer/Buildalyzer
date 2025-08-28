@@ -1,8 +1,10 @@
+using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Threading;
 using Buildalyzer.Construction;
 using Buildalyzer.Environment;
+using Buildalyzer.IO;
 using Buildalyzer.Logger;
 using Buildalyzer.Logging;
 using Microsoft.Build.Construction;
@@ -30,7 +32,10 @@ public class ProjectAnalyzer : IProjectAnalyzer
 
     public string SolutionDirectory { get; }
 
-    public ProjectInSolution ProjectInSolution { get; }
+    public ProjectInfo? Project { get; }
+
+    [Obsolete("Use Project instead.")]
+    public ProjectInSolution? ProjectInSolution => Project?.Reference as ProjectInSolution;
 
     /// <inheritdoc/>
     public Guid ProjectGuid { get; }
@@ -49,20 +54,18 @@ public class ProjectAnalyzer : IProjectAnalyzer
     public bool IgnoreFaultyImports { get; set; } = true;
 
     // The project file path should already be normalized
-    internal ProjectAnalyzer(AnalyzerManager manager, string projectFilePath, ProjectInSolution projectInSolution)
+    internal ProjectAnalyzer(AnalyzerManager manager, IOPath path, ProjectInfo? project)
     {
         Manager = manager;
         Logger = Manager.LoggerFactory?.CreateLogger<ProjectAnalyzer>();
-        ProjectFile = new ProjectFile(projectFilePath);
+        ProjectFile = new ProjectFile(path.ToString());
         EnvironmentFactory = new EnvironmentFactory(Manager, ProjectFile);
-        ProjectInSolution = projectInSolution;
+        Project = project;
         SolutionDirectory = (string.IsNullOrEmpty(manager.SolutionFilePath)
-            ? Path.GetDirectoryName(projectFilePath) : Path.GetDirectoryName(manager.SolutionFilePath)) + Path.DirectorySeparatorChar;
+            ? path.File()!.Directory.FullName : Path.GetDirectoryName(manager.SolutionFilePath)) + Path.DirectorySeparatorChar;
 
-        // Get (or create) a project GUID
-        ProjectGuid = projectInSolution == null
-            ? Buildalyzer.ProjectGuid.Create(ProjectFile.Name)
-            : Guid.Parse(projectInSolution.ProjectGuid);
+        // Get(or create) a project GUID
+        ProjectGuid = project?.Guid ?? Buildalyzer.ProjectGuid.Create(ProjectFile.Name);
 
         // Set the solution directory global property
         SetGlobalProperty(MsBuildProperties.SolutionDir, SolutionDirectory);
