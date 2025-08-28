@@ -12,6 +12,8 @@
 ToBeReleased
 - Drop Buildalyzer.EmptyDisposable. (BREAKING)
 - Publish SBOM.
+- Introduction of SolutionInfo and ProjectInfo.
+- Marked IAnalyzerManger.SolutionFile and IAnalyzer.SolutionFilePath as obsolete.
 ]]>
     </PackageReleaseNotes>
   </PropertyGroup>
@@ -22,6 +24,7 @@ ToBeReleased
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="[4,)" />
     <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic" Version="[4,)" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
+    <PackageReference Include="Microsoft.VisualStudio.SolutionPersistence" Version="1.0.52" />
     <PackageReference Include="MSBuild.StructuredLogger" Version="2.2.158" Aliases="StructuredLogger" />
     <PackageReference Include="MsBuildPipeLogger.Server" Version="1.1.6" />
     <PackageReference Include="NuGet.Frameworks" Version="6.9.1" />

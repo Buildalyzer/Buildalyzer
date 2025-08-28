@@ -62,7 +62,7 @@ public static class AnalyzerResultExtensions
         analyzerResult.Manager.WorkspaceProjectReferences[projectId.Id] = [.. analyzerResult.ProjectReferences];
 
         // Create and add the project, but only if it's a support Roslyn project type
-        ProjectInfo projectInfo = GetProjectInfo(analyzerResult, workspace, projectId);
+        Microsoft.CodeAnalysis.ProjectInfo projectInfo = GetProjectInfo(analyzerResult, workspace, projectId);
         if (projectInfo is null)
         {
             // Something went wrong (maybe not a support project type), so don't add this project
@@ -137,14 +137,14 @@ public static class AnalyzerResultExtensions
         return workspace.CurrentSolution.GetProject(projectId);
     }
 
-    private static ProjectInfo GetProjectInfo(IAnalyzerResult analyzerResult, Workspace workspace, ProjectId projectId)
+    private static Microsoft.CodeAnalysis.ProjectInfo GetProjectInfo(IAnalyzerResult analyzerResult, Workspace workspace, ProjectId projectId)
     {
         string projectName = Path.GetFileNameWithoutExtension(analyzerResult.ProjectFilePath);
         if (!TryGetSupportedLanguageName(analyzerResult.ProjectFilePath, out string languageName))
         {
             return null;
         }
-        return ProjectInfo.Create(
+        return Microsoft.CodeAnalysis.ProjectInfo.Create(
             projectId,
             VersionStamp.Create(),
             projectName,

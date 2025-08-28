@@ -1,6 +1,7 @@
 extern alias StructuredLogger;
 using System.Collections.Concurrent;
 using System.IO;
+using Buildalyzer.IO;
 using Buildalyzer.Logging;
 using Microsoft.Build.Construction;
 using Microsoft.Extensions.Logging;
@@ -20,7 +21,7 @@ public class AnalyzerManager : IAnalyzerManager
 
     public IReadOnlyDictionary<string, IProjectAnalyzer> Projects => _projects;
 
-    public ILoggerFactory LoggerFactory { get; set; }
+    public ILoggerFactory? LoggerFactory { get; set; }
 
     internal ConcurrentDictionary<string, string> GlobalProperties { get; } = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -35,34 +36,36 @@ public class AnalyzerManager : IAnalyzerManager
     internal ConcurrentDictionary<Guid, string[]> WorkspaceProjectReferences = new();
 #pragma warning restore SA1401 // Fields should be private
 
-    public string SolutionFilePath { get; }
+    public string? SolutionFilePath => Solution?.Path.ToString();
 
-    public SolutionFile SolutionFile { get; }
+    [Obsolete("Use Solution instead.")]
+    public SolutionFile? SolutionFile => Solution?.Reference as SolutionFile;
 
-    public AnalyzerManager(AnalyzerManagerOptions options = null)
-        : this(null, options)
+    public SolutionInfo? Solution { get; }
+
+    public AnalyzerManager(AnalyzerManagerOptions? options = null)
+        : this(IOPath.Empty, options)
     {
     }
 
-    public AnalyzerManager(string solutionFilePath, AnalyzerManagerOptions options = null)
+    [Obsolete("Use AnalyzerManager(IOPath, AnalyzerManagerOptions) instead.")]
+    public AnalyzerManager(string solutionFilePath, AnalyzerManagerOptions? options = null)
+        : this(IOPath.Parse(solutionFilePath), options) { }
+
+    public AnalyzerManager(IOPath solutionFilePath, AnalyzerManagerOptions? options = null)
     {
         options ??= new AnalyzerManagerOptions();
         LoggerFactory = options.LoggerFactory;
 
-        if (!string.IsNullOrEmpty(solutionFilePath))
+        if (solutionFilePath.HasValue)
         {
-            SolutionFilePath = NormalizePath(solutionFilePath);
-            SolutionFile = SolutionFile.Parse(SolutionFilePath);
+            Solution = SolutionInfo.Load(solutionFilePath, p => options.ProjectFilter?.Invoke(p) ?? true);
 
-            // Initialize all the projects in the solution
-            foreach (ProjectInSolution projectInSolution in SolutionFile.ProjectsInOrder)
+            // init projects. 
+            foreach (var proj in Solution)
             {
-                if (!SupportedProjectTypes.Contains(projectInSolution.ProjectType)
-                    || (options?.ProjectFilter != null && !options.ProjectFilter(projectInSolution)))
-                {
-                    continue;
-                }
-                GetProject(projectInSolution.AbsolutePath, projectInSolution);
+                var analyzer = new ProjectAnalyzer(this, proj.Path, proj);
+                _projects.TryAdd(proj.Path.ToString(), analyzer);
             }
         }
     }
@@ -83,7 +86,10 @@ public class AnalyzerManager : IAnalyzerManager
         EnvironmentVariables[key] = value;
     }
 
-    public IProjectAnalyzer GetProject(string projectFilePath) => GetProject(projectFilePath, null);
+    [Obsolete("Use GetProject(IOPath) instead.")]
+    public IProjectAnalyzer? GetProject(string projectFilePath) => GetProject(IOPath.Parse(projectFilePath));
+
+    public IProjectAnalyzer? GetProject(IOPath projectFilePath) => GetProject(projectFilePath, null);
 
     /// <inheritdoc/>
     public IAnalyzerResults Analyze(string binLogPath, IEnumerable<Microsoft.Build.Framework.ILogger> buildLoggers = null)
@@ -104,22 +110,21 @@ public class AnalyzerManager : IAnalyzerManager
         };
     }
 
-    private IProjectAnalyzer GetProject(string projectFilePath, ProjectInSolution projectInSolution)
+    private IProjectAnalyzer? GetProject(IOPath path, ProjectInfo? project)
     {
-        Guard.NotNull(projectFilePath);
+        Guard.NotDefault(path);
 
-        projectFilePath = NormalizePath(projectFilePath);
-        if (!File.Exists(projectFilePath))
+        if (!Guard.NotDefault(path).File()!.Exists)
         {
-            if (projectInSolution == null)
-            {
-                throw new ArgumentException($"The path {projectFilePath} could not be found.");
-            }
-            return null;
+            return project is not null
+                ? null
+                : throw new ArgumentException($"The path {path} could not be found.");
         }
-        return _projects.GetOrAdd(projectFilePath, new ProjectAnalyzer(this, projectFilePath, projectInSolution));
+
+        return _projects.GetOrAdd(path.ToString(), new ProjectAnalyzer(this, path, project));
     }
 
-    internal static string NormalizePath(string path) =>
+    [Obsolete("Use IOPath instead.")]
+    internal static string? NormalizePath(string? path) =>
         path == null ? null : Path.GetFullPath(path.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar));
 }

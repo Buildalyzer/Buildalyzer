@@ -1,0 +1,32 @@
+<Solution>
+  <Project Path="AzureFunctionProject/AzureFunctionProject.csproj" />
+  <Project Path="FSharpProject/FSharpProject.fsproj" />
+  <Project Path="LegacyFrameworkProject/LegacyFrameworkProject.csproj" Id="36ed2b9d-2fc2-4725-9bc2-53cabf113477" />
+  <Project Path="LegacyFrameworkProjectWithPackageReference/LegacyFrameworkProjectWithPackageReference.csproj" Id="cd3445e2-a34a-4d87-9e8a-5081cbfa2f86" />
+  <Project Path="LegacyFrameworkProjectWithReference/LegacyFrameworkProjectWithReference.csproj" Id="d1f5ad80-aded-4286-8fa4-3a8a6e818d34" />
+  <Project Path="RazorClassLibraryTest/RazorClassLibraryTest.csproj" />
+  <Project Path="ResponseFile/ResponseFile.csproj" />
+  <Project Path="SdkFrameworkProject/SdkFrameworkProject.csproj" />
+  <Project Path="SdkMultiTargetingProject/SdkMultiTargetingProject.csproj" />
+  <Project Path="SdkNet5Project/SdkNet5Project.csproj" />
+  <Project Path="SdkNet6Exe/SdkNet6Exe.csproj" />
+  <Project Path="SdkNet6ImplicitUsings/SdkNet6ImplicitUsings.csproj" />
+  <Project Path="SdkNet6Project/SdkNet6Project.csproj" />
+  <Project Path="SdkNet6SelfContained/SdkNet6SelfContained.csproj" />
+  <Project Path="SdkNet7Project/SdkNet7Project.csproj" />
+  <Project Path="SdkNet8Alias/SdkNet8Alias.csproj" />
+  <Project Path="SdkNet8CS12FeaturesProject/SdkNet8CS12FeaturesProject.csproj" />
+  <Project Path="SdkNetCore2Project/SdkNetCore2Project.csproj" />
+  <Project Path="SdkNetCore2ProjectImport/SdkNetCore2ProjectImport.csproj" />
+  <Project Path="SdkNetCore2ProjectWithAnalyzer/SdkNetCore2ProjectWithAnalyzer.csproj" />
+  <Project Path="SdkNetCore2ProjectWithImportedProps/SdkNetCore2ProjectWithImportedProps.csproj" />
+  <Project Path="SdkNetCore2ProjectWithReference/SdkNetCore2ProjectWithReference.csproj" />
+  <Project Path="SdkNetCore31Project/SdkNetCore31Project.csproj" />
+  <Project Path="SdkNetStandardProject/SdkNetStandardProject.csproj" />
+  <Project Path="SdkNetStandardProjectImport/SdkNetStandardProjectImport.csproj" />
+  <Project Path="SdkNetStandardProjectWithConstants/SdkNetStandardProjectWithConstants.csproj" />
+  <Project Path="SdkNetStandardProjectWithPackageReference/SdkNetStandardProjectWithPackageReference.csproj" />
+  <Project Path="TransitiveProjectReference/TransitiveProjectReference.csproj" />
+  <Project Path="VisualBasicProject/VisualBasicNetConsoleApp.vbproj" />
+  <Project Path="WpfCustomControlLibrary1/WpfCustomControlLibrary1.csproj" Id="aed0d0e7-7312-49a9-a439-083f34286286" />
+</Solution>
