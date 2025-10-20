@@ -11,9 +11,9 @@ internal static class RoslynCommandLineParser
     [Pure]
     private static string[]? Split(string[] args, string[] execs)
     {
-        foreach (var exec in execs)
+        for (var i = 0; i < args.Length - 1; i++)
         {
-            for (var i = 0; i < args.Length - 1; i++)
+            foreach (var exec in execs)
             {
                 if (args[i].IsMatchEnd(exec))
                 {

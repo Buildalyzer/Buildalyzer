@@ -51,6 +51,47 @@ public class CompilerCommandFixture
     }
 
     [Test]
+    public void Parse_CS_DotNet10_Unix()
+    {
+        string commandline = string.Empty
+                             + "/usr/local/share/dotnet/sdk/10.0.100/Roslyn/bincore/csc "
+                             + "/noconfig "
+                             + "/unsafe- "
+                             + "/checked- "
+                             + "/nowarn:1701,1702,1701,1702 "
+                             + "/fullpaths "
+                             + "/nostdlib+ "
+                             + "/errorreport:prompt "
+                             + "/warn:3 "
+                             + "/define:TRACE;DEBUG;NET;NET8_0;NETCOREAPP;NET5_0_OR_GREATER;NET6_0_OR_GREATER;NET7_0_OR_GREATER;NET8_0_OR_GREATER;NETCOREAPP1_0_OR_GREATER;NETCOREAPP1_1_OR_GREATER;NETCOREAPP2_0_OR_GREATER;NETCOREAPP2_1_OR_GREATER;NETCOREAPP2_2_OR_GREATER;NETCOREAPP3_0_OR_GREATER;NETCOREAPP3_1_OR_GREATER "
+                             + "/preferreduilang:en-US "
+                             + "/highentropyva+ "
+                             + "/debug:portable "
+                             + "/filealign:512 "
+                             + "/optimize- "
+                             + "/warnaserror- "
+                             + "/utf8output "
+                             + "/deterministic+ "
+                             + "/langversion:8.0 "
+                             + "/analyzerconfig:code/buildalyzer/.editorconfig "
+                             + "/analyzerconfig:code/buildalyzer/tests/.editorconfig "
+                             + "Program.cs "
+                             + "Startup.cs "
+                             + "/warnaserror+:NU1605";
+
+        var command = Buildalyzer.Compiler.CommandLine.Parse(new("."), commandline, CompilerLanguage.CSharp);
+
+        command.Should().BeEquivalentTo(new
+        {
+            Text = commandline,
+            Language = CompilerLanguage.CSharp,
+            PreprocessorSymbolNames = new[] { "TRACE", "DEBUG", "NET", "NET8_0", "NETCOREAPP", "NET5_0_OR_GREATER", "NET6_0_OR_GREATER", "NET7_0_OR_GREATER", "NET8_0_OR_GREATER", "NETCOREAPP1_0_OR_GREATER", "NETCOREAPP1_1_OR_GREATER", "NETCOREAPP2_0_OR_GREATER", "NETCOREAPP2_1_OR_GREATER", "NETCOREAPP2_2_OR_GREATER", "NETCOREAPP3_0_OR_GREATER", "NETCOREAPP3_1_OR_GREATER" },
+            SourceFiles = Files(".\\Program.cs", ".\\Startup.cs"),
+            AnalyzerConfigPaths = Files(".\\code\\buildalyzer\\.editorconfig", ".\\code\\buildalyzer\\tests\\.editorconfig"),
+        });
+    }
+
+    [Test]
     public void Parse_VB()
     {
         string commandline = string.Empty
