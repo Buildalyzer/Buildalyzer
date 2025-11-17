@@ -43,13 +43,16 @@ public sealed class BuildCommand(
 
         return new(
             cmd,
-            isDotNet && msbuild.HasValue ? BuildArgument.Path(msbuild) : null,
-            BuildArgument.NoConsoleLogger,
-            env.Restore ? BuildArgument.Restore : null,
-            BuildArgument.Target(env.TargetsToBuild),
-            BuildArgument.Property(isDotNet, properties),
-            BuildArgument.Logger(isDotNet, logging),
-            env.NoAutoResponse ? BuildArgument.NoAutoResponse : null,
-            BuildArgument.Path(projectFile));
+            [
+                isDotNet && msbuild.HasValue ? BuildArgument.Path(msbuild) : null,
+                BuildArgument.NoConsoleLogger,
+                .. env.Arguments.Select(BuildArgument.Raw),
+                env.Restore ? BuildArgument.Restore : null,
+                BuildArgument.Target(env.TargetsToBuild),
+                BuildArgument.Property(isDotNet, properties),
+                BuildArgument.Logger(isDotNet, logging),
+                env.NoAutoResponse ? BuildArgument.NoAutoResponse : null,
+                BuildArgument.Path(projectFile),
+            ]);
     }
 }
