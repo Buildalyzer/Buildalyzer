@@ -1,9 +1,13 @@
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.IO.Compression;
 using Buildalyzer.Environment;
+using Buildalyzer.Handling;
+using Buildalyzer.IO;
 using Buildalyzer.TestTools;
 using Shouldly;
+using System.Linq;
 
 namespace Buildalyzer.Tests.Integration;
 
@@ -75,9 +79,72 @@ public class SimpleProjectsFixture
 
         var results = ctx.Analyzer.Build(options);
 
+        var alt = ctx.Build(options);
+
+        results.Results
+            .Select(r => new ResultInfo
+            {
+                TargetFramework = r.TargetFramework,
+            })
+            .Should().BeEquivalentTo(alt.Projects
+            .Where(p => p.Command is { } && p.TargetFramework is { Length: > 0 })
+            .Select(r => new ResultInfo
+            {
+                TargetFramework = r.TargetFramework
+            }));
+
         results.Should().NotBeEmpty();
         results.OverallSuccess.Should().BeTrue();
         results.Should().AllSatisfy(r => r.Succeeded.Should().BeTrue());
+    }
+
+    private sealed record ResultInfo
+    {
+        public string? TargetFramework { get; init; }
+    }
+
+    [Test]
+    public void Collects_BuildEventArguments()
+    {
+        using var ctx = Context.ForProject(@"SdkNet6Project\SdkNet6Project.csproj");
+
+        var results = ctx.Analyzer.Build(new EnvironmentOptions());
+
+        results.BuildEventArguments.Should().HaveCount(18);
+
+        var summeries = BuildEventHandlers.Default.Handle(results.BuildEventArguments);
+
+        var summary = summeries.Single(s => s.Command!.SourceFiles.Any());
+        var result = results.Single();
+
+        summary.Should().BeEquivalentTo(
+        new
+        {
+            result.TargetFramework,
+            result.Succeeded,
+            SourceFiles = result.SourceFiles.Select(IOPath.Parse).ToImmutableArray(),
+            AdditionalFiles = result.AdditionalFiles.Select(IOPath.Parse).ToImmutableArray(),
+        });
+    }
+
+    [Test]
+    public void Collects_Build_with_errors()
+    {
+        using var ctx = Context.ForProject(@"BuildWithError\BuildWithError.csproj");
+        var results = ctx.Analyzer.Build(new EnvironmentOptions { DesignTime = false });
+        var summeries = BuildEventHandlers.Default.Handle(results.BuildEventArguments);
+        var summary = summeries.Single(s => s.Command!.SourceFiles.Any());
+        var result = results.Single();
+
+        summary.Should().BeEquivalentTo(
+        new
+        {
+            result.TargetFramework,
+            result.Succeeded,
+            SourceFiles = result.SourceFiles.Select(IOPath.Parse).ToImmutableArray(),
+            AdditionalFiles = result.AdditionalFiles.Select(IOPath.Parse).ToImmutableArray(),
+            Errors = new { Count = 3 },
+        });
     }
 
     [Test]

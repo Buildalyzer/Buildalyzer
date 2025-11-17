@@ -105,6 +105,7 @@ public static class Compiler
                 SourceFiles = [.. arguments.SourceFiles.Select(AsIOPath)],
                 AdditionalFiles = [.. arguments.AdditionalFiles.Select(AsIOPath)],
                 EmbeddedFiles = [.. arguments.EmbeddedFiles.Select(AsIOPath)],
+                Errors = arguments.Errors,
             };
     }
 

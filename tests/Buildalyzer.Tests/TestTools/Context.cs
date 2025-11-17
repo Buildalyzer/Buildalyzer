@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.IO;
+using Buildalyzer.Environment;
 
 namespace Buildalyzer.TestTools;
 
@@ -25,6 +26,9 @@ public abstract class Context : IDisposable
             "projects",
             file));
     }
+
+    [Pure]
+    public abstract BuildAnalysis Build(EnvironmentOptions? options = null);
 
     protected Context(FileInfo location, Func<Context, AnalyzerManager> manager)
     {
