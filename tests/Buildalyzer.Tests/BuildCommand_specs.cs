@@ -16,7 +16,7 @@ public class Creates
             ["Clean", "Build"],
             @"C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Current\Bin\MSBuild.exe",
             "dotnet",
-            []);
+            ["-c=RELEASE", "-RAW"]);
 
         var path = IOPath.Parse("projects/LegacyFrameworkProject/LegacyFrameworkProject.csproj");
         var logger = new LoggerConfiguration
@@ -36,7 +36,7 @@ public class Creates
 
         command.ToString().Should().Be(
             """
-            /noconsolelogger /restore /target:Clean;Build /property:CopyBuildOutputToOutputDirectory="false";ResolveNuGetPackages="true" /l:BuildalyzerLogger,"logger\somelogger.dll";1980;True /noAutoResponse "projects\LegacyFrameworkProject\LegacyFrameworkProject.csproj"
+            /noconsolelogger -c=RELEASE -RAW /restore /target:Clean;Build /property:CopyBuildOutputToOutputDirectory="false";ResolveNuGetPackages="true" /l:BuildalyzerLogger,"logger\somelogger.dll";1980;True /noAutoResponse "projects\LegacyFrameworkProject\LegacyFrameworkProject.csproj"
             """);
     }
 }

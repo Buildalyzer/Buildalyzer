@@ -19,6 +19,9 @@ public sealed class BuildArgument
     /// <summary>/noconsolelogger.</summary>
     public static readonly BuildArgument NoConsoleLogger = new(Slash, "noconsolelogger");
 
+    /// <summary>Gets a raw argument.</summary>
+    public static BuildArgument Raw(string arg) => new(null, arg);
+
     /// <summary>/l.</summary>
     [Pure]
     public static BuildArgument Logger(bool isDotNet, LoggerConfiguration config) => new(
