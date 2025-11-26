@@ -34,9 +34,16 @@ public class Creates
             ],
             logger);
 
+#if Is_Windows
         command.ToString().Should().Be(
             """
             /noconsolelogger -c=RELEASE -RAW /restore /target:Clean;Build /property:CopyBuildOutputToOutputDirectory="false";ResolveNuGetPackages="true" /l:BuildalyzerLogger,"logger\somelogger.dll";1980;True /noAutoResponse "projects\LegacyFrameworkProject\LegacyFrameworkProject.csproj"
             """);
+#else
+        command.ToString().Should().Be(
+            """
+            /noconsolelogger -c=RELEASE -RAW /restore /target:Clean;Build /property:CopyBuildOutputToOutputDirectory="false";ResolveNuGetPackages="true" /l:BuildalyzerLogger,"logger/somelogger.dll";1980;True /noAutoResponse "projects/LegacyFrameworkProject/LegacyFrameworkProject.csproj"
+            """);
+#endif
     }
 }
