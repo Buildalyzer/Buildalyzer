@@ -1,4 +1,5 @@
 using System.IO;
+using Buildalyzer.Environment;
 
 namespace Buildalyzer.TestTools;
 
@@ -19,5 +20,10 @@ public sealed class SolutionFileTestContext : Context
             return new(solutionFile.FullName, options);
         })
     {
+    }
+
+    public override BuildAnalysis Build(EnvironmentOptions? options = null)
+    {
+        throw new NotImplementedException();
     }
 }

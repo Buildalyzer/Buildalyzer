@@ -21,25 +21,34 @@ internal sealed class BuildEventArgsCollector : IReadOnlyCollection<BuildEventAr
     public bool IsEmpty => Count == 0;
 
     /// <inheritdoc />
-    public IEnumerator<BuildEventArgs> GetEnumerator() => Bag.GetEnumerator();
+    /// <remarks>
+    /// Ordered by timestamp, as the bag does not ensure the chronical order itself.
+    /// </remarks>
+    [Pure]
+    public IEnumerator<BuildEventArgs> GetEnumerator() => Bag.OrderBy(e => e.Timestamp).GetEnumerator();
 
     /// <inheritdoc />
+    [Pure]
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     private void EventRaised(object? sender, BuildEventArgs e) => Bag.Add(e);
 
     private readonly EventArgsDispatcher Server;
 
+    [DebuggerBrowsable(DebuggerBrowsableState.Never)]
     private readonly ConcurrentBag<BuildEventArgs> Bag = [];
 
+    /// <inheritdoc />
     public void Dispose()
     {
         if (!Disposed)
         {
             Server.AnyEventRaised -= EventRaised;
+            Bag.Clear();
             Disposed = true;
         }
     }
 
+    [DebuggerBrowsable(DebuggerBrowsableState.Never)]
     private bool Disposed;
 }

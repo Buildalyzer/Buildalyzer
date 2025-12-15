@@ -1,5 +1,8 @@
 using System.Diagnostics;
 using System.IO;
+using Buildalyzer.Environment;
+using Buildalyzer.Handling;
+using Grammr;
 
 namespace Buildalyzer.TestTools;
 
@@ -21,6 +24,13 @@ public sealed class ProjectFileTestContext : Context
     }
 
     public IProjectAnalyzer Analyzer { get; }
+
+    public override BuildAnalysis Build(EnvironmentOptions? options = null)
+    {
+        var results = Analyzer.Build(options ?? new EnvironmentOptions() { DesignTime = false });
+        var analysis = BuildEventHandlers.Default.Handle(results.BuildEventArguments);
+        return new BuildAnalysis(analysis);
+    }
 
     [Conditional("BinaryLog")]
     internal void AddBinaryLogger(IProjectAnalyzer analyzer)
