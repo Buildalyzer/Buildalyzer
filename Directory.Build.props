@@ -14,10 +14,7 @@
   </PropertyGroup>
 
   <PropertyGroup Label="Shared properties">
-    <Version Condition="'$(BuildalyzerVersion)' == ''">1.0.0</Version>
-    <Version Condition="'$(BuildalyzerVersion)' != ''">$(BuildalyzerVersion)</Version>
-    <AssemblyVersion>$(Version.Split('-')[0])</AssemblyVersion>
-    <FileVersion>$(Version.Split('-')[0])</FileVersion>
+    <VersionPrefix>7.1.0</VersionPrefix>
     <LangVersion>12</LangVersion>
     <Nullable>enable</Nullable>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
@@ -58,6 +55,10 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="all"/>
   </ItemGroup>
+
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
 
   <ItemGroup Label="Analyzers">
     <PackageReference Include="DotNetProjectFile.Analyzers" Version="*" PrivateAssets="all" />
