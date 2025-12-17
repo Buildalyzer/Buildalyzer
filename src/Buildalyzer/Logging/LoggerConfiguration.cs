@@ -7,7 +7,7 @@ namespace Buildalyzer.Logging;
 public sealed record LoggerConfiguration
 {
     /// <summary>The type of pipe logger (default is <see cref="BuildalyzerLogger"/>).</summary>
-    public Type LoggerType { get; init; } = typeof(BuildalyzerLogger);
+    public string LoggerType { get; init; } = typeof(BuildalyzerLogger).Name;
 
     /// <summary>The path the logger assembly.</summary>
     public IOPath LoggerPath { get; init; } = DefaultLoggerPath();
