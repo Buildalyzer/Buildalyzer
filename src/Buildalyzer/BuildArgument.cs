@@ -27,7 +27,7 @@ public sealed class BuildArgument
     public static BuildArgument Logger(bool isDotNet, LoggerConfiguration config) => new(
             isDotNet ? Dash : Slash,
             "l",
-            $":{Guard.NotNull(config).LoggerType.Name},{EscapedString(config.LoggerPath.ToString())};{config.ClientHandle};{config.LogEverything}");
+            $":{Guard.NotNull(config).LoggerType},{EscapedString(config.LoggerPath.ToString())};{config.ClientHandle};{config.LogEverything}");
 
     /// <summary>/p (or -property).</summary>
     [Pure]
