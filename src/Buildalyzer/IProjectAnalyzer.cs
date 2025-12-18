@@ -46,7 +46,7 @@ public interface IProjectAnalyzer
     /// </summary>
     Guid ProjectGuid { get; }
 
-    ProjectInSolution ProjectInSolution { get; }
+    ProjectInSolution? ProjectInSolution { get; }
 
     string SolutionDirectory { get; }
 
