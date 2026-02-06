@@ -1,0 +1,30 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitignore" />
+    <File Path=".gitmodules" />
+    <File Path=".globalconfig" />
+    <File Path="Directory.Build.props" />
+    <File Path="LICENSE.md" />
+    <File Path="nuget.config" />
+    <File Path="package.props" />
+    <File Path="RELEASE.md" />
+    <File Path="stylecop.json" />
+  </Folder>
+  <Folder Name="/Solution Items/.github/">
+    <File Path=".github/FUNDING.yml" />
+  </Folder>
+  <Folder Name="/Solution Items/.github/workflows/">
+    <File Path=".github/workflows/build.yml" />
+    <File Path=".github/workflows/test-report.yml" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Buildalyzer.Logger/Buildalyzer.Logger.csproj" />
+    <Project Path="src/Buildalyzer.Workspaces/Buildalyzer.Workspaces.csproj" />
+    <Project Path="src/Buildalyzer/Buildalyzer.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Buildalyzer.Tests/Buildalyzer.Tests.csproj" />
+    <Project Path="tests/Buildalyzer.Workspaces.Tests/Buildalyzer.Workspaces.Tests.csproj" />
+  </Folder>
+</Solution>

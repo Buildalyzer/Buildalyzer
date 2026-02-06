@@ -13,7 +13,6 @@
     <PackageReleaseNotes>
       <![CDATA[
 ToBeReleased
-- Target .NET 8.0. #252
 - Publish SBOM.
       ]]>
     </PackageReleaseNotes>
