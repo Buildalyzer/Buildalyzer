@@ -123,7 +123,7 @@ public interface IProjectAnalyzer
     IAnalyzerResults Build(string[] targetFrameworks, EnvironmentOptions environmentOptions);
 
     void AddBinaryLogger(
-        string binaryLogFilePath = null,
+        string? binaryLogFilePath = null,
         BinaryLogger.ProjectImportsCollectionMode collectProjectImports = BinaryLogger.ProjectImportsCollectionMode.Embed);
 
     /// <summary>

@@ -23,7 +23,7 @@ internal class EventProcessor : IDisposable
 
     public IEnumerable<AnalyzerResult> Results => _results.Values;
 
-    public EventProcessor(AnalyzerManager manager, ProjectAnalyzer analyzer, IEnumerable<Microsoft.Build.Framework.ILogger> buildLoggers, IEventSource eventSource, bool analyze)
+    public EventProcessor(AnalyzerManager manager, ProjectAnalyzer analyzer, IEnumerable<Microsoft.Build.Framework.ILogger>? buildLoggers, IEventSource eventSource, bool analyze)
     {
         _manager = manager;
         _analyzer = analyzer;
