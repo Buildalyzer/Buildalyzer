@@ -14,7 +14,7 @@ ToBeReleased
 - Publish SBOM.
 - Introduction of SolutionInfo and ProjectInfo.
 - Marked IAnalyzerManger.SolutionFile and IAnalyzer.SolutionFilePath as obsolete.
-- Support SLXN.
+- Support SLNX.
 ]]>
     </PackageReleaseNotes>
   </PropertyGroup>
