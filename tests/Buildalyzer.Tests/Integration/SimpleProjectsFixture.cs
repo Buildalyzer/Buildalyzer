@@ -374,6 +374,99 @@ public class SimpleProjectsFixture
         references.ShouldContain(x => x.EndsWith("SdkNetStandardProject.csproj"), log.ToString());
     }
 
+    /// <summary>
+    /// Regression test for the bug where ProjectReferences are empty when an analysis result
+    /// is obtained by replaying a binlog via <see cref="IAnalyzerManager.Analyze"/>.
+    ///
+    /// Root cause: <see cref="Buildalyzer.Logging.EventProcessor"/> checks
+    /// <c>e.Properties is null</c> to detect the "new-format" binlog (format 14+) and fall
+    /// back to evaluation-phase items. However, <c>BinLogReader</c> from
+    /// MSBuild.StructuredLogger creates <c>ProjectStartedEventArgs</c> with
+    /// <c>Properties</c> set to an empty non-null collection rather than <c>null</c>,
+    /// so the check always resolves to the old-format path — using the empty
+    /// <c>e.Properties</c>/<c>e.Items</c> instead of the populated evaluation results.
+    /// The fix is to treat an empty <c>e.Properties</c> the same as null.
+    /// </summary>
+    [Test]
+    public void SdkProjectWithProjectReferenceGetsReferencesFromBinaryLog(
+        [ValueSource(nameof(Preferences))] EnvironmentPreference preference)
+    {
+        // Given
+        StringWriter log = new StringWriter();
+        IProjectAnalyzer analyzer = GetProjectAnalyzer(@"SdkNetCore2ProjectWithReference\SdkNetCore2ProjectWithReference.csproj", log);
+        EnvironmentOptions options = new EnvironmentOptions { Preference = preference };
+        string binLogPath = Path.ChangeExtension(Path.GetTempFileName(), ".binlog");
+        analyzer.AddBinaryLogger(binLogPath);
+
+        try
+        {
+            // When — build to produce the binlog, then replay it
+            analyzer.Build(options);
+            IAnalyzerResults results = analyzer.Manager.Analyze(binLogPath);
+
+            // Then — ProjectReferences must survive the binlog round-trip
+            IEnumerable<string> references = results.First(r => r.Succeeded).ProjectReferences;
+            references.ShouldNotBeNull(log.ToString());
+            references.ShouldContain(x => x.EndsWith("SdkNetStandardProjectWithPackageReference.csproj"), log.ToString());
+            references.ShouldContain(x => x.EndsWith("SdkNetStandardProject.csproj"), log.ToString());
+        }
+        finally
+        {
+            if (File.Exists(binLogPath))
+            {
+                File.Delete(binLogPath);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Regression test using the child-side <c>/bl:</c> argument (as opposed to host-side
+    /// <see cref="IProjectAnalyzer.AddBinaryLogger"/>). When the binlog is produced by passing
+    /// <c>/bl:path</c> inside <see cref="EnvironmentOptions.Arguments"/>, MSBuild writes
+    /// it from the build process itself.  Replaying that log via
+    /// <see cref="IAnalyzerManager.Analyze"/> triggers the
+    /// <c>BinLogReader</c> path in <c>EventProcessor</c> where
+    /// <c>ProjectStartedEventArgs.Properties</c> is a non-null but empty collection.
+    /// Because <see cref="Logging.EventProcessor"/> checks <c>e.Properties is null</c>
+    /// it never falls back to the evaluation-phase items, leaving
+    /// <c>ProjectReferences</c> empty.
+    /// </summary>
+    [Test]
+    public void SdkProjectWithProjectReferenceGetsReferencesFromChildSideBinaryLog(
+        [ValueSource(nameof(Preferences))] EnvironmentPreference preference)
+    {
+        // Given
+        StringWriter log = new StringWriter();
+        IProjectAnalyzer analyzer = GetProjectAnalyzer(@"SdkNetCore2ProjectWithReference\SdkNetCore2ProjectWithReference.csproj", log);
+        string binLogPath = Path.ChangeExtension(Path.GetTempFileName(), ".binlog");
+        EnvironmentOptions options = new EnvironmentOptions
+        {
+            Preference = preference
+        };
+        // Child-side binary logging: the build process itself writes the binlog
+        options.Arguments.Add($"/bl:{binLogPath}");
+
+        try
+        {
+            // When — build to produce the binlog, then replay it
+            analyzer.Build(options);
+            IAnalyzerResults results = analyzer.Manager.Analyze(binLogPath);
+
+            // Then — ProjectReferences must survive the child-side binlog round-trip
+            IEnumerable<string> references = results.First(r => r.Succeeded).ProjectReferences;
+            references.ShouldNotBeNull(log.ToString());
+            references.ShouldContain(x => x.EndsWith("SdkNetStandardProjectWithPackageReference.csproj"), log.ToString());
+            references.ShouldContain(x => x.EndsWith("SdkNetStandardProject.csproj"), log.ToString());
+        }
+        finally
+        {
+            if (File.Exists(binLogPath))
+            {
+                File.Delete(binLogPath);
+            }
+        }
+    }
+
     [Test]
     public void SdkProjectWithDefineContstantsGetsPreprocessorSymbols()
     {

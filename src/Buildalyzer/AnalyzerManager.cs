@@ -50,7 +50,7 @@ public class AnalyzerManager : IAnalyzerManager
 
     [Obsolete("Use AnalyzerManager(IOPath, AnalyzerManagerOptions) instead.")]
     public AnalyzerManager(string solutionFilePath, AnalyzerManagerOptions? options = null)
-        : this(IOPath.Parse(solutionFilePath), options) { }
+        : this(IOPath.Parse(Path.GetFullPath(solutionFilePath)), options) { }
 
     public AnalyzerManager(IOPath solutionFilePath, AnalyzerManagerOptions? options = null)
     {
@@ -100,7 +100,12 @@ public class AnalyzerManager : IAnalyzerManager
             throw new ArgumentException($"The path {binLogPath} could not be found.");
         }
 
-        BinLogReader reader = new BinLogReader();
+        // BinaryLogReplayEventSource (from Microsoft.Build) correctly handles all MSBuild 18.x
+        // event types including AssemblyLoadBuildEventArgs. The StructuredLogger.BinLogReader
+        // stops replaying mid-stream when it encounters unknown event types in newer binlogs,
+        // causing ProjectEvaluationFinishedEventArgs to never fire and leaving _evalulationResults
+        // empty, so ProjectStarted falls back to null propertiesAndItems and no results are produced.
+        var reader = new Microsoft.Build.Logging.BinaryLogReplayEventSource();
 
         using EventProcessor eventProcessor = new EventProcessor(this, null, buildLoggers, reader, true);
         reader.Replay(binLogPath);
