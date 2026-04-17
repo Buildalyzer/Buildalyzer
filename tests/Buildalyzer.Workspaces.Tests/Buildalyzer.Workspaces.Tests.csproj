@@ -8,9 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AwesomeAssertions" Version="9.3.0" />
+    <PackageReference Include="AwesomeAssertions" Version="9.4.0" />
     <PackageReference Include="MsBuildPipeLogger.Logger" Version="1.1.6" GeneratePathProperty="true" />
-    <PackageReference Include="NUnit" Version="4.4.0" />
+    <PackageReference Include="NUnit" Version="4.5.1" />
     <PackageReference Include="Shouldly" Version="4.3.0" />
   </ItemGroup>
 

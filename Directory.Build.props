@@ -14,7 +14,7 @@
   </PropertyGroup>
 
   <PropertyGroup Label="Shared properties">
-    <Version Condition="'$(BuildalyzerVersion)' == ''">1.0.0</Version>
+    <Version Condition="'$(BuildalyzerVersion)' == ''">8.1.0</Version>
     <Version Condition="'$(BuildalyzerVersion)' != ''">$(BuildalyzerVersion)</Version>
     <AssemblyVersion>$(Version.Split('-')[0])</AssemblyVersion>
     <FileVersion>$(Version.Split('-')[0])</FileVersion>
@@ -56,7 +56,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="all"/>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.202" PrivateAssets="all"/>
+    <!-- Pin patched version to suppress NU1903 vulnerability warnings (GHSA-37gx-xxp4-5rgx, GHSA-w3x6-4m5h-cxqf).
+         System.Security.Cryptography.Xml 10.0.1 is pulled in transitively on net10.0 targets. -->
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.6" />
   </ItemGroup>
 
   <ItemGroup Label="Analyzers">

@@ -11,7 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup Label="Build extensions">
-    <PackageReference Include="Microsoft.Sbom.Targets" Version="4.1.4" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Sbom.Targets" Version="4.1.5" PrivateAssets="all" />
   </ItemGroup>
 
 </Project>

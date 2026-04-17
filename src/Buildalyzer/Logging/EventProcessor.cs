@@ -83,8 +83,12 @@ internal class EventProcessor : IDisposable
         // Make sure this is the same project, nested MSBuild tasks may have spawned additional builds of other projects
         if (AnalyzerManager.NormalizePath(e.ProjectFile) == _projectFilePath)
         {
-            // Get the items and properties from the evaluation if needed
-            PropertiesAndItems propertiesAndItems = e.Properties is null
+            // Get the items and properties from the evaluation if needed.
+            // Treat an empty e.Properties the same as null: BinLogReader (MSBuild.StructuredLogger)
+            // creates ProjectStartedEventArgs with Properties set to a non-null but empty collection
+            // rather than null for binlog format 14+ events.  The empty collection carries no useful
+            // data, so fall back to the evaluation-phase results just as we do when Properties is null.
+            PropertiesAndItems propertiesAndItems = e.Properties is null || !e.Properties.Cast<object>().Any()
                 ? (_evalulationResults.TryGetValue(e.BuildEventContext.EvaluationId, out PropertiesAndItems evaluationResult)
                     ? evaluationResult
                     : null)
