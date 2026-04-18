@@ -36,6 +36,7 @@
     <GlobalPackageReference Include="Microsoft.Sbom.Targets" Version="4.1.5" />
     <GlobalPackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
     <GlobalPackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" Version="7.14.15"/>
+    <GlobalPackageReference Include="PolySharp" Version="1.15.0" />
     <GlobalPackageReference Include="Roslynator.Analyzers" Version="4.15.0" />
     <GlobalPackageReference Include="SonarAnalyzer.CSharp" Version="10.23.0.137933"/>
     <GlobalPackageReference Include="StyleCop.Analyzers.Unstable" Version="1.2.0.556" />
