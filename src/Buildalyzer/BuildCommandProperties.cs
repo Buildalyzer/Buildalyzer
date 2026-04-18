@@ -4,7 +4,7 @@ using Buildalyzer.IO;
 namespace Buildalyzer;
 
 /// <summary>Factory to create <see cref="BuildCommandProperty"/>s.</summary>
-public static class BuildCommandProperties
+internal static class BuildCommandProperties
 {
     /// <summary>Creates <see cref="BuildCommandProperty"/>s.</summary>
     [Pure]

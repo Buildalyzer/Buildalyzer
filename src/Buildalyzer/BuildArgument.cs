@@ -4,7 +4,7 @@ using Buildalyzer.Logging;
 namespace Buildalyzer;
 
 /// <summary>A single build argument.</summary>
-public sealed class BuildArgument
+internal sealed class BuildArgument
 {
     private const string Dash = "-";
     private const string Slash = "/";

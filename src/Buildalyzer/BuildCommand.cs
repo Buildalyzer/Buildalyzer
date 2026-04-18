@@ -6,7 +6,7 @@ namespace Buildalyzer;
 
 /// <summary>Represents a (commandline) build command.</summary>
 [DebuggerDisplay("{Command} {ToString()}")]
-public sealed class BuildCommand(
+internal sealed class BuildCommand(
     string? command,
     params BuildArgument?[] args)
 {

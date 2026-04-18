@@ -4,10 +4,10 @@ using Buildalyzer.Logger;
 namespace Buildalyzer.Logging;
 
 /// <summary>Configuration for the pipe logger in the command line.</summary>
-public sealed record LoggerConfiguration
+internal sealed record LoggerConfiguration
 {
     /// <summary>The type of pipe logger (default is <see cref="BuildalyzerLogger"/>).</summary>
-    public string LoggerType { get; init; } = typeof(BuildalyzerLogger).Name;
+    public string LoggerType { get; } = nameof(BuildalyzerLogger);
 
     /// <summary>The path the logger assembly.</summary>
     public IOPath LoggerPath { get; init; } = DefaultLoggerPath();

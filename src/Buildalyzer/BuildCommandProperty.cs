@@ -1,7 +1,7 @@
 namespace Buildalyzer;
 
 /// <summary>Represents a build command property and its value.</summary>
-public readonly struct BuildCommandProperty(string key, string value)
+internal readonly struct BuildCommandProperty(string key, string value)
 {
     /// <summary>Gets the key of the build command property.</summary>
     public readonly string Key = key;
