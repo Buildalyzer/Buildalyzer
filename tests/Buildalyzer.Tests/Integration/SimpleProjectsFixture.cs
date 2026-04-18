@@ -592,21 +592,18 @@ public class SimpleProjectsFixture
     [Test]
     public void Resolves_additional_files()
     {
-        // Given
-        StringWriter log = new StringWriter();
-        IProjectAnalyzer analyzer = GetProjectAnalyzer(@"ProjectWithAdditionalFile\ProjectWithAdditionalFile.csproj", log);
+        using var ctx = Context.ForProject("ProjectWithAdditionalFile/ProjectWithAdditionalFile.csproj");
 
         // When + then
-        analyzer.Build().First().AdditionalFiles.Select(Path.GetFileName)
+        ctx.Analyzer.Build().First().AdditionalFiles.Select(Path.GetFileName)
             .Should().BeEquivalentTo("message.txt");
     }
 
     [Test]
     public void Global_package_references()
     {
-        var analyzer = GetProjectAnalyzer("GlobalPackageReference/GlobalPackageReference.csproj", new());
-
-        var references = analyzer.Build().Single().PackageReferences;
+        using var ctx = Context.ForProject("GlobalPackageReference/GlobalPackageReference.csproj");
+        var references = ctx.Analyzer.Build().Single().PackageReferences;
         var reference = references["StyleCop.Analyzers"];
         var version = reference["Version"];
 
