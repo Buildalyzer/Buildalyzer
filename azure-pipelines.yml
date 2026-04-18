@@ -28,15 +28,11 @@ steps:
 - script: |
     dotnet restore
     dotnet build --configuration $(buildConfiguration)
-    dotnet pack --configuration $(buildConfiguration) --no-build --output $(Build.ArtifactStagingDirectory) /p:Version=$(createTagVariableStep.myVersion) /p:ApiCompatGenerateSuppressionFile=$(ApiCompatGenerateSuppressionFile)
+    dotnet pack --configuration $(buildConfiguration) --no-build --output $(Build.ArtifactStagingDirectory) /p:Version=$(createTagVariableStep.myVersion)
   displayName: 'Dotnet Pack'
 
-- task: NuGetCommand@2
-  inputs:
-    command: 'push'
-    packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
-    nuGetFeedType: 'external'
-    publishFeedCredentials: 'Nuget'
+- script: dotnet nuget push "$(Build.ArtifactStagingDirectory)/**/*.nupkg" --api-key $(NuGetApiKey) --source https://api.nuget.org/v3/index.json --skip-duplicate
+  displayName: 'Push to NuGet'
 
 - task: PublishBuildArtifacts@1
   inputs:

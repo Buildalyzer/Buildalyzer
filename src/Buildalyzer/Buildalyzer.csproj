@@ -6,7 +6,7 @@
     <TargetFrameworks>net6.0;net8.0</TargetFrameworks>
     <LangVersion>14.0</LangVersion>
     <PackageId>Buildalyzer</PackageId>
-    <PackageValidationBaselineVersion>7.0.1</PackageValidationBaselineVersion>
+    <PackageValidationBaselineVersion>8.0.0</PackageValidationBaselineVersion>
     <OutputType>library</OutputType>
     <PackageReleaseNotes>
       <![CDATA[

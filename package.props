@@ -10,6 +10,10 @@
     <GenerateSBOM>true</GenerateSBOM>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(TF_BUILD)' != 'true'">
+    <EnablePackageValidation>false</EnablePackageValidation>
+  </PropertyGroup>
+
   <ItemGroup Label="Build extensions">
     <PackageReference Include="Microsoft.Sbom.Targets" Version="4.1.4" PrivateAssets="all" />
   </ItemGroup>
