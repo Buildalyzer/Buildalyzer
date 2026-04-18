@@ -19,8 +19,8 @@ ToBeReleased
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Build.Utilities.Core" Version="14.3.0" PrivateAssets="all" />
-    <PackageReference Include="MsBuildPipeLogger.Logger" Version="1.1.6" PrivateAssets="all" IsLogger="true" />
+    <PackageReference PrivateAssets="all" Include="Microsoft.Build.Utilities.Core" />
+    <PackageReference PrivateAssets="all" Include="MsBuildPipeLogger.Logger" IsLogger="true" />
   </ItemGroup>
 
   <!-- Get the logger files for later use -->
@@ -31,9 +31,10 @@ ToBeReleased
     <Error Condition="'@(LoggerFiles)' == ''" Text="Could not find MsBuildPipeLogger.Logger files" />
   </Target>
 
-  <!-- Workaround to pack package reference directly -->
-  <!-- See https://github.com/NuGet/Home/issues/3891 -->
-  <!-- And https://github.com/NuGet/Home/issues/4837 -->
+  <!--
+    Workaround to pack package reference directly
+    See https://github.com/NuGet/Home/issues/3891
+    And https://github.com/NuGet/Home/issues/4837 -->
   <Target Name="PackLogger" DependsOnTargets="GetLoggerFiles">
     <ItemGroup>
       <BuildOutputInPackage Include="@(LoggerFiles)" />

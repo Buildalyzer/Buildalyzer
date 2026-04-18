@@ -5,6 +5,7 @@
     <File Path=".gitmodules" />
     <File Path=".globalconfig" />
     <File Path="Directory.Build.props" />
+	<File Path="Directory.Packages.props" />
     <File Path="LICENSE.md" />
     <File Path="nuget.config" />
     <File Path="package.props" />

@@ -18,11 +18,16 @@
     <Version Condition="'$(BuildalyzerVersion)' != ''">$(BuildalyzerVersion)</Version>
     <AssemblyVersion>$(Version.Split('-')[0])</AssemblyVersion>
     <FileVersion>$(Version.Split('-')[0])</FileVersion>
-    <LangVersion>12</LangVersion>
+    <LangVersion>14.0</LangVersion>
     <Nullable>enable</Nullable>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <NuGetAuditMode>all</NuGetAuditMode>
     <IsPublishable>false</IsPublishable>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$([MSBuild]::IsOsPlatform('Windows'))">
+    <DefineConstants>Is_Windows</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Label="Package information">
@@ -54,23 +59,5 @@
     <None Include="$(MSBuildThisFileDirectory)/icon.png" Pack="true" PackagePath="/"/>
     <None Include="$(MSBuildThisFileDirectory)/README.md" Pack="true" PackagePath="/"/>
   </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="all"/>
-  </ItemGroup>
-
-  <ItemGroup Label="Analyzers">
-    <PackageReference Include="DotNetProjectFile.Analyzers" Version="*" PrivateAssets="all" />
-    <PackageReference Include="IDisposableAnalyzers" Version="*" PrivateAssets="all"/>
-    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="*" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" Version="*" PrivateAssets="all"/>
-    <PackageReference Include="Roslynator.Analyzers" Version="*" PrivateAssets="all"/>
-    <PackageReference Include="SonarAnalyzer.CSharp" Version="*" PrivateAssets="all" />
-    <PackageReference Include="StyleCop.Analyzers" Version="*-*" PrivateAssets="all"/>
-  </ItemGroup>
-
-  <ItemGroup Label="Additional files">
-    <AdditionalFiles Include="*.csproj" Visible="false" />
-  </ItemGroup>
-
+ 
 </Project>

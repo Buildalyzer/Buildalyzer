@@ -7,37 +7,27 @@
     <OutputType>library</OutputType>
   </PropertyGroup>
 
-  <ItemGroup Label="Test versions">
-    <PackageReference Include="FSharp.Compiler.Service" Version="*" />
-    <PackageReference Update="Microsoft.CodeAnalysis.CSharp" Version="4.*" />
-    <PackageReference Update="Microsoft.CodeAnalysis.VisualBasic" Version="4.*" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="AwesomeAssertions" Version="9.3.0" />
-    <PackageReference Include="LibGit2Sharp" Version="0.31.0" />
-    
-    <PackageReference Include="MsBuildPipeLogger.Logger" Version="1.1.6" GeneratePathProperty="true" />
-    <PackageReference Include="NUnit" Version="4.4.0" />
-    <PackageReference Include="Shouldly" Version="4.3.0" />
-  </ItemGroup>
-
-  <ItemGroup Label="Build tools">
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="*" PrivateAssets="all" />
-    <PackageReference Include="NUnit3TestAdapter" Version="*" PrivateAssets="all" />
-  </ItemGroup>
-
-  <ItemGroup Label="Analyzers">
-    <PackageReference Include="AwesomeAssertions.Analyzers" Version="9.0.8" PrivateAssets="all" />
-    <PackageReference Include="NUnit.Analyzers" Version="*" PrivateAssets="all" />
-  </ItemGroup>
-
-  <ItemGroup>
+  <ItemGroup Label="Projects under test">
     <ProjectReference Include="../../src/Buildalyzer/Buildalyzer.csproj" />
   </ItemGroup>
 
-  <PropertyGroup Condition=" $([MSBuild]::IsOsPlatform('Windows')) ">
-    <DefineConstants>Is_Windows</DefineConstants>
-  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="AwesomeAssertions" />
+    <PackageReference Include="FSharp.Compiler.Service" />
+    <PackageReference Include="LibGit2Sharp" />
+    <PackageReference Include="MsBuildPipeLogger.Logger" GeneratePathProperty="true" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="Shouldly" />
+  </ItemGroup>
+
+  <ItemGroup Label="Build tools">
+    <PackageReference PrivateAssets="all" Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference PrivateAssets="all" Include="NUnit3TestAdapter" />
+  </ItemGroup>
+
+  <ItemGroup Label="Analyzers">
+    <PackageReference PrivateAssets="all" Include="AwesomeAssertions.Analyzers" />
+    <PackageReference PrivateAssets="all" Include="NUnit.Analyzers" />
+  </ItemGroup>
 
 </Project>
