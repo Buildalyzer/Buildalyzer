@@ -84,22 +84,14 @@ internal class EventProcessor : IDisposable
         if (AnalyzerManager.NormalizePath(e.ProjectFile) == _projectFilePath)
         {
             // Get the items and properties from the evaluation if needed
-            PropertiesAndItems propertiesAndItems = e.Properties is null
-                ? (_evalulationResults.TryGetValue(e.BuildEventContext.EvaluationId, out PropertiesAndItems evaluationResult)
-                    ? evaluationResult
-                    : null)
-                : new PropertiesAndItems
-                {
-                    Properties = CompilerProperties.FromDictionaryEntries(e.Properties),
-                    Items = CompilerItemsCollection.FromDictionaryEntries(e.Items),
-                };
+            var propertiesAndItems = PropertiesAndItems.TryCreate(e, _evalulationResults);
 
             // Get the TFM for this project
             // use an empty string if no target framework was found, for example in case of C++ projects with VS >= 2022
             string tfm = propertiesAndItems?.Properties.TryGet("TargetFrameworkMoniker")?.StringValue
                 ?? string.Empty;
 
-            if (propertiesAndItems != null && propertiesAndItems.Properties != null && propertiesAndItems.Items != null)
+            if (propertiesAndItems is { Properties: { }, Items: { } })
             {
                 if (!_results.TryGetValue(tfm, out AnalyzerResult result))
                 {
