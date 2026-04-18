@@ -29,6 +29,7 @@ ToBeReleased
     <PackageReference Include="MSBuild.StructuredLogger" Aliases="StructuredLogger" />
     <PackageReference Include="MsBuildPipeLogger.Server" />
     <PackageReference Include="NuGet.Frameworks" />
+    <PackageReference Include="System.Security.Cryptography.Xml" />
   </ItemGroup>
 
   <ItemGroup>
@@ -42,6 +43,17 @@ ToBeReleased
 
   <ItemGroup>
     <ProjectReference Include="../Buildalyzer.Logger/Buildalyzer.Logger.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageVersion Update="Microsoft.SourceLink.GitHub" Version="10.0.202" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="Microsoft.SourceLink.GitHub">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
 </Project>
