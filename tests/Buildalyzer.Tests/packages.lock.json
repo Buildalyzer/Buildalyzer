@@ -140,12 +140,6 @@
         "resolved": "10.23.0.137933",
         "contentHash": "K8CwUkB4PlUcMfLqGCj1aviVfW9AufZH2K/TjgPGYdj4gosV/kcyxpBR0jaCG8argC6dfxJBbSS6xXJ59lFWgA=="
       },
-      "StyleCop.Analyzers.Unstable": {
-        "type": "Direct",
-        "requested": "[1.2.0.556, )",
-        "resolved": "1.2.0.556",
-        "contentHash": "zvn9Mqs/ox/83cpYPignI8hJEM2A93s2HkHs8HYMOAQW0PkampyoErAiIyKxgTLqbbad29HX/shv/6LGSjPJNQ=="
-      },
       "DiffEngine": {
         "type": "Transitive",
         "resolved": "11.3.0",

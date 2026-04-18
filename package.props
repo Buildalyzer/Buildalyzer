@@ -10,4 +10,8 @@
     <GenerateSBOM>true</GenerateSBOM>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference PrivateAssets="all" Include="StyleCop.Analyzers.Unstable" />
+  </ItemGroup>
+
 </Project>

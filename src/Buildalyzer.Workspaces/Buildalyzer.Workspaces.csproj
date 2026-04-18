@@ -23,12 +23,12 @@ ToBeReleased
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../Buildalyzer/Buildalyzer.csproj" />
+  </ItemGroup>
+  
+  <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
     <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Workspaces" />
   </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="../Buildalyzer/Buildalyzer.csproj" />
-  </ItemGroup>
-
+ 
 </Project>

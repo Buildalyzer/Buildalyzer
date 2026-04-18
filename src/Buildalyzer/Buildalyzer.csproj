@@ -20,6 +20,10 @@ ToBeReleased
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../Buildalyzer.Logger/Buildalyzer.Logger.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.Build" />
     <PackageReference Include="Microsoft.Build.Tasks.Core" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
@@ -39,21 +43,6 @@ ToBeReleased
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
       <_Parameter1>Buildalyzer.Workspaces</_Parameter1>
     </AssemblyAttribute>
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="../Buildalyzer.Logger/Buildalyzer.Logger.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageVersion Update="Microsoft.SourceLink.GitHub" Version="10.0.202" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Update="Microsoft.SourceLink.GitHub">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-    </PackageReference>
   </ItemGroup>
 
 </Project>
