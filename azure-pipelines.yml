@@ -1,11 +1,10 @@
 
 trigger:
-  tags:
-    include:
-    - '*'
   branches:
-   include:
-     - release/*
+    include:
+      - release/*
+
+pr: none
 
 pool:
   vmImage: 'ubuntu-latest'
@@ -28,8 +27,8 @@ steps:
 
 - script: |
     dotnet restore
-    dotnet build
-    dotnet pack --configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory) /p:Version=$(createTagVariableStep.myVersion) /p:ApiCompatGenerateSuppressionFile=$(ApiCompatGenerateSuppressionFile)
+    dotnet build --configuration $(buildConfiguration)
+    dotnet pack --configuration $(buildConfiguration) --no-build --output $(Build.ArtifactStagingDirectory) /p:Version=$(createTagVariableStep.myVersion) /p:ApiCompatGenerateSuppressionFile=$(ApiCompatGenerateSuppressionFile)
   displayName: 'Dotnet Pack'
 
 - task: NuGetCommand@2
