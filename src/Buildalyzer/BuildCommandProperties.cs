@@ -29,7 +29,7 @@ internal static class BuildCommandProperties
             }
         }
 
-        if (targetFramework is not null)
+        if (targetFramework is { Length: > 0 })
         {
             props[MsBuildProperties.TargetFramework] = targetFramework;
         }

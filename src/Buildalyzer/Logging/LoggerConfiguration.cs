@@ -7,15 +7,15 @@ namespace Buildalyzer.Logging;
 internal sealed record LoggerConfiguration
 {
     /// <summary>The type of pipe logger (default is <see cref="BuildalyzerLogger"/>).</summary>
-    public string LoggerType { get; } = nameof(BuildalyzerLogger);
+    public string LoggerType { get; init; } = nameof(BuildalyzerLogger);
 
-    /// <summary>The path the logger assembly.</summary>
+    /// <summary>The path to the logger assembly.</summary>
     public IOPath LoggerPath { get; init; } = DefaultLoggerPath();
 
     /// <summary>The client handle.</summary>
     public string ClientHandle { get; init; } = string.Empty;
 
-    /// <summary>Should if everything be logged (default is true).</summary>
+    /// <summary>Should everything be logged (default is true).</summary>
     public bool LogEverything { get; init; } = true;
 
     /// <summary>Gets the default logger path</summary>

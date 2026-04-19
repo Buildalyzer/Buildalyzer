@@ -29,7 +29,7 @@ internal sealed class BuildArgument
             "l",
             $":{Guard.NotNull(config).LoggerType},{EscapedString(config.LoggerPath.ToString())};{config.ClientHandle};{config.LogEverything}");
 
-    /// <summary>/p (or -property).</summary>
+    /// <summary>-p (or /property).</summary>
     [Pure]
     public static BuildArgument? Property(
         bool isDotNet,

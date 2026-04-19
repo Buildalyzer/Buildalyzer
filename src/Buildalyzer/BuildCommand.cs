@@ -13,7 +13,7 @@ internal sealed class BuildCommand(
     /// <summary>The command.</summary>
     public string Command { get; } = command ?? "dotnet";
 
-    /// <summary>The agruments for the command.</summary>
+    /// <summary>The arguments for the command.</summary>
     public ImmutableArray<BuildArgument> Arguments { get; } = [.. args.OfType<BuildArgument>()];
 
     /// <inheritdoc />
