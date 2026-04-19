@@ -1,7 +1,2 @@
 <!-- empty Directory.Build.props to reset and not use props from root -->
-<Project> 
-  <PropertyGroup>
-  </PropertyGroup>
-  <ItemGroup>
-  </ItemGroup>
-</Project>
+<Project /> 

@@ -3,15 +3,15 @@
   <Import Project="../../package.props" />
 
   <PropertyGroup>
-    <TargetFrameworks>net6.0;net8.0;net10.0</TargetFrameworks>
     <Description>
+      <![CDATA[
       A little utility to perform design-time builds of .NET projects without
       having to think too hard about it. This extension library adds support
       for creating a Roslyn workspace from Buildalyzer.
+      ]]>
     </Description>
     <PackageId>Buildalyzer.Workspaces</PackageId>
     <PackageValidationBaselineVersion>8.0.0</PackageValidationBaselineVersion>
-    <OutputType>library</OutputType>
     <PackageReleaseNotes>
       <![CDATA[
 ToBeReleased
@@ -23,12 +23,14 @@ ToBeReleased
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.10.0" />
-    <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Workspaces" Version="4.10.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version ="4.10.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Workspaces" Version ="4.10.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../Buildalyzer/Buildalyzer.csproj" />
   </ItemGroup>
 
+  <Import Project="../../versions.props" />
+  
 </Project>
