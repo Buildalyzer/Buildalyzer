@@ -49,7 +49,7 @@ internal sealed class BuildCommand(
                 BuildArgument.NoConsoleLogger,
                 .. env.Arguments.Select(BuildArgument.Raw),
                 env.Restore ? BuildArgument.Restore : null,
-                BuildArgument.Target([.. env.TargetsToBuild, .. targetsToBuild]),
+                BuildArgument.Target(targetsToBuild is { Count: > 0 } ? targetsToBuild : env.TargetsToBuild),
                 BuildArgument.Property(isDotNet, properties),
                 BuildArgument.Logger(isDotNet, logging),
                 env.NoAutoResponse ? BuildArgument.NoAutoResponse : null,
