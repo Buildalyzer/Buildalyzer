@@ -27,6 +27,7 @@ ToBeReleased
     <PackageReference Include="MSBuild.StructuredLogger" Aliases="StructuredLogger" />
     <PackageReference Include="MsBuildPipeLogger.Server" />
     <PackageReference Include="NuGet.Frameworks" />
+    <PackageReference Include="System.Security.Cryptography.Xml" />
   </ItemGroup>
   
   <ItemGroup>

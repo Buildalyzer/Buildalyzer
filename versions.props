@@ -1,22 +1,21 @@
 <Project>
   <!-- Prepare for CPM -->
   <ItemGroup>
-    <PackageReference Update="SonarAnalyzer.CSharp" Version="10.23.0.137933" />
     <PackageReference Update="AwesomeAssertions" Version="9.4.0" />
     <PackageReference Update="AwesomeAssertions.Analyzers" Version="9.0.8" />
     <PackageReference Update="DotNetProjectFile.Analyzers" Version="1.11.0" />
     <PackageReference Update="IDisposableAnalyzers" Version="4.0.8" />
     <PackageReference Update="FSharp.Compiler.Service" Version="43.12.202" />
     <PackageReference Update="LibGit2Sharp" Version="0.31.0" />
-    <PackageReference Update="Microsoft.Build" Version="17.14.28" />
-    <PackageReference Update="Microsoft.Build.Tasks.Core" Version="17.14.28" />
-    <PackageReference Update="Microsoft.Build.Utilities.Core" Version="14.3.0" />
+    <PackageReference Update="Microsoft.Build" Version="18.4.0" />
+    <PackageReference Update="Microsoft.Build.Tasks.Core" Version="18.4.0" />
+    <PackageReference Update="Microsoft.Build.Utilities.Core" Version="18.4.0" />
     <PackageReference Update="Microsoft.CodeAnalysis.Analyzers" Version="5.3.0" />
     <PackageReference Update="Microsoft.CodeAnalysis.CSharp" Version="[4.10,)" />
     <PackageReference Update="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="[4.10,)" />
     <PackageReference Update="Microsoft.CodeAnalysis.VisualBasic.Workspaces" Version="[4.10,)" />
     <PackageReference Update="Microsoft.CodeAnalysis.VisualBasic" Version="[4.10,)" />
-    <PackageReference Update="Microsoft.Extensions.Logging" Version="6.0.0" />
+    <PackageReference Update="Microsoft.Extensions.Logging" Version="10.0.6" />
     <PackageReference Update="Microsoft.NET.Test.Sdk" Version="18.4.0" />
     <PackageReference Update="Microsoft.Sbom.Targets" Version="4.1.5" />
     <PackageReference Update="Microsoft.SourceLink.GitHub" Version="10.0.202" />
@@ -32,6 +31,8 @@
     <PackageReference Update="PolySharp" Version="1.15.0" />
     <PackageReference Update="Roslynator.Analyzers" Version="4.15.0" />
     <PackageReference Update="Shouldly" Version="4.3.0" />
+    <PackageReference Update="SonarAnalyzer.CSharp" Version="10.23.0.137933" />
     <PackageReference Update="StyleCop.Analyzers.Unstable" Version="1.2.0.556" />
+    <PackageReference Update="System.Security.Cryptography.Xml" Version="10.0.6" />
   </ItemGroup>
 </Project>
