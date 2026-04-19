@@ -24,8 +24,8 @@ internal sealed class BuildCommand(
     [Pure]
     public static BuildCommand Create(
         BuildEnvironment env,
-        IOPath projectFile,
-        ImmutableArray<BuildCommandProperty> properties,
+        in IOPath projectFile,
+        in ImmutableArray<BuildCommandProperty> properties,
         LoggerConfiguration logging)
     {
         Guard.NotNull(env);
