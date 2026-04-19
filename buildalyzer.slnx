@@ -10,6 +10,7 @@
     <File Path="package.props" />
     <File Path="RELEASE.md" />
     <File Path="stylecop.json" />
+    <File Path="versions.props" />
   </Folder>
   <Folder Name="/Solution Items/.github/">
     <File Path=".github/FUNDING.yml" />

@@ -15,7 +15,8 @@
   </PropertyGroup>
 
   <ItemGroup Label="Build extensions">
-    <PackageReference Include="Microsoft.Sbom.Targets" Version="4.1.4" PrivateAssets="all" />
+    <PackageReference PrivateAssets="all" Include="IDisposableAnalyzers" />
+    <PackageReference PrivateAssets="all" Include="StyleCop.Analyzers.Unstable" />
   </ItemGroup>
 
 </Project>

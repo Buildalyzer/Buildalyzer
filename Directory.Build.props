@@ -8,13 +8,13 @@
     <IsPackable>false</IsPackable>
     <IsPublishable>false</IsPublishable>
   </PropertyGroup>
-  
+
   <PropertyGroup Label="Analaysis">
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <NuGetAuditMode>all</NuGetAuditMode>
   </PropertyGroup>
-  
+
   <PropertyGroup Label="Debug experience">
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
@@ -29,7 +29,7 @@
     <FileVersion>$(Version.Split('-')[0])</FileVersion>
   </PropertyGroup>
 
-  <PropertyGroup Condition=" $([MSBuild]::IsOsPlatform('Windows')) ">
+  <PropertyGroup Condition="$([MSBuild]::IsOsPlatform('Windows'))">
     <DefineConstants>Is_Windows</DefineConstants>
   </PropertyGroup>
 
@@ -71,22 +71,27 @@
     <None Include="$(MSBuildThisFileDirectory)/README.md" Pack="true" PackagePath="/"/>
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="all"/>
+  <ItemGroup Label="Build dependencies">
+    <PackageReference PrivateAssets="all" Include="Microsoft.Sbom.Targets" />
+    <PackageReference PrivateAssets="all" Include="Microsoft.SourceLink.GitHub" />
+    <PackageReference PrivateAssets="all" Include="PolySharp" />
   </ItemGroup>
 
   <ItemGroup Label="Analyzers">
-    <PackageReference Include="DotNetProjectFile.Analyzers" Version="*" PrivateAssets="all" />
-    <PackageReference Include="IDisposableAnalyzers" Version="*" PrivateAssets="all"/>
-    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="*" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" Version="*" PrivateAssets="all"/>
-    <PackageReference Include="Roslynator.Analyzers" Version="*" PrivateAssets="all"/>
-    <PackageReference Include="SonarAnalyzer.CSharp" Version="*" PrivateAssets="all" />
-    <PackageReference Include="StyleCop.Analyzers" Version="*-*" PrivateAssets="all"/>
+    <PackageReference PrivateAssets="all" Include="DotNetProjectFile.Analyzers" />
+    <PackageReference PrivateAssets="all" Include="Microsoft.CodeAnalysis.Analyzers" />
+    <PackageReference PrivateAssets="all" Include="Microsoft.VisualStudio.Threading.Analyzers" />
+    <PackageReference PrivateAssets="all" Include="Roslynator.Analyzers" />
+    <PackageReference PrivateAssets="all" Include="SonarAnalyzer.CSharp" />
   </ItemGroup>
 
-  <ItemGroup Label="Additional files">
-    <AdditionalFiles Include="*.csproj" Visible="false" />
+  <!-- Prepare for CPM -->
+  <ItemGroup Label="Versions">
+    <PackageReference Update="DotNetProjectFile.Analyzers" Version="1.11.0" />
+    <PackageReference Update="Microsoft.CodeAnalysis.Analyzers" Version="5.3.0" />
+    <PackageReference Update="Microsoft.VisualStudio.Threading.Analyzers" Version="17.0.0" />
+    <PackageReference Update="Roslynator.Analyzers" Version="4.15.0" />
+    <PackageReference Update="SonarAnalyzer.CSharp" Version="10.23.0.137933" />
   </ItemGroup>
 
 </Project>
