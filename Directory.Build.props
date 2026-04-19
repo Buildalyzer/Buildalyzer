@@ -1,36 +1,46 @@
 <Project>
 
-  <PropertyGroup>
-    <RepositoryUrl>https://github.com/phmonte/Buildalyzer.git</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+  <PropertyGroup Label="Core compilation settings">
+    <TargetFrameworks>net6.0;net8.0;net10.0</TargetFrameworks>
+    <OutputType>library</OutputType>
+    <LangVersion>14.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>false</IsPublishable>
+  </PropertyGroup>
+  
+  <PropertyGroup Label="Analaysis">
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <NuGetAuditMode>all</NuGetAuditMode>
+  </PropertyGroup>
+  
+  <PropertyGroup Label="Debug experience">
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <DebugType>portable</DebugType>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
-  <PropertyGroup Label="Shared properties">
+  <PropertyGroup Label="Versioning">
     <Version Condition="'$(BuildalyzerVersion)' == ''">1.0.0</Version>
     <Version Condition="'$(BuildalyzerVersion)' != ''">$(BuildalyzerVersion)</Version>
     <AssemblyVersion>$(Version.Split('-')[0])</AssemblyVersion>
     <FileVersion>$(Version.Split('-')[0])</FileVersion>
-    <LangVersion>12</LangVersion>
-    <Nullable>enable</Nullable>
-    <EnableNETAnalyzers>true</EnableNETAnalyzers>
-    <NuGetAuditMode>all</NuGetAuditMode>
-    <IsPublishable>false</IsPublishable>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" $([MSBuild]::IsOsPlatform('Windows')) ">
+    <DefineConstants>Is_Windows</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Label="Package information">
     <ProductName>Buildalyzer</ProductName>
     <Description>
+      <![CDATA[
       A little utility to perform design-time builds of .NET projects without
       having to think too hard about it. Should work with any project type on
       any .NET runtime.
+      ]]>
     </Description>
     <PackageTags>
       Roslyn,
@@ -43,10 +53,16 @@
     <Authors>Dave Glick, Pablo Monteiro, Corniel Nobel, and contributors</Authors>
     <Company>Dave Glick, Pablo Monteiro, and contributors</Company>
     <Copyright>Dave Glick, Pablo Monteiro</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <PackageIcon>icon.png</PackageIcon>
     <PackageIconUrl>https://github.com/phmonte/Buildalyzer/blob/main/icon.png</PackageIconUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageProjectUrl>https://github.com/phmonte/Buildalyzer</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/phmonte/Buildalyzer.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>
