@@ -32,6 +32,7 @@ public class Creates
                 new("CopyBuildOutputToOutputDirectory", "false"),
                 new("ResolveNuGetPackages", "true"),
             ],
+            [],
             logger);
 
 #if Is_Windows

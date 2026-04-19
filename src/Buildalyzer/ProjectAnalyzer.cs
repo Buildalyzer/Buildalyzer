@@ -172,6 +172,7 @@ public class ProjectAnalyzer : IProjectAnalyzer
             buildEnvironment,
             projectFile,
             props,
+            targetsToBuild,
             new LoggerConfiguration
             {
                 ClientHandle = pipeLogger.GetClientHandle(),

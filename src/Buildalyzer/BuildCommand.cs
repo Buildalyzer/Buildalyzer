@@ -26,6 +26,7 @@ internal sealed class BuildCommand(
         BuildEnvironment env,
         in IOPath projectFile,
         in ImmutableArray<BuildCommandProperty> properties,
+        IReadOnlyCollection<string> targetsToBuild,
         LoggerConfiguration logging)
     {
         Guard.NotNull(env);
@@ -48,7 +49,7 @@ internal sealed class BuildCommand(
                 BuildArgument.NoConsoleLogger,
                 .. env.Arguments.Select(BuildArgument.Raw),
                 env.Restore ? BuildArgument.Restore : null,
-                BuildArgument.Target(env.TargetsToBuild),
+                BuildArgument.Target([.. env.TargetsToBuild, .. targetsToBuild]),
                 BuildArgument.Property(isDotNet, properties),
                 BuildArgument.Logger(isDotNet, logging),
                 env.NoAutoResponse ? BuildArgument.NoAutoResponse : null,
