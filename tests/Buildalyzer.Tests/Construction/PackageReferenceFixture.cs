@@ -45,4 +45,21 @@ public class PackageReferenceFixture
         // Then
         packageReference.Name.ShouldBe("UpdatedDependency");
     }
+
+    [Test]
+    public void PackageReferenceWithVersionChildElementShouldContainVersion()
+    {
+        // Given
+        XElement xml = XElement.Parse(@"
+            <PackageReference Include=""IncludedDependency"">
+                <Version>4.0.0</Version>
+            </PackageReference>
+        ");
+
+        // When
+        PackageReference packageReference = new PackageReference(xml);
+
+        // Then
+        packageReference.Version.ShouldBe("4.0.0");
+    }
 }
