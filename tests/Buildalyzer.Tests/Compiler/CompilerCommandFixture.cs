@@ -123,7 +123,7 @@ public class CompilerCommandFixture
     [Test]
     public void Parse_FSharp()
     {
-        string commandLine = @"C:\Program Files\dotnet\dotnet.exe ""C:\Program Files\dotnet\sdk\8.0.200\FSharp\fsc.dll"" -o:obj\Debug\netcoreapp3.1\FSharpProject.dll
+        const string commandLine = @"C:\Program Files\dotnet\dotnet.exe ""C:\Program Files\dotnet\sdk\8.0.200\FSharp\fsc.dll"" -o:obj\Debug\netcoreapp3.1\FSharpProject.dll
 -g
 --debug:portable
 --noframework
