@@ -29,11 +29,8 @@ public class ProjectFile : IProjectFile
         _document = XDocument.Load(path);
 
         // Get the project element
-        _projectElement = _document.GetDescendants(ProjectFileNames.Project).FirstOrDefault();
-        if (_projectElement == null)
-        {
-            throw new ArgumentException("Unrecognized project file format");
-        }
+        _projectElement = _document.GetDescendants(ProjectFileNames.Project).FirstOrDefault()
+            ?? throw new ArgumentException("Unrecognized project file format");
     }
 
     /// <inheritdoc />
