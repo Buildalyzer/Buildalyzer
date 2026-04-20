@@ -311,7 +311,7 @@ public class ProjectAnalyzer : IProjectAnalyzer
         {
             { Length: > 0 } path => path,
             _ when LoggerPathDll() is { Length: > 0 } path => path,
-            _ => throw new ArgumentException($"The dll of {nameof(BuildalyzerLogger)} is required"),
+            _ => throw new InvalidOperationException($"The dll of {nameof(BuildalyzerLogger)} is required"),
         };
 
         static string? LoggerPathDll()
