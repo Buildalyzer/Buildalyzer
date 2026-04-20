@@ -114,10 +114,7 @@ internal class EventProcessor : IDisposable
         if (AnalyzerManager.NormalizePath(e.ProjectFile) == _projectFilePath)
         {
             AnalyzerResult result = _currentResult.Pop();
-            if (result != null)
-            {
-                result.Succeeded = e.Succeeded;
-            }
+            result?.Succeeded = e.Succeeded;
         }
     }
 
