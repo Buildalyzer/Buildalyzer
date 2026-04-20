@@ -137,28 +137,26 @@ public static class AnalyzerResultExtensions
         return workspace.CurrentSolution.GetProject(projectId);
     }
 
-    private static Microsoft.CodeAnalysis.ProjectInfo GetProjectInfo(IAnalyzerResult analyzerResult, Workspace workspace, ProjectId projectId)
+    private static Microsoft.CodeAnalysis.ProjectInfo? GetProjectInfo(IAnalyzerResult analyzerResult, Workspace workspace, ProjectId projectId)
     {
         string projectName = Path.GetFileNameWithoutExtension(analyzerResult.ProjectFilePath);
-        if (!TryGetSupportedLanguageName(analyzerResult.ProjectFilePath, out string languageName))
-        {
-            return null;
-        }
-        return Microsoft.CodeAnalysis.ProjectInfo.Create(
-            projectId,
-            VersionStamp.Create(),
-            projectName,
-            projectName,
-            languageName,
-            filePath: analyzerResult.ProjectFilePath,
-            outputFilePath: analyzerResult.GetProperty("TargetPath"),
-            documents: GetDocuments(analyzerResult, projectId),
-            projectReferences: GetExistingProjectReferences(analyzerResult, workspace),
-            metadataReferences: GetMetadataReferences(analyzerResult),
-            analyzerReferences: GetAnalyzerReferences(analyzerResult, workspace),
-            additionalDocuments: GetAdditionalDocuments(analyzerResult, projectId),
-            parseOptions: CreateParseOptions(analyzerResult, languageName),
-            compilationOptions: CreateCompilationOptions(analyzerResult, languageName));
+        return TryGetSupportedLanguageName(analyzerResult.ProjectFilePath, out string languageName)
+            ? Microsoft.CodeAnalysis.ProjectInfo.Create(
+                projectId,
+                VersionStamp.Create(),
+                projectName,
+                projectName,
+                languageName,
+                filePath: analyzerResult.ProjectFilePath,
+                outputFilePath: analyzerResult.GetProperty("TargetPath"),
+                compilationOptions: CreateCompilationOptions(analyzerResult, languageName),
+                parseOptions: CreateParseOptions(analyzerResult, languageName),
+                documents: GetDocuments(analyzerResult, projectId),
+                projectReferences: GetExistingProjectReferences(analyzerResult, workspace),
+                metadataReferences: GetMetadataReferences(analyzerResult),
+                analyzerReferences: GetAnalyzerReferences(analyzerResult, workspace),
+                additionalDocuments: GetAdditionalDocuments(analyzerResult, projectId))
+            : null;
     }
 
     private static ParseOptions CreateParseOptions(IAnalyzerResult analyzerResult, string languageName)

@@ -111,18 +111,12 @@ public class AnalyzerManager : IAnalyzerManager
     }
 
     private IProjectAnalyzer? GetProject(in IOPath path, ProjectInfo? project)
-    {
-        Guard.NotDefault(path);
-
-        if (!Guard.NotDefault(path).File()!.Exists)
+        => (Guard.NotDefault(path).File(), project) switch
         {
-            return project is not null
-                ? null
-                : throw new ArgumentException($"The path {path} could not be found.");
-        }
-
-        return _projects.GetOrAdd(path.ToString(), new ProjectAnalyzer(this, path, project));
-    }
+            ({ Exists: true }, _) => _projects.GetOrAdd(path.ToString(), new ProjectAnalyzer(this, path, project)),
+            (_, not null) => null,
+            _ => throw new ArgumentException($"The path {path} could not be found."),
+        };
 
     [Obsolete("Use IOPath instead.")]
     internal static string? NormalizePath(string? path) =>

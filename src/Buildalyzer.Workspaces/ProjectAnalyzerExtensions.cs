@@ -37,16 +37,8 @@ public static class ProjectAnalyzerExtensions
     /// </param>
     /// <returns>The newly added Roslyn project.</returns>
     public static Project AddToWorkspace(this IProjectAnalyzer analyzer, Workspace workspace, bool addProjectReferences = false)
-    {
-        if (analyzer == null)
-        {
-            throw new ArgumentNullException(nameof(analyzer));
-        }
-        if (workspace == null)
-        {
-            throw new ArgumentNullException(nameof(workspace));
-        }
-
-        return analyzer.Build().FirstOrDefault().AddToWorkspace(workspace, addProjectReferences);
-    }
+        => Guard.NotNull(analyzer)
+        .Build()
+        .First()
+        .AddToWorkspace(Guard.NotNull(workspace), addProjectReferences);
 }
