@@ -202,9 +202,5 @@ public class EnvironmentFactory
     // Internal for testing
     // Because the .NET Core/.NET 5 TFMs are better defined, we just check if this is one of them and then negate
     internal static bool IsFrameworkTargetFramework(string targetFramework)
-    {
-        NuGetFramework tfm = NuGetFramework.Parse(targetFramework);
-        return tfm.Framework != ".NETStandard"
-            && tfm.Framework != ".NETCoreApp";
-    }
+        => NuGetFramework.Parse(targetFramework).Framework is not ".NETStandard" and not ".NETCoreApp";
 }

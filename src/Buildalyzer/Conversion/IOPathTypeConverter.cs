@@ -14,8 +14,10 @@ internal sealed class IOPathTypeConverter : TypeConverter
 
     /// <inheritdoc />
     [Pure]
-    public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object? value)
-        => value is null || value is string
-            ? IOPath.Parse(value as string)
-            : base.ConvertFrom(context, culture, value);
+    public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object? value) => value switch
+    {
+        null => IOPath.Empty,
+        string str => IOPath.Parse(str),
+        _ => base.ConvertFrom(context, culture, value),
+    };
 }
