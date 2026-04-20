@@ -131,8 +131,7 @@ internal class EventProcessor : IDisposable
 
     private void MessageRaised(object sender, BuildMessageEventArgs e)
     {
-        var result = _currentResult.Count == 0 ? null : _currentResult.Peek();
-        if (result is not object || !IsRelevant())
+        if (!_currentResult.TryPeek(out var result) || !IsRelevant())
         {
             return;
         }
