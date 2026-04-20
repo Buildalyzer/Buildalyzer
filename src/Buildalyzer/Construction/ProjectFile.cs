@@ -21,8 +21,6 @@ public class ProjectFile : IProjectFile
     private readonly XDocument _document;
     private readonly XElement _projectElement;
 
-    private string[] _targetFrameworks = null;
-
     // The project file path should already be normalized
     internal ProjectFile(string path)
     {
@@ -45,12 +43,12 @@ public class ProjectFile : IProjectFile
     public string Name { get; }
 
     /// <inheritdoc />
-    public string[] TargetFrameworks => _targetFrameworks
+    public string[] TargetFrameworks { get => field
         ??= GetTargetFrameworks(
             _projectElement.GetDescendants(ProjectFileNames.TargetFrameworks).Select(x => x.Value),
             _projectElement.GetDescendants(ProjectFileNames.TargetFramework).Select(x => x.Value),
             _projectElement.GetDescendants(ProjectFileNames.TargetFrameworkVersion)
-                .Select(x => (x.Parent.GetDescendants(ProjectFileNames.TargetFrameworkIdentifier).FirstOrDefault()?.Value ?? ".NETFramework", x.Value)));
+                .Select(x => (x.Parent.GetDescendants(ProjectFileNames.TargetFrameworkIdentifier).FirstOrDefault()?.Value ?? ".NETFramework", x.Value))); private set; } = null;
 
     /// <inheritdoc />
     public bool UsesSdk =>

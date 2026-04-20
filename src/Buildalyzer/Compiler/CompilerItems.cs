@@ -10,13 +10,11 @@ namespace Buildalyzer;
 [DebuggerTypeProxy(typeof(Diagnostics.CollectionDebugView<ITaskItem>))]
 public readonly struct CompilerItems(string key, IReadOnlyCollection<ITaskItem> values) : IReadOnlyCollection<ITaskItem>
 {
-    private readonly IReadOnlyCollection<ITaskItem> _values = values;
-
     /// <summary>Ghets the compiler item key.</summary>
     public readonly string Key = key;
 
     /// <summary>Gets the compiler item values.</summary>
-    public IReadOnlyCollection<ITaskItem> Values => _values ?? [];
+    public IReadOnlyCollection<ITaskItem> Values { get => field ?? []; } = values;
 
     /// <inheritdoc />
     public int Count => Values.Count;
