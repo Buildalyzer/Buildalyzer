@@ -81,6 +81,15 @@ public class SimpleProjectsFixture
     }
 
     [Test]
+    public void Respects_output_type()
+    {
+        using var ctx = Context.ForProject("OutputTypeExe/OutputTypeExe.csproj");
+
+        var results = ctx.Analyzer.Build(new EnvironmentOptions() { DesignTime = false });
+        results.OverallSuccess.Should().BeFalse();
+    }
+
+    [Test]
     public void BuildsProject(
         [ValueSource(nameof(Preferences))] EnvironmentPreference preference,
         [ValueSource(nameof(ProjectFiles))] string projectFile)
