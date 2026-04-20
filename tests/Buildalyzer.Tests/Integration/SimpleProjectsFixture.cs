@@ -592,7 +592,7 @@ public class SimpleProjectsFixture
             .Should().BeEquivalentTo("message.txt");
     }
 
-    private static IProjectAnalyzer GetProjectAnalyzer(string projectFile, System.IO.StringWriter log)
+    private static IProjectAnalyzer GetProjectAnalyzer(string projectFile, StringWriter log)
     {
         IProjectAnalyzer analyzer = new AnalyzerManager(
             new AnalyzerManagerOptions
