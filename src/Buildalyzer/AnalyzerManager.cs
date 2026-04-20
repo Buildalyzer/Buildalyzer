@@ -52,7 +52,7 @@ public class AnalyzerManager : IAnalyzerManager
     public AnalyzerManager(string solutionFilePath, AnalyzerManagerOptions? options = null)
         : this(IOPath.Parse(solutionFilePath), options) { }
 
-    public AnalyzerManager(in IOPath solutionFilePath, AnalyzerManagerOptions? options = null)
+    public AnalyzerManager(IOPath solutionFilePath, AnalyzerManagerOptions? options = null)
     {
         options ??= new AnalyzerManagerOptions();
         LoggerFactory = options.LoggerFactory;
@@ -110,7 +110,7 @@ public class AnalyzerManager : IAnalyzerManager
         };
     }
 
-    private IProjectAnalyzer? GetProject(in IOPath path, ProjectInfo? project)
+    private IProjectAnalyzer? GetProject(IOPath path, ProjectInfo? project)
         => (Guard.NotDefault(path).File(), project) switch
         {
             ({ Exists: true }, _) => _projects.GetOrAdd(path.ToString(), new ProjectAnalyzer(this, path, project)),
