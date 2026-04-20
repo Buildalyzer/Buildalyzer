@@ -10,7 +10,7 @@ public interface IAnalyzerManager
 
     IReadOnlyDictionary<string, IProjectAnalyzer> Projects { get; }
 
-    /// <inheritdoc cref="Buildalyzer.SolutionInfo" />
+    /// <inheritdoc cref="SolutionInfo" />
     SolutionInfo? Solution { get; }
 
     [Obsolete("Use SolutionInfo instead.")]

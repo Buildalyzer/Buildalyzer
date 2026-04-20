@@ -7,7 +7,7 @@ public class DotNetInfoFixture
     [Test]
     public void Parses_Windows_NET8()
     {
-        var lines = @"
+        const string lines = @"
  .NET SDK:
   Version:           8.0.200
   Commit:            438cab6a9d
@@ -86,7 +86,7 @@ public class DotNetInfoFixture
     [Test]
     public void Parses_Windows_NET_Core()
     {
-        var lines = @".NET Core SDK (reflecting any global.json):
+        const string lines = @".NET Core SDK (reflecting any global.json):
  Version:   2.1.300
  Commit:    adab45bf0c
 
@@ -148,7 +148,7 @@ To install additional .NET Core runtimes or SDKs:
     [Test]
     public void Parses_Linux()
     {
-        var lines = @"
+        const string lines = @"
 .NET Core SDK (reflecting any global.json):
 Version:   2.1.401
 Commit:    91b1c13032

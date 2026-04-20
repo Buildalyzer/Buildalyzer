@@ -22,16 +22,11 @@ public static class AnalyzerManagerExtensions
 
     public static AdhocWorkspace GetWorkspace(this IAnalyzerManager manager)
     {
-        if (manager is null)
-        {
-            throw new ArgumentNullException(nameof(manager));
-        }
-
         // Run builds in parallel
-        List<IAnalyzerResult> results = manager.Projects.Values
+        var results = Guard.NotNull(manager).Projects.Values
             .AsParallel()
             .Select(p => p.Build().FirstOrDefault())
-            .Where(x => x != null)
+            .OfType<IAnalyzerResult>()
             .ToList();
 
         // Create a new workspace and add the solution (if there was one)

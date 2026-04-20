@@ -9,9 +9,9 @@ public class PackageReference : IPackageReference
 
     internal PackageReference(XElement packageReferenceElement)
     {
-        this.Name = packageReferenceElement.GetAttributeValue("Include") ?? packageReferenceElement.GetAttributeValue("Update");
+        Name = packageReferenceElement.GetAttributeValue("Include") ?? packageReferenceElement.GetAttributeValue("Update");
         var versionElement = packageReferenceElement.DescendantsAndSelf()
             .FirstOrDefault(x => x.Name.LocalName == "Version");
-        this.Version = packageReferenceElement.GetAttributeValue("Version") ?? versionElement?.Value;
+        Version = packageReferenceElement.GetAttributeValue("Version") ?? versionElement?.Value;
     }
 }

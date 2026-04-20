@@ -67,11 +67,9 @@ public class EnvironmentFactory
             return null;
         }
 
-        string msBuildExePath = Path.Combine(dotnetPath, "MSBuild.dll");
-        if (options.EnvironmentVariables.ContainsKey(EnvironmentVariables.MSBUILD_EXE_PATH))
-        {
-            msBuildExePath = options.EnvironmentVariables[EnvironmentVariables.MSBUILD_EXE_PATH];
-        }
+        var msBuildExePath = options.EnvironmentVariables.TryGetValue(EnvironmentVariables.MSBUILD_EXE_PATH, out var path)
+            ? path
+            : Path.Combine(dotnetPath, "MSBuild.dll");
 
         // Clone the options global properties dictionary so we can add to it
         Dictionary<string, string> additionalGlobalProperties = new Dictionary<string, string>(options.GlobalProperties);
@@ -139,7 +137,7 @@ public class EnvironmentFactory
         {
             msBuildExePath = options.EnvironmentVariables[EnvironmentVariables.MSBUILD_EXE_PATH];
         }
-        else if (!GetFrameworkMsBuildExePath(out msBuildExePath))
+        else if (!EnvironmentFactory.GetFrameworkMsBuildExePath(out msBuildExePath))
         {
             Logger.LogWarning("Couldn't find a .NET Framework MSBuild path");
             return null;
@@ -160,7 +158,7 @@ public class EnvironmentFactory
             options.WorkingDirectory);
     }
 
-    private bool GetFrameworkMsBuildExePath(out string msBuildExePath)
+    private static bool GetFrameworkMsBuildExePath(out string msBuildExePath)
     {
         msBuildExePath = ToolLocationHelper.GetPathToBuildToolsFile("msbuild.exe", ToolLocationHelper.CurrentToolsVersion);
         if (string.IsNullOrEmpty(msBuildExePath))
@@ -202,9 +200,5 @@ public class EnvironmentFactory
     // Internal for testing
     // Because the .NET Core/.NET 5 TFMs are better defined, we just check if this is one of them and then negate
     internal static bool IsFrameworkTargetFramework(string targetFramework)
-    {
-        NuGetFramework tfm = NuGetFramework.Parse(targetFramework);
-        return tfm.Framework != ".NETStandard"
-            && tfm.Framework != ".NETCoreApp";
-    }
+        => NuGetFramework.Parse(targetFramework).Framework is not ".NETStandard" and not ".NETCoreApp";
 }

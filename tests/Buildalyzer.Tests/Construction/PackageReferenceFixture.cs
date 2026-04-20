@@ -50,11 +50,11 @@ public class PackageReferenceFixture
     public void PackageReferenceWithVersionChildElementShouldContainVersion()
     {
         // Given
-        XElement xml = XElement.Parse(@"
-            <PackageReference Include=""IncludedDependency"">
+        XElement xml = XElement.Parse("""
+            <PackageReference Include="IncludedDependency">
                 <Version>4.0.0</Version>
             </PackageReference>
-        ");
+            """);
 
         // When
         PackageReference packageReference = new PackageReference(xml);

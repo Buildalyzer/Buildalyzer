@@ -74,7 +74,6 @@ public class Filters
 
 public class Handles
 {
-
     [Test]
     public static void Duplicate_project_references()
     {
