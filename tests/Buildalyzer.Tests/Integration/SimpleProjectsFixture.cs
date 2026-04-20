@@ -552,17 +552,11 @@ public class SimpleProjectsFixture
                 "binlogs",
                 path))
             .Replace('\\', Path.DirectorySeparatorChar);
-        EnvironmentOptions options = new EnvironmentOptions();
-        using (Stream stream = File.OpenRead(path))
-        {
-            using (GZipStream gzip = new GZipStream(stream, CompressionMode.Decompress))
-            {
-                using (BinaryReader reader = new BinaryReader(gzip))
-                {
-                    reader.ReadInt32().ShouldBe(expectedVersion);
-                }
-            }
-        }
+
+        using var stream = File.OpenRead(path);
+        using GZipStream gzip = new GZipStream(stream, CompressionMode.Decompress);
+        using BinaryReader reader = new BinaryReader(gzip);
+        reader.ReadInt32().ShouldBe(expectedVersion);
 
         // Given
         StringWriter log = new StringWriter();
