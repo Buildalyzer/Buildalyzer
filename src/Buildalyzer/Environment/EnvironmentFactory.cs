@@ -137,7 +137,7 @@ public class EnvironmentFactory
         {
             msBuildExePath = options.EnvironmentVariables[EnvironmentVariables.MSBUILD_EXE_PATH];
         }
-        else if (!GetFrameworkMsBuildExePath(out msBuildExePath))
+        else if (!EnvironmentFactory.GetFrameworkMsBuildExePath(out msBuildExePath))
         {
             Logger.LogWarning("Couldn't find a .NET Framework MSBuild path");
             return null;
@@ -158,7 +158,7 @@ public class EnvironmentFactory
             options.WorkingDirectory);
     }
 
-    private bool GetFrameworkMsBuildExePath(out string msBuildExePath)
+    private static bool GetFrameworkMsBuildExePath(out string msBuildExePath)
     {
         msBuildExePath = ToolLocationHelper.GetPathToBuildToolsFile("msbuild.exe", ToolLocationHelper.CurrentToolsVersion);
         if (string.IsNullOrEmpty(msBuildExePath))

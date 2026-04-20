@@ -87,7 +87,7 @@ public abstract class Context : IDisposable
 
     /// <summary>Sets <paramref name="inDebugMode"/> to true when run in DEBUG mode.</summary>
     [Conditional("DEBUG")]
-    private void DebugMode(ref bool inDebugMode) => inDebugMode = true;
+    private static void DebugMode(ref bool inDebugMode) => inDebugMode = true;
 
     [DebuggerBrowsable(DebuggerBrowsableState.Never)]
     private readonly bool InDebugMode;

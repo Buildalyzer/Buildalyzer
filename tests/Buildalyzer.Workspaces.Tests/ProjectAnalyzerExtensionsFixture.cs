@@ -234,7 +234,7 @@ public class ProjectAnalyzerExtensionsFixture
     }
 #endif
 
-    private IProjectAnalyzer GetProjectAnalyzer(string projectFile, StringWriter log, AnalyzerManager manager = null)
+    private static IProjectAnalyzer GetProjectAnalyzer(string projectFile, StringWriter log, AnalyzerManager manager = null)
     {
         // The path will get normalized inside the .GetProject() call below
         string projectPath = GetFullPath(projectFile);
