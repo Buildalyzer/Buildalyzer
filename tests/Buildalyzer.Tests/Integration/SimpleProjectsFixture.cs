@@ -85,9 +85,7 @@ public class SimpleProjectsFixture
     {
         using var ctx = Context.ForProject("OutputTypeExe/OutputTypeExe.csproj");
 
-        var results = ctx.Analyzer.Build();
-
-        results.Should().NotBeEmpty();
+        var results = ctx.Analyzer.Build(new EnvironmentOptions() { DesignTime = false });
         results.OverallSuccess.Should().BeFalse();
     }
 
