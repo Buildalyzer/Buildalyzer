@@ -75,10 +75,7 @@ internal class EventProcessor : IDisposable
     private void ProjectStarted(object sender, ProjectStartedEventArgs e)
     {
         // If we're not using an analyzer (I.e., from a binary log) and this is the first project file path we've seen, then it's the primary
-        if (_projectFilePath == null)
-        {
-            _projectFilePath = AnalyzerManager.NormalizePath(e.ProjectFile);
-        }
+        _projectFilePath ??= AnalyzerManager.NormalizePath(e.ProjectFile);
 
         // Make sure this is the same project, nested MSBuild tasks may have spawned additional builds of other projects
         if (AnalyzerManager.NormalizePath(e.ProjectFile) == _projectFilePath)
