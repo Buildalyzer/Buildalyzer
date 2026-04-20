@@ -75,31 +75,20 @@ internal class EventProcessor : IDisposable
     private void ProjectStarted(object sender, ProjectStartedEventArgs e)
     {
         // If we're not using an analyzer (I.e., from a binary log) and this is the first project file path we've seen, then it's the primary
-        if (_projectFilePath == null)
-        {
-            _projectFilePath = AnalyzerManager.NormalizePath(e.ProjectFile);
-        }
+        _projectFilePath ??= AnalyzerManager.NormalizePath(e.ProjectFile);
 
         // Make sure this is the same project, nested MSBuild tasks may have spawned additional builds of other projects
         if (AnalyzerManager.NormalizePath(e.ProjectFile) == _projectFilePath)
         {
             // Get the items and properties from the evaluation if needed
-            PropertiesAndItems propertiesAndItems = e.Properties is null
-                ? (_evalulationResults.TryGetValue(e.BuildEventContext.EvaluationId, out PropertiesAndItems evaluationResult)
-                    ? evaluationResult
-                    : null)
-                : new PropertiesAndItems
-                {
-                    Properties = CompilerProperties.FromDictionaryEntries(e.Properties),
-                    Items = CompilerItemsCollection.FromDictionaryEntries(e.Items),
-                };
+            var propertiesAndItems = PropertiesAndItems.TryCreate(e, _evalulationResults);
 
             // Get the TFM for this project
             // use an empty string if no target framework was found, for example in case of C++ projects with VS >= 2022
             string tfm = propertiesAndItems?.Properties.TryGet("TargetFrameworkMoniker")?.StringValue
                 ?? string.Empty;
 
-            if (propertiesAndItems != null && propertiesAndItems.Properties != null && propertiesAndItems.Items != null)
+            if (propertiesAndItems is { Properties: { }, Items: { } })
             {
                 if (!_results.TryGetValue(tfm, out AnalyzerResult result))
                 {
@@ -122,10 +111,7 @@ internal class EventProcessor : IDisposable
         if (AnalyzerManager.NormalizePath(e.ProjectFile) == _projectFilePath)
         {
             AnalyzerResult result = _currentResult.Pop();
-            if (result != null)
-            {
-                result.Succeeded = e.Succeeded;
-            }
+            result?.Succeeded = e.Succeeded;
         }
     }
 
@@ -145,8 +131,7 @@ internal class EventProcessor : IDisposable
 
     private void MessageRaised(object sender, BuildMessageEventArgs e)
     {
-        var result = _currentResult.Count == 0 ? null : _currentResult.Peek();
-        if (result is not object || !IsRelevant())
+        if (!_currentResult.TryPeek(out var result) || !IsRelevant())
         {
             return;
         }
@@ -171,7 +156,9 @@ internal class EventProcessor : IDisposable
             result.ProcessVbcCommandLine(cmdVbc.CommandLine);
         }
 
-        bool IsRelevant() => string.IsNullOrEmpty(result.Command) || AnalyzerManager.NormalizePath(e.ProjectFile) == _projectFilePath;
+        bool IsRelevant()
+            => result is not { Command.Length: > 0 }
+            || AnalyzerManager.NormalizePath(e.ProjectFile) == _projectFilePath;
     }
 
     private void BuildFinished(object sender, BuildFinishedEventArgs e)

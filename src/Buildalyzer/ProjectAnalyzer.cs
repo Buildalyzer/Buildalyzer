@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Threading;
@@ -308,20 +307,16 @@ public class ProjectAnalyzer : IProjectAnalyzer
 
     private static string GetLoggerPath()
     {
-        string loggerPath = typeof(BuildalyzerLogger).Assembly.Location;
-        if (!string.IsNullOrEmpty(loggerPath))
+        return typeof(BuildalyzerLogger).Assembly.Location switch
         {
-            return loggerPath;
-        }
+            { Length: > 0 } path => path,
+            _ when LoggerPathDll() is { Length: > 0 } path => path,
+            _ => throw new InvalidOperationException($"The dll of {nameof(BuildalyzerLogger)} is required"),
+        };
 
-        string? loggerDllPathEnv = System.Environment.GetEnvironmentVariable(Environment.EnvironmentVariables.LoggerPathDll);
-        if (string.IsNullOrEmpty(loggerDllPathEnv))
-        {
-            throw new ArgumentException($"The dll of {nameof(BuildalyzerLogger)} is required");
-        }
-
-        return loggerDllPathEnv;
-    }
+        static string? LoggerPathDll()
+            => System.Environment.GetEnvironmentVariable(Environment.EnvironmentVariables.LoggerPathDll);
+       }
 
     private static string FormatArgument(string argument)
     {
