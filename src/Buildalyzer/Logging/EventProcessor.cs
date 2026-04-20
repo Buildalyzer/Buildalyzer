@@ -156,7 +156,9 @@ internal class EventProcessor : IDisposable
             result.ProcessVbcCommandLine(cmdVbc.CommandLine);
         }
 
-        bool IsRelevant() => string.IsNullOrEmpty(result.Command) || AnalyzerManager.NormalizePath(e.ProjectFile) == _projectFilePath;
+        bool IsRelevant()
+            => result is not { Command.Length: > 0 }
+            || AnalyzerManager.NormalizePath(e.ProjectFile) == _projectFilePath;
     }
 
     private void BuildFinished(object sender, BuildFinishedEventArgs e)
