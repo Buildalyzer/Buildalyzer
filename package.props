@@ -18,4 +18,8 @@
     <PackageReference Include="Microsoft.Sbom.Targets" Version="4.1.4" PrivateAssets="all" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference PrivateAssets="all" Include="IDisposableAnalyzers" Version="4.0.8" />
+  </ItemGroup>
+
 </Project>

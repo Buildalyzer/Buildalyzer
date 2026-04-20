@@ -40,12 +40,12 @@ public class ProjectFile : IProjectFile
     public string Name { get; }
 
     /// <inheritdoc />
-    public string[] TargetFrameworks { get => field
+    public string[] TargetFrameworks => field
         ??= GetTargetFrameworks(
             _projectElement.GetDescendants(ProjectFileNames.TargetFrameworks).Select(x => x.Value),
             _projectElement.GetDescendants(ProjectFileNames.TargetFramework).Select(x => x.Value),
             _projectElement.GetDescendants(ProjectFileNames.TargetFrameworkVersion)
-                .Select(x => (x.Parent.GetDescendants(ProjectFileNames.TargetFrameworkIdentifier).FirstOrDefault()?.Value ?? ".NETFramework", x.Value))); private set; } = null;
+                .Select(x => (x.Parent.GetDescendants(ProjectFileNames.TargetFrameworkIdentifier).FirstOrDefault()?.Value ?? ".NETFramework", x.Value)));
 
     /// <inheritdoc />
     public bool UsesSdk =>
