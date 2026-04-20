@@ -99,16 +99,16 @@ public sealed class BuildEnvironment
         };
         if (DesignTime)
         {
-            _globalProperties = CopyItems(_globalProperties, MsBuildProperties.DesignTime);
+            _globalProperties = BuildEnvironment.CopyItems(_globalProperties, MsBuildProperties.DesignTime);
         }
-        _additionalGlobalProperties = CopyItems(_globalProperties, additionalGlobalProperties);
+        _additionalGlobalProperties = BuildEnvironment.CopyItems(_globalProperties, additionalGlobalProperties);
 
         // Set environment variables
         _environmentVariables = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        _additionalEnvironmentVariables = CopyItems(_environmentVariables, additionalEnvironmentVariables);
+        _additionalEnvironmentVariables = BuildEnvironment.CopyItems(_environmentVariables, additionalEnvironmentVariables);
     }
 
-    private Dictionary<string, string> CopyItems(Dictionary<string, string> destination, IEnumerable<KeyValuePair<string, string>> source)
+    private static Dictionary<string, string> CopyItems(Dictionary<string, string> destination, IEnumerable<KeyValuePair<string, string>> source)
     {
         if (source != null)
         {

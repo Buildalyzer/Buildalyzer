@@ -21,8 +21,6 @@ public class ProjectFile : IProjectFile
     private readonly XDocument _document;
     private readonly XElement _projectElement;
 
-    private string[] _targetFrameworks = null;
-
     // The project file path should already be normalized
     internal ProjectFile(string path)
     {
@@ -31,11 +29,8 @@ public class ProjectFile : IProjectFile
         _document = XDocument.Load(path);
 
         // Get the project element
-        _projectElement = _document.GetDescendants(ProjectFileNames.Project).FirstOrDefault();
-        if (_projectElement == null)
-        {
-            throw new ArgumentException("Unrecognized project file format");
-        }
+        _projectElement = _document.GetDescendants(ProjectFileNames.Project).FirstOrDefault()
+            ?? throw new ArgumentException("Unrecognized project file format");
     }
 
     /// <inheritdoc />
@@ -45,7 +40,7 @@ public class ProjectFile : IProjectFile
     public string Name { get; }
 
     /// <inheritdoc />
-    public string[] TargetFrameworks => _targetFrameworks
+    public string[] TargetFrameworks => field
         ??= GetTargetFrameworks(
             _projectElement.GetDescendants(ProjectFileNames.TargetFrameworks).Select(x => x.Value),
             _projectElement.GetDescendants(ProjectFileNames.TargetFramework).Select(x => x.Value),
