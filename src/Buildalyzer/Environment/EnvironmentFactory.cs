@@ -67,12 +67,10 @@ public class EnvironmentFactory
             return null;
         }
 
-        string msBuildExePath = Path.Combine(dotnetPath, "MSBuild.dll");
-        if (options.EnvironmentVariables.ContainsKey(EnvironmentVariables.MSBUILD_EXE_PATH))
-        {
-            msBuildExePath = options.EnvironmentVariables[EnvironmentVariables.MSBUILD_EXE_PATH];
-        }
-
+        var msBuildExePath = options.EnvironmentVariables.TryGetValue(EnvironmentVariables.MSBUILD_EXE_PATH, out var path)
+            ? path
+            : Path.Combine(dotnetPath, "MSBuild.dll");
+        
         // Clone the options global properties dictionary so we can add to it
         Dictionary<string, string> additionalGlobalProperties = new Dictionary<string, string>(options.GlobalProperties);
 

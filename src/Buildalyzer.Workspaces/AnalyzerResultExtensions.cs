@@ -25,10 +25,7 @@ public static class AnalyzerResultExtensions
     /// <returns>A Roslyn workspace.</returns>
     public static AdhocWorkspace GetWorkspace(this IAnalyzerResult analyzerResult, bool addProjectReferences = false)
     {
-        if (analyzerResult == null)
-        {
-            throw new ArgumentNullException(nameof(analyzerResult));
-        }
+        Guard.NotNull(analyzerResult);
         AdhocWorkspace workspace = analyzerResult.Manager.CreateWorkspace();
         analyzerResult.AddToWorkspace(workspace, addProjectReferences);
         return workspace;
@@ -46,14 +43,8 @@ public static class AnalyzerResultExtensions
     /// <returns>The newly added Roslyn project, or <c>null</c> if the project couldn't be added to the workspace.</returns>
     public static Project AddToWorkspace(this IAnalyzerResult analyzerResult, Workspace workspace, bool addProjectReferences = false)
     {
-        if (analyzerResult == null)
-        {
-            throw new ArgumentNullException(nameof(analyzerResult));
-        }
-        if (workspace == null)
-        {
-            throw new ArgumentNullException(nameof(workspace));
-        }
+        Guard.NotNull(analyzerResult);
+        Guard.NotNull(workspace);
 
         // Get or create an ID for this project
         ProjectId projectId = ProjectId.CreateFromSerialized(analyzerResult.ProjectGuid);

@@ -17,10 +17,7 @@ public static class ProjectAnalyzerExtensions
     /// <returns>A Roslyn workspace.</returns>
     public static AdhocWorkspace GetWorkspace(this IProjectAnalyzer analyzer, bool addProjectReferences = false)
     {
-        if (analyzer == null)
-        {
-            throw new ArgumentNullException(nameof(analyzer));
-        }
+        Guard.NotNull(analyzer);
         AdhocWorkspace workspace = analyzer.Manager.CreateWorkspace();
         AddToWorkspace(analyzer, workspace, addProjectReferences);
         return workspace;
