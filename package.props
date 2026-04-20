@@ -20,7 +20,7 @@
 
   <ItemGroup Label="Analyzers">
     <PackageReference PrivateAssets="all" Include="IDisposableAnalyzers" Version="4.0.8" />
-    <PackageReference PrivateAssets="all" Include="StyleCop.Analyzers" Version="1.2.0.556" />
+    <PackageReference PrivateAssets="all" Include="StyleCop.Analyzers.Unstable" Version="1.2.0.556" />
   </ItemGroup>
 
 </Project>
