@@ -12,13 +12,13 @@ internal sealed class DotNetInfoResolver(ILoggerFactory? factory)
     private readonly ILogger Logger = (factory ?? NullLoggerFactory.Instance).CreateLogger<DotNetInfoResolver>();
 
     [Pure]
-    public DotNetInfo Resolve(IOPath projectPath, IOPath dotNetExePath)
+    public DotNetInfo Resolve(in IOPath projectPath, in IOPath dotNetExePath)
         => Cache.TryGetValue(projectPath, out var info)
             ? info
             : Execute(projectPath, dotNetExePath);
 
     [Pure]
-    private DotNetInfo Execute(IOPath projectPath, IOPath dotNetExePath)
+    private DotNetInfo Execute(in IOPath projectPath, in IOPath dotNetExePath)
     {
         // Ensure that we set the DOTNET_CLI_UI_LANGUAGE environment variable to "en-US" before
         // running 'dotnet --info'. Otherwise, we may get localized results

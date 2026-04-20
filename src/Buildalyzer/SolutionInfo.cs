@@ -15,7 +15,7 @@ public sealed class SolutionInfo : IReadOnlyCollection<ProjectInfo>
     [DebuggerBrowsable(DebuggerBrowsableState.Never)]
     private readonly Dictionary<Guid, ProjectInfo> Lookup;
 
-    private SolutionInfo(object reference, IOPath path, IEnumerable<ProjectInfo> projects)
+    private SolutionInfo(object reference, in IOPath path, IEnumerable<ProjectInfo> projects)
     {
         Reference = reference;
         Path = path;
@@ -54,14 +54,14 @@ public sealed class SolutionInfo : IReadOnlyCollection<ProjectInfo>
     /// The project to include.
     /// </param>
     [Pure]
-    public static SolutionInfo Load(IOPath path, Predicate<ProjectInSolution>? filter = null)
+    public static SolutionInfo Load(in IOPath path, Predicate<ProjectInSolution>? filter = null)
         => path.ToString().IsMatchEnd(".slnx")
         ? LoadSlnx(path)
         : LoadSln(path, filter);
 
     /// <summary>Loads the SLNX.</summary>
     [Pure]
-    private static SolutionInfo LoadSlnx(IOPath path)
+    private static SolutionInfo LoadSlnx(in IOPath path)
     {
         var serilizer = SolutionSerializers.GetSerializerByMoniker(path.ToString())!;
         var solution = serilizer.OpenAsync(path.ToString(), default).Sync();
@@ -73,7 +73,7 @@ public sealed class SolutionInfo : IReadOnlyCollection<ProjectInfo>
 
     /// <summary>Loads the SLN.</summary>
     [Pure]
-    private static SolutionInfo LoadSln(IOPath path, Predicate<ProjectInSolution>? filter)
+    private static SolutionInfo LoadSln(in IOPath path, Predicate<ProjectInSolution>? filter)
     {
         var reference = SolutionFile.Parse(path.ToString());
         var projects = reference.ProjectsInOrder

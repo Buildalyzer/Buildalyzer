@@ -53,7 +53,7 @@ public class ProjectAnalyzer : IProjectAnalyzer
     public bool IgnoreFaultyImports { get; set; } = true;
 
     // The project file path should already be normalized
-    internal ProjectAnalyzer(AnalyzerManager manager, IOPath path, ProjectInfo? project)
+    internal ProjectAnalyzer(AnalyzerManager manager, in IOPath path, ProjectInfo? project)
     {
         Manager = manager;
         Logger = Manager.LoggerFactory?.CreateLogger<ProjectAnalyzer>();

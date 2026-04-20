@@ -9,7 +9,7 @@ namespace Buildalyzer;
 [DebuggerDisplay("{DebuggerDisplay}")]
 public sealed class ProjectInfo
 {
-    private ProjectInfo(object reference, IOPath path, Guid guid, IEnumerable<string> tfms)
+    private ProjectInfo(object reference, in IOPath path, in Guid guid, IEnumerable<string> tfms)
     {
         Reference = reference;
         Path = path;
@@ -42,7 +42,7 @@ public sealed class ProjectInfo
     }
 
     [Pure]
-    internal static ProjectInfo New(SolutionProjectModel reference, IOPath root)
+    internal static ProjectInfo New(SolutionProjectModel reference, in IOPath root)
     {
         var path = root.Combine(Guard.NotNull(reference).FilePath);
         var prop = reference.FindProperties("TargetFrameworks")

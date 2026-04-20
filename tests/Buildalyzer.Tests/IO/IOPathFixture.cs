@@ -15,6 +15,6 @@ public class IOPathFixture
         => IOPath.Parse(".\\root\\test\\somefile.txt").Should().Be(IOPath.Parse("./root/test/somefile.txt"));
 
     [TestCase(@"c:\Program Files\Buildalyzer")]
-    public void Supports_type_conversion(IOPath path)
+    public void Supports_type_conversion(in IOPath path)
         => path.Should().Be(IOPath.Parse(@"c:\Program Files\Buildalyzer"));
 }
