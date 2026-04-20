@@ -123,43 +123,45 @@ public class CompilerCommandFixture
     [Test]
     public void Parse_FSharp()
     {
-        const string commandLine = @"C:\Program Files\dotnet\dotnet.exe ""C:\Program Files\dotnet\sdk\8.0.200\FSharp\fsc.dll"" -o:obj\Debug\netcoreapp3.1\FSharpProject.dll
--g
---debug:portable
---noframework
---define:TRACE
---define:DEBUG
---define:NETCOREAPP
---define:NETCOREAPP3_1
---define:NETCOREAPP1_0_OR_GREATER
---define:NETCOREAPP1_1_OR_GREATER
---define:NETCOREAPP2_0_OR_GREATER
---define:NETCOREAPP2_1_OR_GREATER
---define:NETCOREAPP2_2_OR_GREATER
---define:NETCOREAPP3_0_OR_GREATER
---define:NETCOREAPP3_1_OR_GREATER
---optimize-
---tailcalls-
--r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\3.1.0\ref\netcoreapp3.1\Microsoft.CSharp.dll
--r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\3.1.0\ref\netcoreapp3.1\Microsoft.VisualBasic.Core.dll
--r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\3.1.0\ref\netcoreapp3.1\Microsoft.VisualBasic.dll
--r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\3.1.0\ref\netcoreapp3.1\Microsoft.Win32.Primitives.dll
--r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\3.1.0\ref\netcoreapp3.1\mscorlib.dll
--r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\3.1.0\ref\netcoreapp3.1\netstandard.dll
---target:exe
---warn:3
---warnaserror:3239
---preferreduilang:en-US
---fullpaths
---flaterrors
---highentropyva+
---targetprofile:netcore
---nocopyfsharpcore
---deterministic+
---simpleresolution
-obj\Debug\netcoreapp3.1\.NETCoreApp,Version=v3.1.AssemblyAttributes.fs
-obj\Debug\netcoreapp3.1\FSharpProject.AssemblyInfo.fs
-Program.fs";
+        const string commandLine = """
+            C:\Program Files\dotnet\dotnet.exe "C:\Program Files\dotnet\sdk\8.0.200\FSharp\fsc.dll" -o:obj\Debug\netcoreapp3.1\FSharpProject.dll
+            -g
+            --debug:portable
+            --noframework
+            --define:TRACE
+            --define:DEBUG
+            --define:NETCOREAPP
+            --define:NETCOREAPP3_1
+            --define:NETCOREAPP1_0_OR_GREATER
+            --define:NETCOREAPP1_1_OR_GREATER
+            --define:NETCOREAPP2_0_OR_GREATER
+            --define:NETCOREAPP2_1_OR_GREATER
+            --define:NETCOREAPP2_2_OR_GREATER
+            --define:NETCOREAPP3_0_OR_GREATER
+            --define:NETCOREAPP3_1_OR_GREATER
+            --optimize-
+            --tailcalls-
+            -r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\3.1.0\ref\netcoreapp3.1\Microsoft.CSharp.dll
+            -r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\3.1.0\ref\netcoreapp3.1\Microsoft.VisualBasic.Core.dll
+            -r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\3.1.0\ref\netcoreapp3.1\Microsoft.VisualBasic.dll
+            -r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\3.1.0\ref\netcoreapp3.1\Microsoft.Win32.Primitives.dll
+            -r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\3.1.0\ref\netcoreapp3.1\mscorlib.dll
+            -r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\3.1.0\ref\netcoreapp3.1\netstandard.dll
+            --target:exe
+            --warn:3
+            --warnaserror:3239
+            --preferreduilang:en-US
+            --fullpaths
+            --flaterrors
+            --highentropyva+
+            --targetprofile:netcore
+            --nocopyfsharpcore
+            --deterministic+
+            --simpleresolution
+            obj\Debug\netcoreapp3.1\.NETCoreApp,Version=v3.1.AssemblyAttributes.fs
+            obj\Debug\netcoreapp3.1\FSharpProject.AssemblyInfo.fs
+            Program.fs
+            """;
 
         var command = Buildalyzer.Compiler.CommandLine.Parse(new("."), commandLine, CompilerLanguage.FSharp);
         var options = GetFSharpParsingOptions(commandLine);
