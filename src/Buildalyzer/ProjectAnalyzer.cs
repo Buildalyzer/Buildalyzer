@@ -157,16 +157,30 @@ public class ProjectAnalyzer : IProjectAnalyzer
 
         // Run MSBuild
         int exitCode;
-        string fileName = GetCommand(
-            buildEnvironment,
+
+        var projectFile = IOPath.Parse(ProjectFile.Path);
+
+        var props = BuildCommandProperties.Create(
+            projectFile,
             targetFramework,
+            buildEnvironment.GlobalProperties,
+            Manager.GlobalProperties,
+            _globalProperties);
+
+        var cmd = BuildCommand.Create(
+            buildEnvironment,
+            projectFile,
+            props,
             targetsToBuild,
-            pipeLogger.GetClientHandle(),
-            out string arguments);
+            new LoggerConfiguration
+            {
+                ClientHandle = pipeLogger.GetClientHandle(),
+                LogEverything = _buildLoggers.Count > 0,
+            });
 
         using var processRunner = new ProcessRunner(
-            fileName,
-            arguments,
+            cmd.Command,
+            cmd.ToString(),
             buildEnvironment.WorkingDirectory ?? Path.GetDirectoryName(ProjectFile.Path)!,
             GetEffectiveEnvironmentVariables(buildEnvironment)!,
             Manager.LoggerFactory);
@@ -197,140 +211,6 @@ public class ProjectAnalyzer : IProjectAnalyzer
         results.Add(eventProcessor.Results, exitCode == 0 && eventProcessor.OverallSuccess);
 
         return results;
-    }
-
-    private string GetCommand(
-        BuildEnvironment buildEnvironment,
-        string targetFramework,
-        string[] targetsToBuild,
-        string pipeLoggerClientHandle,
-        out string arguments)
-    {
-        // Get the executable and the initial set of arguments
-        string fileName = buildEnvironment.MsBuildExePath;
-        string initialArguments = string.Empty;
-        bool isDotNet = false; // false=MSBuild.exe, true=dotnet.exe
-        if (string.IsNullOrWhiteSpace(buildEnvironment.MsBuildExePath)
-            || Path.GetExtension(buildEnvironment.MsBuildExePath).IsMatch(".dll"))
-        {
-            // in case of no MSBuild path or a path to the MSBuild dll, run dotnet
-            fileName = buildEnvironment.DotnetExePath;
-            isDotNet = true;
-            if (!string.IsNullOrWhiteSpace(buildEnvironment.MsBuildExePath))
-            {
-                // pass path to MSBuild .dll to dotnet if provided
-                initialArguments = $"\"{buildEnvironment.MsBuildExePath}\"";
-            }
-        }
-
-        // Get the rest of the arguments
-        List<string> argumentsList = [];
-
-        // Environment arguments
-        if (buildEnvironment.Arguments.Any())
-        {
-            argumentsList.Add(string.Join(" ", buildEnvironment.Arguments));
-        }
-
-        // Get the restore argument (/restore)
-        if (buildEnvironment.Restore)
-        {
-            argumentsList.Add("/restore");
-        }
-
-        // Get the target argument (/target)
-        if (targetsToBuild != null && targetsToBuild.Length != 0)
-        {
-            argumentsList.Add($"/target:{string.Join(";", targetsToBuild)}");
-        }
-
-        // Get the properties arguments (/property)
-        Dictionary<string, string> effectiveGlobalProperties = GetEffectiveGlobalProperties(buildEnvironment);
-        if (!string.IsNullOrEmpty(targetFramework))
-        {
-            // Setting the TargetFramework MSBuild property tells MSBuild which target framework to use for the outer build
-            effectiveGlobalProperties[MsBuildProperties.TargetFramework] = targetFramework;
-        }
-        if (Path.GetExtension(ProjectFile.Path).IsMatch(".fsproj")
-            && effectiveGlobalProperties.ContainsKey(MsBuildProperties.SkipCompilerExecution))
-        {
-            // We can't skip the compiler for design-time builds in F# (it causes strange errors regarding file copying)
-            effectiveGlobalProperties.Remove(MsBuildProperties.SkipCompilerExecution);
-        }
-        string propertyArgStart = "/property"; // in case of MSBuild.exe use slash as parameter prefix for property
-        if (isDotNet)
-        {
-            // in case of dotnet.exe use dash as parameter prefix for property
-            propertyArgStart = "-p";
-        }
-        if (effectiveGlobalProperties.Count > 0)
-        {
-            argumentsList.Add(
-                propertyArgStart
-                    + $":{string.Join(";", effectiveGlobalProperties.Select(x => $"{x.Key}={FormatArgument(x.Value).Replace(";", "%3B")}"))}");
-        }
-
-        // Get the logger arguments (/l)
-        string loggerPath = GetLoggerPath();
-
-        bool logEverything = _buildLoggers.Count > 0;
-        string loggerArgStart = "/l"; // in case of MSBuild.exe use slash as parameter prefix for logger
-        if (isDotNet)
-        {
-            // in case of dotnet.exe use dash as parameter prefix for logger
-            loggerArgStart = "-l";
-        }
-        argumentsList.Add(loggerArgStart + $":{nameof(BuildalyzerLogger)},{FormatArgument(loggerPath)};{pipeLoggerClientHandle};{logEverything}");
-
-        // Get the noAutoResponse argument (/noAutoResponse)
-        // See https://github.com/daveaglick/Buildalyzer/issues/211
-        // and https://docs.microsoft.com/en-us/visualstudio/msbuild/msbuild-response-files
-        if (buildEnvironment.NoAutoResponse)
-        {
-            argumentsList.Add("/noAutoResponse");
-        }
-
-        // Path argument
-        argumentsList.Add(FormatArgument(ProjectFile.Path));
-
-        // Combine the arguments
-        arguments = string.Empty;
-        if (!isDotNet || !string.IsNullOrEmpty(initialArguments))
-        {
-            // these are the first arguments for MSBuild.exe or dotnet.exe with MSBuild.dll, they are not needed for pure dotnet.exe calls
-            arguments = $"{initialArguments} /noconsolelogger ";
-        }
-        arguments += string.Join(" ", argumentsList);
-
-        return fileName;
-    }
-
-    private static string GetLoggerPath()
-    {
-        return typeof(BuildalyzerLogger).Assembly.Location switch
-        {
-            { Length: > 0 } path => path,
-            _ when LoggerPathDll() is { Length: > 0 } path => path,
-            _ => throw new InvalidOperationException($"The dll of {nameof(BuildalyzerLogger)} is required"),
-        };
-
-        static string? LoggerPathDll()
-            => System.Environment.GetEnvironmentVariable(Environment.EnvironmentVariables.LoggerPathDll);
-       }
-
-    private static string FormatArgument(string argument)
-    {
-        // Escape inner quotes
-        argument = argument.Replace("\"", "\\\"");
-
-        // Also escape trailing slashes so they don't escape the closing quote
-        if (argument.EndsWith('\\'))
-        {
-            argument = $"{argument}\\";
-        }
-
-        // Surround with quotes
-        return $"\"{argument}\"";
     }
 
     public void SetGlobalProperty(string key, string value)
@@ -389,7 +269,7 @@ public class ProjectAnalyzer : IProjectAnalyzer
     }
 
     public void AddBinaryLogger(
-        string binaryLogFilePath = null,
+        string? binaryLogFilePath = null,
         BinaryLogger.ProjectImportsCollectionMode collectProjectImports = BinaryLogger.ProjectImportsCollectionMode.Embed) =>
         AddBuildLogger(new BinaryLogger
         {

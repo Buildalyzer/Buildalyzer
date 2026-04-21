@@ -1,3 +1,5 @@
+using System.Collections.Frozen;
+
 namespace Buildalyzer.Environment;
 
 public static class MsBuildProperties
@@ -80,5 +82,6 @@ public static class MsBuildProperties
 
         // Prevent NuGet.Build.Tasks.Pack.targets from running the pack targets (since we didn't build anything)
         [GeneratePackageOnBuild] = "false",
-    };
+    }
+    .ToFrozenDictionary();
 }
