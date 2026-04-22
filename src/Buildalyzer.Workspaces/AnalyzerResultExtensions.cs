@@ -25,10 +25,7 @@ public static class AnalyzerResultExtensions
     /// <returns>A Roslyn workspace.</returns>
     public static AdhocWorkspace GetWorkspace(this IAnalyzerResult analyzerResult, bool addProjectReferences = false)
     {
-        if (analyzerResult == null)
-        {
-            throw new ArgumentNullException(nameof(analyzerResult));
-        }
+        Guard.NotNull(analyzerResult);
         AdhocWorkspace workspace = analyzerResult.Manager.CreateWorkspace();
         analyzerResult.AddToWorkspace(workspace, addProjectReferences);
         return workspace;
@@ -46,14 +43,8 @@ public static class AnalyzerResultExtensions
     /// <returns>The newly added Roslyn project, or <c>null</c> if the project couldn't be added to the workspace.</returns>
     public static Project AddToWorkspace(this IAnalyzerResult analyzerResult, Workspace workspace, bool addProjectReferences = false)
     {
-        if (analyzerResult == null)
-        {
-            throw new ArgumentNullException(nameof(analyzerResult));
-        }
-        if (workspace == null)
-        {
-            throw new ArgumentNullException(nameof(workspace));
-        }
+        Guard.NotNull(analyzerResult);
+        Guard.NotNull(workspace);
 
         // Get or create an ID for this project
         ProjectId projectId = ProjectId.CreateFromSerialized(analyzerResult.ProjectGuid);
@@ -62,7 +53,7 @@ public static class AnalyzerResultExtensions
         analyzerResult.Manager.WorkspaceProjectReferences[projectId.Id] = [.. analyzerResult.ProjectReferences];
 
         // Create and add the project, but only if it's a support Roslyn project type
-        ProjectInfo projectInfo = GetProjectInfo(analyzerResult, workspace, projectId);
+        Microsoft.CodeAnalysis.ProjectInfo projectInfo = GetProjectInfo(analyzerResult, workspace, projectId);
         if (projectInfo is null)
         {
             // Something went wrong (maybe not a support project type), so don't add this project
@@ -137,28 +128,26 @@ public static class AnalyzerResultExtensions
         return workspace.CurrentSolution.GetProject(projectId);
     }
 
-    private static ProjectInfo GetProjectInfo(IAnalyzerResult analyzerResult, Workspace workspace, ProjectId projectId)
+    private static Microsoft.CodeAnalysis.ProjectInfo? GetProjectInfo(IAnalyzerResult analyzerResult, Workspace workspace, ProjectId projectId)
     {
         string projectName = Path.GetFileNameWithoutExtension(analyzerResult.ProjectFilePath);
-        if (!TryGetSupportedLanguageName(analyzerResult.ProjectFilePath, out string languageName))
-        {
-            return null;
-        }
-        return ProjectInfo.Create(
-            projectId,
-            VersionStamp.Create(),
-            projectName,
-            projectName,
-            languageName,
-            filePath: analyzerResult.ProjectFilePath,
-            outputFilePath: analyzerResult.GetProperty("TargetPath"),
-            documents: GetDocuments(analyzerResult, projectId),
-            projectReferences: GetExistingProjectReferences(analyzerResult, workspace),
-            metadataReferences: GetMetadataReferences(analyzerResult),
-            analyzerReferences: GetAnalyzerReferences(analyzerResult, workspace),
-            additionalDocuments: GetAdditionalDocuments(analyzerResult, projectId),
-            parseOptions: CreateParseOptions(analyzerResult, languageName),
-            compilationOptions: CreateCompilationOptions(analyzerResult, languageName));
+        return TryGetSupportedLanguageName(analyzerResult.ProjectFilePath, out string languageName)
+            ? Microsoft.CodeAnalysis.ProjectInfo.Create(
+                projectId,
+                VersionStamp.Create(),
+                projectName,
+                projectName,
+                languageName,
+                filePath: analyzerResult.ProjectFilePath,
+                outputFilePath: analyzerResult.GetProperty("TargetPath"),
+                compilationOptions: CreateCompilationOptions(analyzerResult, languageName),
+                parseOptions: CreateParseOptions(analyzerResult, languageName),
+                documents: GetDocuments(analyzerResult, projectId),
+                projectReferences: GetExistingProjectReferences(analyzerResult, workspace),
+                metadataReferences: GetMetadataReferences(analyzerResult),
+                analyzerReferences: GetAnalyzerReferences(analyzerResult, workspace),
+                additionalDocuments: GetAdditionalDocuments(analyzerResult, projectId))
+            : null;
     }
 
     private static ParseOptions CreateParseOptions(IAnalyzerResult analyzerResult, string languageName)

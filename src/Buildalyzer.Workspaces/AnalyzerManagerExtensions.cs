@@ -4,7 +4,6 @@ using System.Linq;
 using Microsoft.Build.Construction;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
-
 namespace Buildalyzer.Workspaces;
 
 public static class AnalyzerManagerExtensions
@@ -23,23 +22,18 @@ public static class AnalyzerManagerExtensions
 
     public static AdhocWorkspace GetWorkspace(this IAnalyzerManager manager)
     {
-        if (manager is null)
-        {
-            throw new ArgumentNullException(nameof(manager));
-        }
-
         // Run builds in parallel
-        List<IAnalyzerResult> results = manager.Projects.Values
+        var results = Guard.NotNull(manager).Projects.Values
             .AsParallel()
             .Select(p => p.Build().FirstOrDefault())
-            .Where(x => x != null)
+            .OfType<IAnalyzerResult>()
             .ToList();
 
         // Create a new workspace and add the solution (if there was one)
         AdhocWorkspace workspace = manager.CreateWorkspace();
         if (!string.IsNullOrEmpty(manager.SolutionFilePath))
         {
-            SolutionInfo solutionInfo = SolutionInfo.Create(SolutionId.CreateNewId(), VersionStamp.Default, manager.SolutionFilePath);
+            Microsoft.CodeAnalysis.SolutionInfo solutionInfo = Microsoft.CodeAnalysis.SolutionInfo.Create(SolutionId.CreateNewId(), VersionStamp.Default, manager.SolutionFilePath);
             workspace.AddSolution(solutionInfo);
 
             // Sort the projects so the order that they're added to the workspace in the same order as the solution file

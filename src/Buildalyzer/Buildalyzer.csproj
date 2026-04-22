@@ -1,17 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <Import Project="../../package.props" />
-  
+
   <PropertyGroup>
     <TargetFrameworks>net6.0;net8.0</TargetFrameworks>
+    <LangVersion>14.0</LangVersion>
     <PackageId>Buildalyzer</PackageId>
-    <PackageValidationBaselineVersion>7.0.1</PackageValidationBaselineVersion>
+    <PackageValidationBaselineVersion>8.0.0</PackageValidationBaselineVersion>
     <OutputType>library</OutputType>
     <PackageReleaseNotes>
       <![CDATA[
 ToBeReleased
 - Drop Buildalyzer.EmptyDisposable. (BREAKING)
 - Publish SBOM.
+- Introduction of SolutionInfo and ProjectInfo.
+- Marked IAnalyzerManger.SolutionFile and IAnalyzer.SolutionFilePath as obsolete.
+- Support SLNX.
 ]]>
     </PackageReleaseNotes>
   </PropertyGroup>
@@ -22,9 +26,14 @@ ToBeReleased
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="[4,)" />
     <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic" Version="[4,)" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
+    <PackageReference Include="Microsoft.VisualStudio.SolutionPersistence" Version="1.0.52" />
     <PackageReference Include="MSBuild.StructuredLogger" Version="2.2.158" Aliases="StructuredLogger" />
     <PackageReference Include="MsBuildPipeLogger.Server" Version="1.1.6" />
     <PackageReference Include="NuGet.Frameworks" Version="6.9.1" />
+  </ItemGroup>
+
+  <ItemGroup Label="Build dependencies">
+    <PackageReference PrivateAssets="all" Include="PolySharp" Version="1.15.0" />
   </ItemGroup>
 
   <ItemGroup>

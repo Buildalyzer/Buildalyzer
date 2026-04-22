@@ -10,7 +10,7 @@
       for creating a Roslyn workspace from Buildalyzer.
     </Description>
     <PackageId>Buildalyzer.Workspaces</PackageId>
-    <PackageValidationBaselineVersion>6.0.0</PackageValidationBaselineVersion>
+    <PackageValidationBaselineVersion>8.0.0</PackageValidationBaselineVersion>
     <OutputType>library</OutputType>
     <PackageReleaseNotes>
       <![CDATA[

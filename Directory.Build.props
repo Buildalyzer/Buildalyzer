@@ -21,6 +21,7 @@
     <LangVersion>12</LangVersion>
     <Nullable>enable</Nullable>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <NuGetAuditMode>all</NuGetAuditMode>
     <IsPublishable>false</IsPublishable>
   </PropertyGroup>
@@ -61,16 +62,14 @@
 
   <ItemGroup Label="Analyzers">
     <PackageReference Include="DotNetProjectFile.Analyzers" Version="*" PrivateAssets="all" />
-    <PackageReference Include="IDisposableAnalyzers" Version="*" PrivateAssets="all"/>
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="*" PrivateAssets="all" />
     <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" Version="*" PrivateAssets="all"/>
     <PackageReference Include="Roslynator.Analyzers" Version="*" PrivateAssets="all"/>
     <PackageReference Include="SonarAnalyzer.CSharp" Version="*" PrivateAssets="all" />
-    <PackageReference Include="StyleCop.Analyzers" Version="*-*" PrivateAssets="all"/>
   </ItemGroup>
 
-  <ItemGroup Label="Additional files">
-    <AdditionalFiles Include="*.csproj" Visible="false" />
+  <ItemGroup>
+    <ThirdPartyLicense Include="LibGit2Sharp.NativeBinaries" Hash="KA4NCKqx_sY0VhmGDOseIQ" />
   </ItemGroup>
 
 </Project>

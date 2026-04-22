@@ -10,6 +10,6 @@ public class Analyzer_Build
     {
         using var ctx = Context.ForProject(@"BuildWithError\BuildWithError.csproj");
 
-        ctx.Invoking(c => ctx.Analyzer.GetWorkspace()).Should().NotThrow();
+        ctx.Invoking(_ => ctx.Analyzer.GetWorkspace()).Should().NotThrow();
     }
 }

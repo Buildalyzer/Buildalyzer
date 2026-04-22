@@ -81,6 +81,15 @@ public class SimpleProjectsFixture
     }
 
     [Test]
+    public void Respects_output_type()
+    {
+        using var ctx = Context.ForProject("OutputTypeExe/OutputTypeExe.csproj");
+
+        var results = ctx.Analyzer.Build(new EnvironmentOptions() { DesignTime = false });
+        results.OverallSuccess.Should().BeFalse();
+    }
+
+    [Test]
     public void BuildsProject(
         [ValueSource(nameof(Preferences))] EnvironmentPreference preference,
         [ValueSource(nameof(ProjectFiles))] string projectFile)
@@ -260,7 +269,7 @@ public class SimpleProjectsFixture
         // Then
         // Multi-targeting projects product an extra result with an empty target framework that holds some MSBuild properties (I.e. the "outer" build)
         results.Count.ShouldBe(3);
-        results.TargetFrameworks.ShouldBe(new[] { "net462", "netstandard2.0", string.Empty }, ignoreOrder: false, log.ToString());
+        results.TargetFrameworks.ShouldBe(["net462", "netstandard2.0", string.Empty], ignoreOrder: false, log.ToString());
         results[string.Empty].SourceFiles.ShouldBeEmpty();
         new[]
         {
@@ -552,17 +561,11 @@ public class SimpleProjectsFixture
                 "binlogs",
                 path))
             .Replace('\\', Path.DirectorySeparatorChar);
-        EnvironmentOptions options = new EnvironmentOptions();
-        using (Stream stream = File.OpenRead(path))
-        {
-            using (GZipStream gzip = new GZipStream(stream, CompressionMode.Decompress))
-            {
-                using (BinaryReader reader = new BinaryReader(gzip))
-                {
-                    reader.ReadInt32().ShouldBe(expectedVersion);
-                }
-            }
-        }
+
+        using var stream = File.OpenRead(path);
+        using GZipStream gzip = new GZipStream(stream, CompressionMode.Decompress);
+        using BinaryReader reader = new BinaryReader(gzip);
+        reader.ReadInt32().ShouldBe(expectedVersion);
 
         // Given
         StringWriter log = new StringWriter();
@@ -598,7 +601,7 @@ public class SimpleProjectsFixture
             .Should().BeEquivalentTo("message.txt");
     }
 
-    private static IProjectAnalyzer GetProjectAnalyzer(string projectFile, System.IO.StringWriter log)
+    private static IProjectAnalyzer GetProjectAnalyzer(string projectFile, StringWriter log)
     {
         IProjectAnalyzer analyzer = new AnalyzerManager(
             new AnalyzerManagerOptions
