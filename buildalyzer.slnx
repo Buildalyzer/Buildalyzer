@@ -17,6 +17,7 @@
   <Folder Name="/Solution Items/.github/workflows/">
     <File Path=".github/workflows/build.yml" />
     <File Path=".github/workflows/test-report.yml" />
+    <File Path=".github/workflows/release.yml" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Buildalyzer.Logger/Buildalyzer.Logger.csproj" />
