@@ -9,18 +9,31 @@ public class EnvironmentOptions
     public EnvironmentPreference Preference { get; set; } = EnvironmentPreference.Core;
 
     /// <summary>
-    /// The default targets to build.
+    /// The targets to build. Defaults to <c>["Compile"]</c>, which mirrors
+    /// what Visual Studio's design-time builds drive: it pulls in
+    /// <c>ResolveReferences</c>, <c>GenerateAssemblyInfo</c> and
+    /// <c>CoreCompile</c> (so <c>Csc</c> emits <see cref="MsBuildProperties.ProvideCommandLineArgs"/>
+    /// data Buildalyzer parses), but stops before <c>AfterCompile</c>,
+    /// <c>CopyFilesToOutputDirectory</c> and <c>AfterBuild</c>. This avoids
+    /// running <c>BeforeBuild</c>/<c>AfterBuild</c> hooks (and any
+    /// third-party tasks they reach) which do not contribute to the data
+    /// Buildalyzer surfaces.
     /// </summary>
-    public List<string> TargetsToBuild { get; } = ["Clean", "Build"];
+    /// <remarks>
+    /// See https://github.com/dotnet/project-system/blob/main/docs/design-time-builds.md.
+    /// </remarks>
+    public List<string> TargetsToBuild { get; } = ["Compile"];
 
     /// <summary>
     /// Indicates that a design-time build should be performed.
-    /// The default value is <c>true</c>. Note that when performing
-    /// a design-time build, the <see cref="TargetsToBuild"/> will
-    /// be ignored and the design-time targets will be used instead.
+    /// The default value is <c>true</c>. When set, the global properties
+    /// from <see cref="MsBuildProperties.DesignTime"/> are applied so that
+    /// the targets in <see cref="TargetsToBuild"/> behave like Visual
+    /// Studio's design-time build (no compiler execution, no output copy,
+    /// no binding redirects, etc.).
     /// </summary>
     /// <remarks>
-    /// See https://github.com/dotnet/project-system/blob/master/docs/design-time-builds.md.
+    /// See https://github.com/dotnet/project-system/blob/main/docs/design-time-builds.md.
     /// </remarks>
     public bool DesignTime { get; set; } = true;
 
