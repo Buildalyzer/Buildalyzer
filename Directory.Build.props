@@ -15,7 +15,7 @@
 
   <PropertyGroup Label="Shared properties">
     <VersionPrefix>7.1.0</VersionPrefix>
-    <LangVersion>12</LangVersion>
+    <LangVersion>14.0</LangVersion>
     <Nullable>enable</Nullable>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
