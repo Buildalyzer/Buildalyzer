@@ -227,7 +227,42 @@ public static class AnalyzerResultExtensions
             {
                 Enum.TryParse(analyzerResult.GetProperty("Nullable"), ignoreCase: true, out NullableContextOptions nullable);
 
-                CompilationOptions CreateCSharpCompilationOptions() => new CSharpCompilationOptions(kind.Value, nullableContextOptions: nullable);
+                CompilationOptions CreateCSharpCompilationOptions()
+                {
+                    CSharpCompilationOptions opts = new CSharpCompilationOptions(kind.Value, nullableContextOptions: nullable);
+
+                    if (bool.TryParse(analyzerResult.GetProperty("AllowUnsafeBlocks"), out bool allowUnsafe))
+                    {
+                        opts = opts.WithAllowUnsafe(allowUnsafe);
+                    }
+
+                    if (bool.TryParse(analyzerResult.GetProperty("CheckForOverflowUnderflow"), out bool checkOverflow))
+                    {
+                        opts = opts.WithOverflowChecks(checkOverflow);
+                    }
+
+                    if (bool.TryParse(analyzerResult.GetProperty("Deterministic"), out bool deterministic))
+                    {
+                        opts = opts.WithDeterministic(deterministic);
+                    }
+
+                    // PlatformTarget is the per-project compiler target; Platform from MSBuild is the
+                    // solution platform (typically "AnyCPU"). Prefer PlatformTarget, fall back to Platform.
+                    string platform = analyzerResult.GetProperty("PlatformTarget")
+                        ?? analyzerResult.GetProperty("Platform");
+                    if (!string.IsNullOrWhiteSpace(platform)
+                        && Enum.TryParse(platform, ignoreCase: true, out Platform platformValue))
+                    {
+                        opts = opts.WithPlatform(platformValue);
+                    }
+
+                    if (int.TryParse(analyzerResult.GetProperty("WarningLevel"), out int warningLevel))
+                    {
+                        opts = opts.WithWarningLevel(warningLevel);
+                    }
+
+                    return opts;
+                }
 
                 return CreateCSharpCompilationOptions();
             }

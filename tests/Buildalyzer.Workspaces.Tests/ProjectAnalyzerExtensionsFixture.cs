@@ -75,6 +75,27 @@ public class ProjectAnalyzerExtensionsFixture
         compilationOptions.OutputKind.ShouldBe(OutputKind.DynamicallyLinkedLibrary, log.ToString());
     }
 
+    [Test]
+    public void CompilationOptionsRespectEvaluatedProperties()
+    {
+        // Given
+        SafeStringWriter log = new SafeStringWriter();
+        IProjectAnalyzer analyzer = GetProjectAnalyzer(@"projects\SdkCompilationOptionsProject\SdkCompilationOptionsProject.csproj", log);
+
+        // When
+        Workspace workspace = analyzer.GetWorkspace();
+        var compilationOptions = (Microsoft.CodeAnalysis.CSharp.CSharpCompilationOptions)workspace.CurrentSolution.Projects.First().CompilationOptions;
+
+        // Then
+        string logged = log.ToString();
+        logged.ShouldNotContain("Workspace failed");
+        compilationOptions.AllowUnsafe.ShouldBeTrue(logged);
+        compilationOptions.CheckOverflow.ShouldBeTrue(logged);
+        compilationOptions.Deterministic.ShouldBeTrue(logged);
+        compilationOptions.Platform.ShouldBe(Platform.X64, logged);
+        compilationOptions.WarningLevel.ShouldBe(7, logged);
+    }
+
     [TestCase(false, 1)]
     [TestCase(true, 3)]
     public void AddsProjectReferences(bool addProjectReferences, int totalProjects)
