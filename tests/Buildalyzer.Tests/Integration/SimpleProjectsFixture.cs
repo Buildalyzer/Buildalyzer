@@ -267,10 +267,10 @@ public class SimpleProjectsFixture
         IAnalyzerResults results = analyzer.Build();
 
         // Then
-        // Multi-targeting projects product an extra result with an empty target framework that holds some MSBuild properties (I.e. the "outer" build)
-        results.Count.ShouldBe(3);
-        results.TargetFrameworks.ShouldBe(["net462", "netstandard2.0", string.Empty], ignoreOrder: false, log.ToString());
-        results[string.Empty].SourceFiles.ShouldBeEmpty();
+        // Multi-targeted projects schedule one inner build per target framework
+        // (matching how VS schedules design-time builds), so only per-TFM results.
+        results.Count.ShouldBe(2);
+        results.TargetFrameworks.ShouldBe(["net462", "netstandard2.0"], ignoreOrder: true, log.ToString());
         new[]
         {
             "AssemblyAttributes",

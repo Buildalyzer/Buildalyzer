@@ -137,13 +137,22 @@ public class ProjectAnalyzer : IProjectAnalyzer
             []);
 
     /// <inheritdoc/>
-    public IAnalyzerResults Build() => Build((string)null);
+    public IAnalyzerResults Build() =>
+        ProjectFile.IsMultiTargeted
+            ? Build(ProjectFile.TargetFrameworks)
+            : Build((string)null);
 
     /// <inheritdoc/>
-    public IAnalyzerResults Build(EnvironmentOptions environmentOptions) => Build((string)null, environmentOptions);
+    public IAnalyzerResults Build(EnvironmentOptions environmentOptions) =>
+        ProjectFile.IsMultiTargeted
+            ? Build(ProjectFile.TargetFrameworks, environmentOptions)
+            : Build((string)null, environmentOptions);
 
     /// <inheritdoc/>
-    public IAnalyzerResults Build(BuildEnvironment buildEnvironment) => Build((string)null, buildEnvironment);
+    public IAnalyzerResults Build(BuildEnvironment buildEnvironment) =>
+        ProjectFile.IsMultiTargeted
+            ? Build(ProjectFile.TargetFrameworks, buildEnvironment)
+            : Build((string)null, buildEnvironment);
 
     // This is where the magic happens - returns one result per result target framework
     private IAnalyzerResults BuildTargets(
