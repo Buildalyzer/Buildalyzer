@@ -15,9 +15,12 @@ public class EnvironmentOptions
 
     /// <summary>
     /// Indicates that a design-time build should be performed.
-    /// The default value is <c>true</c>. Note that when performing
-    /// a design-time build, the <see cref="TargetsToBuild"/> will
-    /// be ignored and the design-time targets will be used instead.
+    /// The default value is <c>true</c>. Sets a number of MSBuild properties
+    /// (such as <c>DesignTimeBuild=true</c>, <c>BuildingProject=false</c>,
+    /// <c>SkipCompilerExecution=true</c>, and <c>ProvideCommandLineArgs=true</c>)
+    /// that adjust how the build behaves. <see cref="TargetsToBuild"/> is still
+    /// honoured; set <c>TargetsToBuild = ["Compile"]</c> for the lightest
+    /// design-time evaluation.
     /// </summary>
     /// <remarks>
     /// See https://github.com/dotnet/project-system/blob/master/docs/design-time-builds.md.
