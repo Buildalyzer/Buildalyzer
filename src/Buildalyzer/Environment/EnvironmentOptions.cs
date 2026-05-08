@@ -9,20 +9,17 @@ public class EnvironmentOptions
     public EnvironmentPreference Preference { get; set; } = EnvironmentPreference.Core;
 
     /// <summary>
-    /// The targets to build. Defaults to <c>["Compile"]</c>, which mirrors
-    /// what Visual Studio's design-time builds drive: it pulls in
-    /// <c>ResolveReferences</c>, <c>GenerateAssemblyInfo</c> and
-    /// <c>CoreCompile</c> (so <c>Csc</c> emits <see cref="MsBuildProperties.ProvideCommandLineArgs"/>
-    /// data Buildalyzer parses), but stops before <c>AfterCompile</c>,
-    /// <c>CopyFilesToOutputDirectory</c> and <c>AfterBuild</c>. This avoids
-    /// running <c>BeforeBuild</c>/<c>AfterBuild</c> hooks (and any
-    /// third-party tasks they reach) which do not contribute to the data
-    /// Buildalyzer surfaces.
+    /// The targets to build. Defaults to <c>["Build"]</c>. <c>Clean</c> was
+    /// previously the first default target, but it does not contribute to
+    /// the data Buildalyzer surfaces — it just wipes the prior outputs and
+    /// then required a <c>NonExistentFile</c> workaround to force
+    /// <c>CoreCompile</c> to re-run. Visual Studio's design-time builds do
+    /// not run <c>Clean</c> either.
     /// </summary>
     /// <remarks>
     /// See https://github.com/dotnet/project-system/blob/main/docs/design-time-builds.md.
     /// </remarks>
-    public List<string> TargetsToBuild { get; } = ["Compile"];
+    public List<string> TargetsToBuild { get; } = ["Build"];
 
     /// <summary>
     /// Indicates that a design-time build should be performed.
