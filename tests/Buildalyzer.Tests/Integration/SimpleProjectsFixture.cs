@@ -183,15 +183,23 @@ public class SimpleProjectsFixture
         string binLogPath = Path.ChangeExtension(Path.GetTempFileName(), ".binlog");
         analyzer.AddBinaryLogger(binLogPath);
 
+        // Multi-targeted projects schedule one build per TFM and produce a
+        // per-TFM binlog so the iterations don't overwrite one another.
+        bool multiTargeted = analyzer.ProjectFile.IsMultiTargeted;
+        string analyzedBinLogPath = multiTargeted
+            ? Path.Combine(
+                Path.GetDirectoryName(binLogPath)!,
+                $"{Path.GetFileNameWithoutExtension(binLogPath)}.net462{Path.GetExtension(binLogPath)}")
+            : binLogPath;
+
         try
         {
             // When
             analyzer.Build(options);
-            IAnalyzerResults results = analyzer.Manager.Analyze(binLogPath);
+            IAnalyzerResults results = analyzer.Manager.Analyze(analyzedBinLogPath);
 
             // Then
-            // If this is the multi-targeted project, use the net462 target
-            IReadOnlyList<string> sourceFiles = results.Count == 1 ? results.First().SourceFiles : results["net462"].SourceFiles;
+            IReadOnlyList<string> sourceFiles = results.First().SourceFiles;
             sourceFiles.ShouldNotBeNull(log.ToString());
             new[]
             {
@@ -202,9 +210,16 @@ public class SimpleProjectsFixture
         }
         finally
         {
+            // Clean up the original path and any per-TFM derivatives.
             if (File.Exists(binLogPath))
             {
                 File.Delete(binLogPath);
+            }
+            string binLogDir = Path.GetDirectoryName(binLogPath)!;
+            string baseName = Path.GetFileNameWithoutExtension(binLogPath);
+            foreach (string perTfmLog in Directory.GetFiles(binLogDir, $"{baseName}.*.binlog"))
+            {
+                File.Delete(perTfmLog);
             }
         }
     }
@@ -217,8 +232,16 @@ public class SimpleProjectsFixture
         StringWriter log = new StringWriter();
         IProjectAnalyzer analyzer = GetProjectAnalyzer(@"WpfCustomControlLibrary1\WpfCustomControlLibrary1.csproj", log);
 
+        // GeneratedInternalTypeHelper.g.cs is produced by WPF's MarkupCompilePass2,
+        // which is wired through PrepareResourcesDependsOn rather than CoreCompile's
+        // closure, so the default Compile target doesn't reach it. Callers that want
+        // those build-time-generated files surfaced opt into the Build closure.
+        EnvironmentOptions options = new();
+        options.TargetsToBuild.Clear();
+        options.TargetsToBuild.Add("Build");
+
         // When
-        IAnalyzerResults results = analyzer.Build();
+        IAnalyzerResults results = analyzer.Build(options);
 
         // Then
         IReadOnlyList<string> sourceFiles = results.SingleOrDefault()?.SourceFiles;
@@ -267,10 +290,10 @@ public class SimpleProjectsFixture
         IAnalyzerResults results = analyzer.Build();
 
         // Then
-        // Multi-targeting projects product an extra result with an empty target framework that holds some MSBuild properties (I.e. the "outer" build)
-        results.Count.ShouldBe(3);
-        results.TargetFrameworks.ShouldBe(["net462", "netstandard2.0", string.Empty], ignoreOrder: false, log.ToString());
-        results[string.Empty].SourceFiles.ShouldBeEmpty();
+        // Multi-targeted projects schedule one inner build per target framework
+        // (matching how VS schedules design-time builds), so only per-TFM results.
+        results.Count.ShouldBe(2);
+        results.TargetFrameworks.ShouldBe(["net462", "netstandard2.0"], ignoreOrder: true, log.ToString());
         new[]
         {
             "AssemblyAttributes",

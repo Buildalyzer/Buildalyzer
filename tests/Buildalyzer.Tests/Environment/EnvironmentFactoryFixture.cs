@@ -8,9 +8,9 @@ namespace Buildalyzer.Tests.Environment;
 public class EnvironmentFactoryFixture
 {
     [Test]
-    public void Default_TargetsToBuild_is_Build_only()
+    public void Default_TargetsToBuild_is_Compile_only()
     {
-        new EnvironmentOptions().TargetsToBuild.ShouldBe(["Build"]);
+        new EnvironmentOptions().TargetsToBuild.ShouldBe(["Compile"]);
     }
 
     [Test]

@@ -9,13 +9,21 @@ public class EnvironmentOptions
     public EnvironmentPreference Preference { get; set; } = EnvironmentPreference.Core;
 
     /// <summary>
-    /// The targets to build. Defaults to <c>["Build"]</c>.
+    /// The targets to build. Defaults to <c>["Compile"]</c>.
     /// </summary>
     // Compile is the target the project-system design-time-builds docs identify
-    // as the language-service equivalent, but Buildalyzer surfaces more than the
-    // language service does — e.g. WPF's MarkupCompilePass2 generates source
-    // files that should appear in SourceFiles but live outside Compile's closure.
-    public List<string> TargetsToBuild { get; } = ["Build"];
+    // as VS's language-service equivalent. It runs ResolveReferences and
+    // CoreCompile (so Csc fires its TaskCommandLineEventArgs under
+    // SkipCompilerExecution=true) without running BeforeBuild/AfterBuild or
+    // CopyFilesToOutputDirectory.
+    //
+    // Some SDKs only run their full code-generation under the Build closure
+    // — notably WPF's MarkupCompilePass2 (which produces
+    // GeneratedInternalTypeHelper.g.cs) is wired through
+    // PrepareResourcesDependsOn rather than CoreCompileDependsOn. Callers that
+    // need those build-time-generated source files should set
+    // <c>TargetsToBuild = ["Build"]</c>.
+    public List<string> TargetsToBuild { get; } = ["Compile"];
 
     /// <summary>
     /// Indicates that a design-time build should be performed.
