@@ -26,12 +26,7 @@ public class EnvironmentOptions
     public List<string> TargetsToBuild { get; } = ["Compile"];
 
     /// <summary>
-    /// Indicates that a design-time build should be performed.
-    /// The default value is <c>true</c>. When set, the global properties
-    /// from <see cref="MsBuildProperties.DesignTime"/> are applied so that
-    /// the targets in <see cref="TargetsToBuild"/> behave like Visual
-    /// Studio's design-time build (no compiler execution, no output copy,
-    /// no binding redirects, etc.).
+    /// Indicates that a design-time build should be performed. The default is <c>true</c>.
     /// </summary>
     /// <remarks>
     /// See https://github.com/dotnet/project-system/blob/main/docs/design-time-builds.md.
