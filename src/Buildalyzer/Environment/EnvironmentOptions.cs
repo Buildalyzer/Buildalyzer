@@ -11,6 +11,10 @@ public class EnvironmentOptions
     /// <summary>
     /// The targets to build. Defaults to <c>["Build"]</c>.
     /// </summary>
+    // Compile is the target the project-system design-time-builds docs identify
+    // as the language-service equivalent, but Buildalyzer surfaces more than the
+    // language service does — e.g. WPF's MarkupCompilePass2 generates source
+    // files that should appear in SourceFiles but live outside Compile's closure.
     public List<string> TargetsToBuild { get; } = ["Build"];
 
     /// <summary>
