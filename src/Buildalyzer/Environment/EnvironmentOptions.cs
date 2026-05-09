@@ -9,21 +9,8 @@ public class EnvironmentOptions
     public EnvironmentPreference Preference { get; set; } = EnvironmentPreference.Core;
 
     /// <summary>
-    /// The targets to build. Defaults to <c>["Build"]</c>. <c>Clean</c> was
-    /// previously the first default target, but it does not contribute to
-    /// the data Buildalyzer surfaces — it just wipes the prior outputs and
-    /// then required a <c>NonExistentFile</c> workaround to force
-    /// <c>CoreCompile</c> to re-run. Visual Studio's design-time builds do
-    /// not run <c>Clean</c> either.
+    /// The targets to build. Defaults to <c>["Build"]</c>.
     /// </summary>
-    /// <remarks>
-    /// We use <c>Build</c> rather than <c>Compile</c> (the design-time
-    /// equivalent the project-system docs identify) because some SDK targets
-    /// — notably WPF's <c>MarkupCompilePass2</c> and friends — generate
-    /// source files that should be reported by Buildalyzer but aren't
-    /// produced under the <c>Compile</c> target alone.
-    /// See https://github.com/dotnet/project-system/blob/main/docs/design-time-builds.md.
-    /// </remarks>
     public List<string> TargetsToBuild { get; } = ["Build"];
 
     /// <summary>

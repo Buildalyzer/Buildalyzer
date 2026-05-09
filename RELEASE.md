@@ -1,3 +1,7 @@
+# Unreleased
+
+- Dropped `Clean` from `EnvironmentOptions.TargetsToBuild` default and made the `NonExistentFile` workaround unconditional, so `CoreCompile` reliably re-runs and `Csc` emits its command-line event without needing to wipe outputs first (#344, #348).
+
 # 6.0.4
 
 - Restored the original sort order of projects to keep the empty target framework last (#242, thanks @0xced).
