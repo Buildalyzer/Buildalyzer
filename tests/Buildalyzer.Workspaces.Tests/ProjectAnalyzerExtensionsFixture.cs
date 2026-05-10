@@ -75,6 +75,24 @@ public class ProjectAnalyzerExtensionsFixture
         compilationOptions.OutputKind.ShouldBe(OutputKind.DynamicallyLinkedLibrary, log.ToString());
     }
 
+    [Test]
+    public void CompilationOptionsRespectEvaluatedProperties()
+    {
+        using var ctx = Context.ForProject(@"SdkCompilationOptionsProject\SdkCompilationOptionsProject.csproj");
+
+        using var workspace = ctx.Analyzer.GetWorkspace();
+        var compilationOptions = (Microsoft.CodeAnalysis.CSharp.CSharpCompilationOptions)workspace.CurrentSolution.Projects.First().CompilationOptions;
+
+        compilationOptions.Should().BeEquivalentTo(new
+        {
+            AllowUnsafe = true,
+            CheckOverflow = true,
+            Deterministic = true,
+            Platform = Platform.X64,
+            WarningLevel = 7,
+        });
+    }
+
     [TestCase(false, 1)]
     [TestCase(true, 3)]
     public void AddsProjectReferences(bool addProjectReferences, int totalProjects)
