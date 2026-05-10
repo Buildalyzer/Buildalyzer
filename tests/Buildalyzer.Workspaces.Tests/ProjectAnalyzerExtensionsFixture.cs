@@ -78,22 +78,19 @@ public class ProjectAnalyzerExtensionsFixture
     [Test]
     public void CompilationOptionsRespectEvaluatedProperties()
     {
-        // Given
-        SafeStringWriter log = new SafeStringWriter();
-        IProjectAnalyzer analyzer = GetProjectAnalyzer(@"projects\SdkCompilationOptionsProject\SdkCompilationOptionsProject.csproj", log);
+        using var ctx = Context.ForProject(@"SdkCompilationOptionsProject\SdkCompilationOptionsProject.csproj");
 
-        // When
-        Workspace workspace = analyzer.GetWorkspace();
+        using var workspace = ctx.Analyzer.GetWorkspace();
         var compilationOptions = (Microsoft.CodeAnalysis.CSharp.CSharpCompilationOptions)workspace.CurrentSolution.Projects.First().CompilationOptions;
 
-        // Then
-        string logged = log.ToString();
-        logged.ShouldNotContain("Workspace failed");
-        compilationOptions.AllowUnsafe.ShouldBeTrue(logged);
-        compilationOptions.CheckOverflow.ShouldBeTrue(logged);
-        compilationOptions.Deterministic.ShouldBeTrue(logged);
-        compilationOptions.Platform.ShouldBe(Platform.X64, logged);
-        compilationOptions.WarningLevel.ShouldBe(7, logged);
+        compilationOptions.Should().BeEquivalentTo(new
+        {
+            AllowUnsafe = true,
+            CheckOverflow = true,
+            Deterministic = true,
+            Platform = Platform.X64,
+            WarningLevel = 7,
+        });
     }
 
     [TestCase(false, 1)]
