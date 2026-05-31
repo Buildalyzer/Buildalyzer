@@ -41,6 +41,24 @@ public class ProjectAnalyzerExtensionsFixture
         workspace.CurrentSolution.Projects.ShouldContain(p => p.Name == "SdkFrameworkProject");
     }
 
+    [Test(Description = "Loading a workspace from a .slnx solution should not throw https://github.com/Buildalyzer/Buildalyzer/issues/350")]
+    public void LoadsSlnxSolution()
+    {
+        // Given
+        string solutionPath = GetFullPath(@"projects\SingleProject.slnx");
+        SafeStringWriter log = new SafeStringWriter();
+        AnalyzerManager manager = new AnalyzerManager(solutionPath, new AnalyzerManagerOptions { LogWriter = log });
+
+        // When
+        using var workspace = manager.GetWorkspace();
+
+        // Then
+        string logged = log.ToString();
+        logged.ShouldNotContain("Workspace failed");
+        workspace.CurrentSolution.FilePath.ShouldBe(solutionPath);
+        workspace.CurrentSolution.Projects.ShouldContain(p => p.Name == "SdkNetStandardProject");
+    }
+
     [Test]
     public async Task SupportsCompilation()
     {

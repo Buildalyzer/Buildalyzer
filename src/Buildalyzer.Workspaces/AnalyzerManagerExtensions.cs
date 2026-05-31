@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.Build.Construction;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 namespace Buildalyzer.Workspaces;
@@ -31,14 +30,15 @@ public static class AnalyzerManagerExtensions
 
         // Create a new workspace and add the solution (if there was one)
         AdhocWorkspace workspace = manager.CreateWorkspace();
-        if (!string.IsNullOrEmpty(manager.SolutionFilePath))
+        if (manager.Solution is { } solution)
         {
-            Microsoft.CodeAnalysis.SolutionInfo solutionInfo = Microsoft.CodeAnalysis.SolutionInfo.Create(SolutionId.CreateNewId(), VersionStamp.Default, manager.SolutionFilePath);
+            string solutionPath = solution.Path.ToString();
+            Microsoft.CodeAnalysis.SolutionInfo solutionInfo = Microsoft.CodeAnalysis.SolutionInfo.Create(SolutionId.CreateNewId(), VersionStamp.Default, solutionPath);
             workspace.AddSolution(solutionInfo);
 
-            // Sort the projects so the order that they're added to the workspace in the same order as the solution file
-            List<ProjectInSolution> projectsInOrder = [.. manager.SolutionFile.ProjectsInOrder];
-            results = [.. results.OrderBy(p => projectsInOrder.FindIndex(g => g.AbsolutePath == p.ProjectFilePath))];
+            // Sort the projects so the order that they're added to the workspace is the same order as the solution
+            List<string> projectsInOrder = [.. solution.Projects.Select(p => p.Path.ToString())];
+            results = [.. results.OrderBy(p => projectsInOrder.FindIndex(g => g == p.ProjectFilePath))];
         }
 
         // Add each result to the new workspace (sorted in solution order above, if we have a solution)
