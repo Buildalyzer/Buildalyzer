@@ -1,48 +1,122 @@
 
-trigger:
-  branches:
-    include:
-      - release/*
+trigger: none
 
 pr: none
 
+parameters:
+  - name: versionSuffix
+    displayName: Version Suffix
+    type: string
+    default: ''
+  - name: allowBreakingChanges
+    displayName: Allow Breaking Changes
+    type: boolean
+    default: false
+  - name: publishPackages
+    displayName: Publish Packages To NuGet
+    type: boolean
+    default: false
+
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: ubuntu-latest
 
 variables:
-  solution: '**/*.sln'
-  buildPlatform: 'Any CPU'
-  buildConfiguration: 'Release'
-  
+  buildConfiguration: Release
+  packageOutputDirectory: $(Build.ArtifactStagingDirectory)/NuGet
+  compatibilitySuppressionsFile: $(System.DefaultWorkingDirectory)/src/Buildalyzer/CompatibilitySuppressions.xml
+  NUGET_CERT_REVOCATION_MODE: offline
+
 steps:
-- bash: |
-    tags=$(git describe --abbrev=0 --tags $(git rev-list --tags --max-count=1))
-    echo "Latest tag on main branch: $tags"
-    echo "##vso[task.setvariable variable=myVersion;isOutput=true]$tags"
-  name: createTagVariableStep
-  displayName: 'Get Latest Tag on Main Branch'
+  - checkout: self
+    fetchDepth: 0
 
-- script: echo "The version is $(createTagVariableStep.myVersion)"
-  displayName: 'Display Version'
+  - task: UseDotNet@2
+    displayName: Install .NET SDK 6
+    inputs:
+      packageType: sdk
+      version: 6.0.x
 
-- script: |
-    dotnet restore
-    dotnet build --configuration $(buildConfiguration)
-    dotnet pack --configuration $(buildConfiguration) --no-build --output $(Build.ArtifactStagingDirectory) /p:Version=$(createTagVariableStep.myVersion)
-  displayName: 'Dotnet Pack'
+  - task: UseDotNet@2
+    displayName: Install .NET SDK 8
+    inputs:
+      packageType: sdk
+      version: 8.0.x
 
-- script: dotnet nuget push "$(Build.ArtifactStagingDirectory)/**/*.nupkg" --api-key $(NuGetApiKey) --source https://api.nuget.org/v3/index.json --skip-duplicate
-  displayName: 'Push to NuGet'
+  - task: UseDotNet@2
+    displayName: Install .NET SDK 10
+    inputs:
+      packageType: sdk
+      version: 10.0.x
 
-- task: PublishBuildArtifacts@1
-  inputs:
-    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-    ArtifactName: 'drop'
-    publishLocation: 'Container'
+  - bash: dotnet --info
+    displayName: Display .NET SDK Info
 
+  - bash: |
+      set -euo pipefail
 
-- task: PublishBuildArtifacts@1
-  inputs:
-    PathtoPublish: '$(System.DefaultWorkingDirectory)/src/Buildalyzer/CompatibilitySuppressions.xml'
-    ArtifactName: 'CompatibilitySuppressions'
-    publishLocation: 'Container'
+      validationArg=""
+      if [ '${{ parameters.allowBreakingChanges }}' = 'true' ]; then
+        echo "Allowing breaking changes for this release by disabling package validation."
+        validationArg="/p:EnablePackageValidation=false"
+      fi
+
+      dotnet restore buildalyzer.slnx
+      dotnet build buildalyzer.slnx -c $(buildConfiguration) --no-restore /p:ContinuousIntegrationBuild=true ${validationArg}
+    displayName: Restore And Build
+
+  - bash: |
+      set -euo pipefail
+
+      validationArg=""
+      if [ '${{ parameters.allowBreakingChanges }}' = 'true' ]; then
+        validationArg="/p:EnablePackageValidation=false"
+      fi
+
+      versionSuffixArg=""
+      if [ -n '${{ parameters.versionSuffix }}' ]; then
+        versionSuffixArg="--version-suffix ${{ parameters.versionSuffix }}"
+      fi
+
+      mkdir -p "$(packageOutputDirectory)"
+
+      projects=(
+        "src/Buildalyzer/Buildalyzer.csproj"
+        "src/Buildalyzer.Logger/Buildalyzer.Logger.csproj"
+        "src/Buildalyzer.Workspaces/Buildalyzer.Workspaces.csproj"
+      )
+
+      for project in "${projects[@]}"; do
+        echo "Packing ${project}"
+        dotnet pack "${project}" -c $(buildConfiguration) --no-build -o "$(packageOutputDirectory)" /p:ContinuousIntegrationBuild=true ${validationArg} ${versionSuffixArg}
+      done
+    displayName: Pack NuGet Packages
+
+  - bash: |
+      set -euo pipefail
+      if [ -z "${NuGetApiKey:-}" ]; then
+        echo "NuGetApiKey variable is required when Publish Packages To NuGet is enabled."
+        exit 1
+      fi
+    displayName: Validate NuGet Credentials
+    condition: and(succeeded(), eq('${{ parameters.publishPackages }}', 'true'))
+
+  - bash: |
+      set -euo pipefail
+      dotnet nuget push "$(packageOutputDirectory)"/*.nupkg --api-key "$(NuGetApiKey)" --source https://api.nuget.org/v3/index.json --skip-duplicate
+    displayName: Push To NuGet
+    condition: and(succeeded(), eq('${{ parameters.publishPackages }}', 'true'))
+
+  - task: PublishBuildArtifacts@1
+    displayName: Publish NuGet Artifacts
+    inputs:
+      PathtoPublish: $(packageOutputDirectory)
+      ArtifactName: drop
+      publishLocation: Container
+
+  - task: PublishBuildArtifacts@1
+    displayName: Publish Compatibility Suppressions
+    condition: and(succeededOrFailed(), exists('$(compatibilitySuppressionsFile)'))
+    inputs:
+      PathtoPublish: $(compatibilitySuppressionsFile)
+      ArtifactName: CompatibilitySuppressions
+      publishLocation: Container
