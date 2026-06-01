@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.Build.Construction;
+using Buildalyzer.IO;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 namespace Buildalyzer.Workspaces;
@@ -31,14 +31,22 @@ public static class AnalyzerManagerExtensions
 
         // Create a new workspace and add the solution (if there was one)
         AdhocWorkspace workspace = manager.CreateWorkspace();
-        if (!string.IsNullOrEmpty(manager.SolutionFilePath))
+        if (manager.Solution is { } solution)
         {
-            Microsoft.CodeAnalysis.SolutionInfo solutionInfo = Microsoft.CodeAnalysis.SolutionInfo.Create(SolutionId.CreateNewId(), VersionStamp.Default, manager.SolutionFilePath);
+            string solutionPath = solution.Path.ToString();
+            Microsoft.CodeAnalysis.SolutionInfo solutionInfo = Microsoft.CodeAnalysis.SolutionInfo.Create(SolutionId.CreateNewId(), VersionStamp.Default, solutionPath);
             workspace.AddSolution(solutionInfo);
 
-            // Sort the projects so the order that they're added to the workspace in the same order as the solution file
-            List<ProjectInSolution> projectsInOrder = [.. manager.SolutionFile.ProjectsInOrder];
-            results = [.. results.OrderBy(p => projectsInOrder.FindIndex(g => g.AbsolutePath == p.ProjectFilePath))];
+            // Sort the projects so the order that they're added to the workspace is the same order as the solution.
+            // IOPath's equality/hash honour the file system's case sensitivity, so the lookup is robust across
+            // platforms; projects not found in the solution sort last.
+            Dictionary<IOPath, int> order = [];
+            for (int i = 0; i < solution.Projects.Length; i++)
+            {
+                order[solution.Projects[i].Path] = i;
+            }
+
+            results = [.. results.OrderBy(p => order.TryGetValue(IOPath.Parse(p.ProjectFilePath), out int index) ? index : int.MaxValue)];
         }
 
         // Add each result to the new workspace (sorted in solution order above, if we have a solution)
