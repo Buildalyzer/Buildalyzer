@@ -3,8 +3,6 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <IsTestProject>true</IsTestProject>
-    <IsPackable>false</IsPackable>
-    <OutputType>library</OutputType>
   </PropertyGroup>
 
   <ItemGroup Label="Test versions">

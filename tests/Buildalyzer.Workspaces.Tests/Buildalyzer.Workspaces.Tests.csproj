@@ -3,8 +3,6 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <IsTestProject>true</IsTestProject>
-    <IsPackable>false</IsPackable>
-    <OutputType>library</OutputType>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,7 +24,6 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Buildalyzer.Workspaces/Buildalyzer.Workspaces.csproj" />
-    <ProjectReference Include="../Buildalyzer.Tests/Buildalyzer.Tests.csproj" />
   </ItemGroup>
 
 </Project>
