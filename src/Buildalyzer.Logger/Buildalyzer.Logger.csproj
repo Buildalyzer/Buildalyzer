@@ -9,7 +9,6 @@
     <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);PackLogger</TargetsForTfmSpecificBuildOutput>
     <PackageId>Buildalyzer.Logger</PackageId>
     <PackageValidationBaselineVersion>8.0.0</PackageValidationBaselineVersion>
-    <OutputType>library</OutputType>
     <PackageReleaseNotes>
       <![CDATA[
 ToBeReleased
