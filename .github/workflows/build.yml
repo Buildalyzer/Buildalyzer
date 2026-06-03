@@ -28,7 +28,7 @@ jobs:
             9.0.x
             10.0.x
       - name: Build and Test
-        run: dotnet test --logger "trx;LogFileName=test-results.trx"
+        run: dotnet test buildalyzer.slnx --logger "trx;LogFileName=test-results.trx"
       - name: Upload Test Results
         uses: actions/upload-artifact@v4
         if: success() || failure()

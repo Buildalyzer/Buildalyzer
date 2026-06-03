@@ -4,7 +4,6 @@
 
   <PropertyGroup>
     <TargetFrameworks>net6.0;net8.0</TargetFrameworks>
-    <LangVersion>14.0</LangVersion>
     <PackageId>Buildalyzer</PackageId>
     <PackageValidationBaselineVersion>8.0.0</PackageValidationBaselineVersion>
     <OutputType>library</OutputType>
