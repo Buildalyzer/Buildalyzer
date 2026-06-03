@@ -36,8 +36,4 @@
     <ProjectReference Include="../../src/Buildalyzer/Buildalyzer.csproj" />
   </ItemGroup>
 
-  <PropertyGroup Condition=" $([MSBuild]::IsOsPlatform('Windows')) ">
-    <DefineConstants>Is_Windows</DefineConstants>
-  </PropertyGroup>
-
 </Project>

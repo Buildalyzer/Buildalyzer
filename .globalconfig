@@ -112,6 +112,8 @@ dotnet_diagnostic.IDE0360.severity  = warning    # Simplify property accessor
 dotnet_diagnostic.IDE0370.severity  = warning    # Remove unnecessary suppression
 dotnet_diagnostic.IDE1005.severity  = warning    # Use conditional delegate call
 
+dotnet_diagnostic.Proj0800.severity = none       # Use CPM. Justification = Interferes with test data projects that are built.
+
 dotnet_diagnostic.RCS1002.severity = none
 dotnet_diagnostic.RCS1004.severity = none
 dotnet_diagnostic.RCS1007.severity = none

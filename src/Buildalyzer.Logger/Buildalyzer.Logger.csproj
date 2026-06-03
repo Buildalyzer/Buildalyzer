@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <Import Project="../../package.props" />
 
@@ -31,9 +31,9 @@ ToBeReleased
     <Error Condition="'@(LoggerFiles)' == ''" Text="Could not find MsBuildPipeLogger.Logger files" />
   </Target>
 
-  <!-- Workaround to pack package reference directly -->
-  <!-- See https://github.com/NuGet/Home/issues/3891 -->
-  <!-- And https://github.com/NuGet/Home/issues/4837 -->
+  <!-- Workaround to pack package reference directly
+       See https://github.com/NuGet/Home/issues/3891
+       And https://github.com/NuGet/Home/issues/4837 -->
   <Target Name="PackLogger" DependsOnTargets="GetLoggerFiles">
     <ItemGroup>
       <BuildOutputInPackage Include="@(LoggerFiles)" />

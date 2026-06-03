@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -19,7 +19,6 @@
     <PackageReference Include="NUnit3TestAdapter" Version="*" PrivateAssets="all" />
   </ItemGroup>
 
-
   <ItemGroup Label="Analyzers">
     <PackageReference Include="AwesomeAssertions.Analyzers" Version="9.0.8" PrivateAssets="all" />
     <PackageReference Include="NUnit.Analyzers" Version="*" PrivateAssets="all" />
@@ -29,9 +28,5 @@
     <ProjectReference Include="../../src/Buildalyzer.Workspaces/Buildalyzer.Workspaces.csproj" />
     <ProjectReference Include="../Buildalyzer.Tests/Buildalyzer.Tests.csproj" />
   </ItemGroup>
-
-  <PropertyGroup Condition=" $([MSBuild]::IsOsPlatform('Windows')) ">
-    <DefineConstants>Is_Windows</DefineConstants>
-  </PropertyGroup>
 
 </Project>

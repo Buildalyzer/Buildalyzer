@@ -18,7 +18,7 @@
     <Version Condition="'$(BuildalyzerVersion)' != ''">$(BuildalyzerVersion)</Version>
     <AssemblyVersion>$(Version.Split('-')[0])</AssemblyVersion>
     <FileVersion>$(Version.Split('-')[0])</FileVersion>
-    <LangVersion>12</LangVersion>
+    <LangVersion>14.0</LangVersion>
     <Nullable>enable</Nullable>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
@@ -29,9 +29,11 @@
   <PropertyGroup Label="Package information">
     <ProductName>Buildalyzer</ProductName>
     <Description>
-      A little utility to perform design-time builds of .NET projects without
-      having to think too hard about it. Should work with any project type on
-      any .NET runtime.
+      <![CDATA[
+A little utility to perform design-time builds of .NET projects without
+having to think too hard about it. Should work with any project type on
+any .NET runtime.
+      ]]>
     </Description>
     <PackageTags>
       Roslyn,
@@ -50,6 +52,10 @@
     <PackageProjectUrl>https://github.com/phmonte/Buildalyzer</PackageProjectUrl>
   </PropertyGroup>
 
+  <PropertyGroup Condition="$([MSBuild]::IsOsPlatform('Windows'))">
+    <DefineConstants>Is_Windows</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)/LICENSE.md" Pack="true" PackagePath=""/>
     <None Include="$(MSBuildThisFileDirectory)/icon.png" Pack="true" PackagePath="/"/>
@@ -57,15 +63,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="all"/>
+    <PackageReference PrivateAssets="all" Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup Label="Analyzers">
-    <PackageReference Include="DotNetProjectFile.Analyzers" Version="*" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="*" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" Version="*" PrivateAssets="all"/>
-    <PackageReference Include="Roslynator.Analyzers" Version="*" PrivateAssets="all"/>
-    <PackageReference Include="SonarAnalyzer.CSharp" Version="*" PrivateAssets="all" />
+    <PackageReference PrivateAssets="all" Include="DotNetProjectFile.Analyzers" Version="1.14.1" />
+    <PackageReference PrivateAssets="all" Include="Microsoft.CodeAnalysis.Analyzers" Version="*" />
+    <PackageReference PrivateAssets="all" Include="Microsoft.VisualStudio.Threading.Analyzers" Version="*" />
+    <PackageReference PrivateAssets="all" Include="Roslynator.Analyzers" Version="*" />
+    <PackageReference PrivateAssets="all" Include="SonarAnalyzer.CSharp" Version="*" />
   </ItemGroup>
 
   <ItemGroup>
