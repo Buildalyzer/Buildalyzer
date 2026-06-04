@@ -88,24 +88,12 @@ public class EnvironmentFactory
         // (Re)set the environment variables that dotnet sets
         // See https://github.com/dotnet/cli/blob/0a4ad813ff971f549d34ac4ebc6c8cca9a741c36/src/Microsoft.DotNet.Cli.Utils/MSBuildForwardingAppWithoutLogging.cs#L22-L28
         // Especially important if a global.json is used because dotnet may set these to the latest, but then we'll call a msbuild.dll for the global.json version
-        if (!additionalEnvironmentVariables.ContainsKey(EnvironmentVariables.MSBuildExtensionsPath))
-        {
-            additionalEnvironmentVariables.Add(EnvironmentVariables.MSBuildExtensionsPath, dotnetPath);
-        }
-        if (!additionalEnvironmentVariables.ContainsKey(EnvironmentVariables.MSBuildSDKsPath))
-        {
-            additionalEnvironmentVariables.Add(EnvironmentVariables.MSBuildSDKsPath, Path.Combine(dotnetPath, "Sdks"));
-        }
-        if (!additionalEnvironmentVariables.ContainsKey(EnvironmentVariables.COREHOST_TRACE))
-        {
-            additionalEnvironmentVariables.Add(EnvironmentVariables.COREHOST_TRACE, "0");
-        }
-        if (!additionalEnvironmentVariables.ContainsKey(EnvironmentVariables.DOTNET_HOST_PATH))
-        {
-            additionalEnvironmentVariables.Add(
-                EnvironmentVariables.DOTNET_HOST_PATH,
-                Path.GetFullPath(Path.Combine(dotnetPath, "..", "..", RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "dotnet.exe" : "dotnet")));
-        }
+        additionalEnvironmentVariables.TryAdd(EnvironmentVariables.MSBuildExtensionsPath, dotnetPath);
+        additionalEnvironmentVariables.TryAdd(EnvironmentVariables.MSBuildSDKsPath, Path.Combine(dotnetPath, "Sdks"));
+        additionalEnvironmentVariables.TryAdd(EnvironmentVariables.COREHOST_TRACE, "0");
+        additionalEnvironmentVariables.TryAdd(
+            EnvironmentVariables.DOTNET_HOST_PATH,
+            Path.GetFullPath(Path.Combine(dotnetPath, "..", "..", RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "dotnet.exe" : "dotnet")));
 
         return new BuildEnvironment(
             options.DesignTime,
