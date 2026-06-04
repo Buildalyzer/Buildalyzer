@@ -183,6 +183,7 @@ dotnet_diagnostic.SA1201.severity = none
 dotnet_diagnostic.SA1202.severity = none
 dotnet_diagnostic.SA1204.severity = none
 dotnet_diagnostic.SA1210.severity = none
+dotnet_diagnostic.SA1306.severity = none
 dotnet_diagnostic.SA1309.severity = none
 dotnet_diagnostic.SA1413.severity = none
 dotnet_diagnostic.SA1512.severity = none
@@ -377,7 +378,5 @@ dotnet_diagnostic.RCS1193.severity = warning
 dotnet_diagnostic.RCS1203.severity = warning
 dotnet_diagnostic.RCS1210.severity = warning
 dotnet_diagnostic.RCS1215.severity = warning
-
-dotnet_diagnostic.SX1309.severity = warning
 
 dotnet_diagnostic.VSSpell001.severity = silent # Spell Check
