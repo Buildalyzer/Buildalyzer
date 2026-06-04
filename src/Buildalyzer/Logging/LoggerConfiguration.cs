@@ -18,7 +18,7 @@ internal sealed record LoggerConfiguration
     /// <summary>Should everything be logged (default is true).</summary>
     public bool LogEverything { get; init; } = true;
 
-    /// <summary>Gets the default logger path</summary>
+    /// <summary>Gets the default logger path.</summary>
     [Pure]
     public static IOPath DefaultLoggerPath()
         => (typeof(BuildalyzerLogger).Assembly.Location
