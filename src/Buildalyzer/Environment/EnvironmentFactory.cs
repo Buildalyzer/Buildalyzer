@@ -137,7 +137,7 @@ public class EnvironmentFactory
         {
             msBuildExePath = options.EnvironmentVariables[EnvironmentVariables.MSBUILD_EXE_PATH];
         }
-        else if (!EnvironmentFactory.GetFrameworkMsBuildExePath(out msBuildExePath))
+        else if (!GetFrameworkMsBuildExePath(out msBuildExePath))
         {
             Logger.LogWarning("Couldn't find a .NET Framework MSBuild path");
             return null;
