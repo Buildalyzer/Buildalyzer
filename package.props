@@ -1,17 +1,15 @@
 <Project>
 
-  <PropertyGroup>
+  <PropertyGroup Condition="'$(TF_BUILD)' == 'true'">
     <EnablePackageValidation>true</EnablePackageValidation>
+    <EnableStrictModeForBaselineValidation>true</EnableStrictModeForBaselineValidation>
+    <EnableStrictModeForCompatibleFrameworksInPackage>true</EnableStrictModeForCompatibleFrameworksInPackage>
   </PropertyGroup>
  
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <IsPackable>true</IsPackable>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateSBOM>true</GenerateSBOM>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(TF_BUILD)' != 'true'">
-    <EnablePackageValidation>false</EnablePackageValidation>
   </PropertyGroup>
 
   <ItemGroup Label="Build extensions">
@@ -21,6 +19,10 @@
   <ItemGroup Label="Analyzers">
     <PackageReference PrivateAssets="all" Include="IDisposableAnalyzers" Version="4.0.8" />
     <PackageReference PrivateAssets="all" Include="StyleCop.Analyzers.Unstable" Version="1.2.0.556" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="$(MSBuildThisFileFullPath)" />
   </ItemGroup>
 
 </Project>

@@ -1,4 +1,4 @@
-﻿namespace LowerCaseOutputType;
+namespace LowerCaseOutputType;
 
 public class Root
 {

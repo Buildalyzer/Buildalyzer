@@ -1,7 +1,3 @@
-using System.Diagnostics;
-using System.Diagnostics.Contracts;
-using System.IO;
-
 namespace Buildalyzer.TestTools;
 
 public abstract class Context : IDisposable

@@ -9,7 +9,6 @@
     <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);PackLogger</TargetsForTfmSpecificBuildOutput>
     <PackageId>Buildalyzer.Logger</PackageId>
     <PackageValidationBaselineVersion>8.0.0</PackageValidationBaselineVersion>
-    <OutputType>library</OutputType>
     <PackageReleaseNotes>
       <![CDATA[
 ToBeReleased
@@ -31,9 +30,9 @@ ToBeReleased
     <Error Condition="'@(LoggerFiles)' == ''" Text="Could not find MsBuildPipeLogger.Logger files" />
   </Target>
 
-  <!-- Workaround to pack package reference directly -->
-  <!-- See https://github.com/NuGet/Home/issues/3891 -->
-  <!-- And https://github.com/NuGet/Home/issues/4837 -->
+  <!-- Workaround to pack package reference directly
+       See https://github.com/NuGet/Home/issues/3891
+       And https://github.com/NuGet/Home/issues/4837 -->
   <Target Name="PackLogger" DependsOnTargets="GetLoggerFiles">
     <ItemGroup>
       <BuildOutputInPackage Include="@(LoggerFiles)" />

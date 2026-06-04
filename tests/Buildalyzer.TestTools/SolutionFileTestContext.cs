@@ -1,5 +1,3 @@
-using System.IO;
-
 namespace Buildalyzer.TestTools;
 
 /// <summary>Creates a test context for testing <see cref="IProjectAnalyzer"/>s.</summary>

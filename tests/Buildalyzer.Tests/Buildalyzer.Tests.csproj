@@ -1,10 +1,8 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <IsTestProject>true</IsTestProject>
-    <IsPackable>false</IsPackable>
-    <OutputType>library</OutputType>
   </PropertyGroup>
 
   <ItemGroup Label="Test versions">
@@ -34,10 +32,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Buildalyzer/Buildalyzer.csproj" />
+    <ProjectReference Include="..\Buildalyzer.TestTools\Buildalyzer.TestTools.csproj" />
   </ItemGroup>
-
-  <PropertyGroup Condition=" $([MSBuild]::IsOsPlatform('Windows')) ">
-    <DefineConstants>Is_Windows</DefineConstants>
-  </PropertyGroup>
 
 </Project>

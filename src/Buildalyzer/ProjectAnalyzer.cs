@@ -4,7 +4,6 @@ using System.Threading;
 using Buildalyzer.Construction;
 using Buildalyzer.Environment;
 using Buildalyzer.IO;
-using Buildalyzer.Logger;
 using Buildalyzer.Logging;
 using Microsoft.Build.Construction;
 using Microsoft.Build.Logging;
