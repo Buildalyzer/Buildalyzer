@@ -120,12 +120,8 @@ public class EnvironmentFactory
             additionalGlobalProperties.Add(MsBuildProperties.NonExistentFile, Path.Combine("__NonExistentSubDir__", "__NonExistentFile__"));
         }
 
-        string msBuildExePath;
-        if (options.EnvironmentVariables.ContainsKey(EnvironmentVariables.MSBUILD_EXE_PATH))
-        {
-            msBuildExePath = options.EnvironmentVariables[EnvironmentVariables.MSBUILD_EXE_PATH];
-        }
-        else if (!GetFrameworkMsBuildExePath(out msBuildExePath))
+        if (!options.EnvironmentVariables.TryGetValue(EnvironmentVariables.MSBUILD_EXE_PATH, out var msBuildExePath)
+            && !GetFrameworkMsBuildExePath(out msBuildExePath))
         {
             Logger.LogWarning("Couldn't find a .NET Framework MSBuild path");
             return null;
