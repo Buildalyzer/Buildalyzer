@@ -1,3 +1,5 @@
+#pragma warning disable
+
 namespace Buildalyzer;
 
 [Obsolete("Will be dropped in the next major version.")]
