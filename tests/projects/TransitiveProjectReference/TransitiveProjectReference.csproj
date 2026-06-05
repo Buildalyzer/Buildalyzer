@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SdkNetCore2ProjectWithReference\SdkNetCore2ProjectWithReference.csproj" />
+    <ProjectReference Include="../SdkNetCore2ProjectWithReference/SdkNetCore2ProjectWithReference.csproj" />
   </ItemGroup>
 
 </Project>

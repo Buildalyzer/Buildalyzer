@@ -41,6 +41,6 @@ internal static class BuildCommandProperties
             props.Remove(MsBuildProperties.SkipCompilerExecution);
         }
 
-        return [.. props.Select(kvp => new BuildCommandProperty(kvp.Key, kvp.Value!))];
+        return [.. props.Select(kvp => new BuildCommandProperty(kvp.Key, kvp.Value))];
     }
 }

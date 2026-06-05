@@ -61,7 +61,7 @@ public class AnalyzerManager : IAnalyzerManager
         {
             Solution = SolutionInfo.Load(solutionFilePath, p => options.ProjectFilter?.Invoke(p) ?? true);
 
-            // init projects. 
+            // init projects.
             foreach (var proj in Solution)
             {
                 var analyzer = new ProjectAnalyzer(this, proj.Path, proj);

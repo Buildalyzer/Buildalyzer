@@ -31,10 +31,7 @@ public abstract class Context : IDisposable
 
     public AnalyzerManager Manager { get; }
 
-    public TextWriter Log => IsDisposed ? throw new ObjectDisposedException(GetType().FullName) : log;
-
-    [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-    private readonly TextWriter log = new StringWriter();
+    public TextWriter Log { get => IsDisposed ? throw new ObjectDisposedException(GetType().FullName) : field; } = new StringWriter();
 
     public FileInfo Location { get; }
 

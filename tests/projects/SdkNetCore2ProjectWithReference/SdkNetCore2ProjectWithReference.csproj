@@ -5,8 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SdkNetStandardProjectWithPackageReference\SdkNetStandardProjectWithPackageReference.csproj" />
-    <ProjectReference Include="..\SdkNetStandardProject\SdkNetStandardProject.csproj" />
+    <ProjectReference Include="../SdkNetStandardProjectWithPackageReference/SdkNetStandardProjectWithPackageReference.csproj" />
+    <ProjectReference Include="../SdkNetStandardProject/SdkNetStandardProject.csproj" />
   </ItemGroup>
 
 </Project>
