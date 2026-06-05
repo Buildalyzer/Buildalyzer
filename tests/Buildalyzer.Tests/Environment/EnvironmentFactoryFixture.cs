@@ -1,4 +1,5 @@
 using Buildalyzer.Environment;
+using Buildalyzer.TestTools;
 using Shouldly;
 
 namespace Buildalyzer.Tests.Environment;
@@ -6,6 +7,26 @@ namespace Buildalyzer.Tests.Environment;
 [TestFixture]
 public class EnvironmentFactoryFixture
 {
+    [Test]
+    public void Default_TargetsToBuild_is_Compile_only()
+    {
+        new EnvironmentOptions().TargetsToBuild.ShouldBe(["Compile"]);
+    }
+
+    [Test]
+    public void GetBuildEnvironment_sets_NonExistentFile_under_default_targets()
+    {
+        // Without this workaround CoreCompile gets cached out and Csc never
+        // fires its command-line event — see #344. Previously this property
+        // was only set when "Clean" was in TargetsToBuild; it now needs to
+        // be set unconditionally because "Clean" is no longer the default.
+        using var ctx = Context.ForProject(@"SdkNetStandardProject\SdkNetStandardProject.csproj");
+
+        BuildEnvironment env = ctx.Analyzer.EnvironmentFactory.GetBuildEnvironment(new EnvironmentOptions());
+
+        env.GlobalProperties.ShouldContainKey(MsBuildProperties.NonExistentFile);
+    }
+
     // From https://docs.microsoft.com/en-us/dotnet/standard/frameworks
     // .NET Core/.NET 5 and up
     [TestCase("netcoreapp1.0", false)]

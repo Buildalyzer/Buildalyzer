@@ -86,10 +86,14 @@ public class ProjectAnalyzer : IProjectAnalyzer
 
         // Create a new build environment for each target
         AnalyzerResults results = [];
+        bool perTfmBinlog = targetFrameworks.Length > 1;
         foreach (string targetFramework in targetFrameworks)
         {
             BuildEnvironment buildEnvironment = EnvironmentFactory.GetBuildEnvironment(targetFramework, environmentOptions);
-            BuildTargets(buildEnvironment, targetFramework, buildEnvironment.TargetsToBuild, results);
+            using (WithPerTfmBinaryLogPaths(targetFramework, perTfmBinlog))
+            {
+                BuildTargets(buildEnvironment, targetFramework, buildEnvironment.TargetsToBuild, results);
+            }
         }
 
         return results;
@@ -107,12 +111,69 @@ public class ProjectAnalyzer : IProjectAnalyzer
         }
 
         AnalyzerResults results = [];
+        bool perTfmBinlog = targetFrameworks.Length > 1;
         foreach (string targetFramework in targetFrameworks)
         {
-            BuildTargets(buildEnvironment, targetFramework, buildEnvironment.TargetsToBuild, results);
+            using (WithPerTfmBinaryLogPaths(targetFramework, perTfmBinlog))
+            {
+                BuildTargets(buildEnvironment, targetFramework, buildEnvironment.TargetsToBuild, results);
+            }
         }
 
         return results;
+    }
+
+    // When invoking multiple per-TFM builds in succession, point any attached
+    // BinaryLogger at a TFM-suffixed path so each iteration's binlog isn't
+    // overwritten by the next. The original path is restored on dispose.
+    private IDisposable WithPerTfmBinaryLogPaths(string? targetFramework, bool active)
+    {
+        if (!active || targetFramework is null)
+        {
+            return NullScope.Instance;
+        }
+
+        List<(BinaryLogger Logger, string OriginalParameters)> snapshots = [];
+        foreach (BinaryLogger logger in _buildLoggers.OfType<BinaryLogger>())
+        {
+            string original = logger.Parameters;
+            snapshots.Add((logger, original));
+            logger.Parameters = AddTargetFrameworkToBinaryLogPath(original, targetFramework);
+        }
+
+        return new RestoreBinaryLogPaths(snapshots);
+    }
+
+    private static string AddTargetFrameworkToBinaryLogPath(string parameters, string targetFramework)
+    {
+        if (string.IsNullOrEmpty(parameters))
+        {
+            return parameters;
+        }
+
+        string extension = Path.GetExtension(parameters);
+        string withoutExtension = Path.ChangeExtension(parameters, null);
+        return $"{withoutExtension}.{targetFramework}{extension}";
+    }
+
+    private sealed class RestoreBinaryLogPaths(List<(BinaryLogger Logger, string OriginalParameters)> snapshots) : IDisposable
+    {
+        public void Dispose()
+        {
+            foreach (var (logger, original) in snapshots)
+            {
+                logger.Parameters = original;
+            }
+        }
+    }
+
+    private sealed class NullScope : IDisposable
+    {
+        public static readonly NullScope Instance = new();
+
+        public void Dispose()
+        {
+        }
     }
 
     /// <inheritdoc/>
@@ -136,13 +197,22 @@ public class ProjectAnalyzer : IProjectAnalyzer
             []);
 
     /// <inheritdoc/>
-    public IAnalyzerResults Build() => Build((string)null);
+    public IAnalyzerResults Build() =>
+        ProjectFile.IsMultiTargeted
+            ? Build(ProjectFile.TargetFrameworks)
+            : Build((string)null);
 
     /// <inheritdoc/>
-    public IAnalyzerResults Build(EnvironmentOptions environmentOptions) => Build((string)null, environmentOptions);
+    public IAnalyzerResults Build(EnvironmentOptions environmentOptions) =>
+        ProjectFile.IsMultiTargeted
+            ? Build(ProjectFile.TargetFrameworks, environmentOptions)
+            : Build((string)null, environmentOptions);
 
     /// <inheritdoc/>
-    public IAnalyzerResults Build(BuildEnvironment buildEnvironment) => Build((string)null, buildEnvironment);
+    public IAnalyzerResults Build(BuildEnvironment buildEnvironment) =>
+        ProjectFile.IsMultiTargeted
+            ? Build(ProjectFile.TargetFrameworks, buildEnvironment)
+            : Build((string)null, buildEnvironment);
 
     // This is where the magic happens - returns one result per result target framework
     private IAnalyzerResults BuildTargets(

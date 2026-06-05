@@ -1,3 +1,9 @@
+# Unreleased
+
+- Changed `EnvironmentOptions.TargetsToBuild` default from `["Clean", "Build"]` to `["Compile"]`, mirroring the target Visual Studio's design-time builds drive. Skips `BeforeBuild`/`AfterBuild` hooks (and any third-party tasks attached to them) and the post-`CoreCompile` build closure that doesn't contribute to the data Buildalyzer surfaces. Callers that need build-time-generated files (e.g. WPF's `GeneratedInternalTypeHelper.g.cs` from `MarkupCompilePass2`) can opt into `["Build"]` (#344, #348).
+- Multi-targeted projects now schedule one inner build per target framework when `Build()` is called without a specific TFM, matching how VS schedules design-time builds. This replaces the previous outer-`DispatchToInnerBuilds` approach (which produced an additional empty-TFM result). When a `BinaryLogger` is attached, each TFM writes to a TFM-suffixed binlog path so iterations don't overwrite one another (#348).
+- Made the `NonExistentFile` workaround unconditional so `CoreCompile` reliably re-runs and `Csc` emits its command-line event regardless of which targets the caller specifies (#348).
+
 # 6.0.4
 
 - Restored the original sort order of projects to keep the empty target framework last (#242, thanks @0xced).
