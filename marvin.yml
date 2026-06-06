@@ -1,8 +1,0 @@
-ProjectSets:
-  - Name: Buildalyzer
-    SourceProjects: "src/*/*.csproj"
-    TestProjects: "tests/*/*.csproj"
-    GitHubOwner: "daveaglick"
-    GitHubName: "Buildalyzer"
-GitHubToken: => GetString("GITHUB_TOKEN")
-NuGetApiKey: => GetString("DAVEAGLICK_NUGET_API_KEY")
