@@ -1,6 +1,5 @@
 using System.Xml.Linq;
 using Buildalyzer.Construction;
-using Shouldly;
 
 namespace Buildalyzer.Tests.Construction;
 
@@ -8,7 +7,7 @@ namespace Buildalyzer.Tests.Construction;
 public class PackageReferenceFixture
 {
     [Test]
-    public void PackageReferenceWithIncludeShouldContainName()
+    public void PackageReference_with_include_contains_name()
     {
         // Given
         XElement xml = XElement.Parse(@"<PackageReference Include=""IncludedDependency"" Version=""1.0.0"" />");
@@ -17,11 +16,11 @@ public class PackageReferenceFixture
         PackageReference packageReference = new PackageReference(xml);
 
         // Then
-        packageReference.Name.ShouldBe("IncludedDependency");
+        packageReference.Name.Should().Be("IncludedDependency");
     }
 
     [Test]
-    public void PackageReferenceWithVersionShouldContainVersion()
+    public void PackageReference_with_version()
     {
         // Given
         XElement xml = XElement.Parse(@"<PackageReference Include=""IncludedDependency"" Version=""1.0.0"" />");
@@ -30,11 +29,11 @@ public class PackageReferenceFixture
         PackageReference packageReference = new PackageReference(xml);
 
         // Then
-        packageReference.Version.ShouldBe("1.0.0");
+        packageReference.Version.Should().Be("1.0.0");
     }
 
     [Test]
-    public void PackageReferenceWithUpgradeShouldContainName()
+    public void PackageReference_with_upgrade_contains_ame()
     {
         // Given
         XElement xml = XElement.Parse(@"<PackageReference Update=""UpdatedDependency"" Version=""1.0.0"" />");
@@ -43,11 +42,11 @@ public class PackageReferenceFixture
         PackageReference packageReference = new PackageReference(xml);
 
         // Then
-        packageReference.Name.ShouldBe("UpdatedDependency");
+        packageReference.Name.Should().Be("UpdatedDependency");
     }
 
     [Test]
-    public void PackageReferenceWithVersionChildElementShouldContainVersion()
+    public void PackageReference_with_version_as_element()
     {
         // Given
         XElement xml = XElement.Parse("""
@@ -60,6 +59,6 @@ public class PackageReferenceFixture
         PackageReference packageReference = new PackageReference(xml);
 
         // Then
-        packageReference.Version.ShouldBe("4.0.0");
+        packageReference.Version.Should().Be("4.0.0");
     }
 }

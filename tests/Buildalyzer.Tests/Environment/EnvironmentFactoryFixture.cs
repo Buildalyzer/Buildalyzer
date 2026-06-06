@@ -1,5 +1,4 @@
 using Buildalyzer.Environment;
-using Shouldly;
 
 namespace Buildalyzer.Tests.Environment;
 
@@ -79,6 +78,6 @@ public class EnvironmentFactoryFixture
         bool result = EnvironmentFactory.IsFrameworkTargetFramework(targetFramework);
 
         // Then
-        result.ShouldBe(expected);
+        result.Should().Be(expected);
     }
 }

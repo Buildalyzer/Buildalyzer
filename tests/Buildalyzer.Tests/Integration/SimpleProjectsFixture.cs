@@ -3,7 +3,6 @@ using System.IO;
 using System.IO.Compression;
 using Buildalyzer.Environment;
 using Buildalyzer.TestTools;
-using Shouldly;
 
 namespace Buildalyzer.Tests.Integration;
 
@@ -109,9 +108,9 @@ public class SimpleProjectsFixture
         IAnalyzerResults results = analyzer.Build(options);
 
         // Then
-        results.Count.ShouldBeGreaterThan(0, log.ToString());
-        results.OverallSuccess.ShouldBeTrue(log.ToString());
-        results.ShouldAllBe(x => x.Succeeded, log.ToString());
+        results.Should().NotBeEmpty(log.ToString());
+        results.OverallSuccess.Should().BeTrue(log.ToString());
+        results.Should().AllSatisfy(r => r.Succeeded.Should().BeTrue(), log.ToString());
     }
 
     [Test]
@@ -133,13 +132,13 @@ public class SimpleProjectsFixture
         // Then
         // If this is the multi-targeted project, use the net462 target
         IReadOnlyList<string> sourceFiles = results.Count == 1 ? results.First().SourceFiles : results["net462"].SourceFiles;
-        sourceFiles.ShouldNotBeNull(log.ToString());
+        sourceFiles.Should().NotBeNull(log.ToString());
         new[]
         {
             "AssemblyAttributes",
             analyzer.ProjectFile.OutputType?.Equals("exe", StringComparison.OrdinalIgnoreCase) ?? false ? "Program" : "Class1",
             "AssemblyInfo"
-        }.ShouldBeSubsetOf(sourceFiles.Select(x => Path.GetFileName(x).Split('.').TakeLast(2).First()), log.ToString());
+        }.Should().BeSubsetOf(sourceFiles.Select(x => Path.GetFileName(x).Split('.').TakeLast(2).First()), log.ToString());
     }
 
     [Test]
@@ -192,13 +191,13 @@ public class SimpleProjectsFixture
             // Then
             // If this is the multi-targeted project, use the net462 target
             IReadOnlyList<string> sourceFiles = results.Count == 1 ? results.First().SourceFiles : results["net462"].SourceFiles;
-            sourceFiles.ShouldNotBeNull(log.ToString());
+            sourceFiles.Should().NotBeNull(log.ToString());
             new[]
             {
             "AssemblyAttributes",
             analyzer.ProjectFile.OutputType?.Equals("exe", StringComparison.OrdinalIgnoreCase) ?? false ? "Program" : "Class1",
             "AssemblyInfo"
-            }.ShouldBeSubsetOf(sourceFiles.Select(x => Path.GetFileName(x).Split('.').TakeLast(2).First()), log.ToString());
+            }.Should().BeSubsetOf(sourceFiles.Select(x => Path.GetFileName(x).Split('.').TakeLast(2).First()), log.ToString());
         }
         finally
         {
@@ -222,15 +221,18 @@ public class SimpleProjectsFixture
 
         // Then
         IReadOnlyList<string> sourceFiles = results.SingleOrDefault()?.SourceFiles;
-        sourceFiles.ShouldNotBeNull(log.ToString());
-        new[]
-        {
-            "CustomControl1.cs",
-            "AssemblyInfo.cs",
-            "Resources.Designer.cs",
-            "Settings.Designer.cs",
-            "GeneratedInternalTypeHelper.g.cs"
-        }.ShouldBeSubsetOf(sourceFiles.Select(x => Path.GetFileName(x)), log.ToString());
+        sourceFiles.Should().NotBeNull(log.ToString());
+
+        sourceFiles.Select(x => Path.GetFileName(x))
+            .Should().Contain(
+            [
+                "CustomControl1.cs",
+                "AssemblyInfo.cs",
+                "Resources.Designer.cs",
+                "Settings.Designer.cs",
+                "GeneratedInternalTypeHelper.g.cs",
+            ],
+            because: log.ToString());
     }
 
     [Test]
@@ -246,14 +248,14 @@ public class SimpleProjectsFixture
 
         // Then
         IReadOnlyList<string> sourceFiles = results.SingleOrDefault()?.SourceFiles;
-        sourceFiles.ShouldNotBeNull(log.ToString());
+        sourceFiles.Should().NotBeNull(log.ToString());
         new[]
         {
             "Program",
             "TestFunction",
             "AssemblyAttributes",
             "AssemblyInfo"
-        }.ShouldBeSubsetOf(sourceFiles.Select(x => Path.GetFileName(x).Split('.').TakeLast(2).First()), log.ToString());
+        }.Should().BeSubsetOf(sourceFiles.Select(x => Path.GetFileName(x).Split('.').TakeLast(2).First()), log.ToString());
     }
 
     [Test]
@@ -268,21 +270,22 @@ public class SimpleProjectsFixture
 
         // Then
         // Multi-targeting projects product an extra result with an empty target framework that holds some MSBuild properties (I.e. the "outer" build)
-        results.Count.ShouldBe(3);
-        results.TargetFrameworks.ShouldBe(["net462", "netstandard2.0", string.Empty], ignoreOrder: false, log.ToString());
-        results[string.Empty].SourceFiles.ShouldBeEmpty();
+        results.Count.Should().Be(3);
+        results.TargetFrameworks.Should().BeEquivalentTo(["net462", "netstandard2.0", string.Empty], log.ToString());
+        results[string.Empty].SourceFiles.Should().BeEmpty();
+
         new[]
         {
             "AssemblyAttributes",
             "Class1",
             "AssemblyInfo"
-        }.ShouldBeSubsetOf(results["net462"].SourceFiles.Select(x => Path.GetFileName(x).Split('.').TakeLast(2).First()), log.ToString());
+        }.Should().BeSubsetOf(results["net462"].SourceFiles.Select(x => Path.GetFileName(x).Split('.').TakeLast(2).First()), log.ToString());
         new[]
         {
             "AssemblyAttributes",
             "Class2",
             "AssemblyInfo"
-        }.ShouldBeSubsetOf(results["netstandard2.0"].SourceFiles.Select(x => Path.GetFileName(x).Split('.').TakeLast(2).First()), log.ToString());
+        }.Should().BeSubsetOf(results["netstandard2.0"].SourceFiles.Select(x => Path.GetFileName(x).Split('.').TakeLast(2).First()), log.ToString());
     }
 
     [Test]
@@ -292,7 +295,7 @@ public class SimpleProjectsFixture
         StringWriter log = new StringWriter();
         IProjectAnalyzer analyzer = GetProjectAnalyzer(@"SdkMultiTargetingProject\SdkMultiTargetingProject.csproj", log);
 
-        analyzer.SolutionDirectory.ShouldEndWith(Path.DirectorySeparatorChar.ToString());
+        analyzer.SolutionDirectory.Should().EndWith(Path.DirectorySeparatorChar.ToString());
     }
 
     [Test]
@@ -307,13 +310,13 @@ public class SimpleProjectsFixture
 
         // Then
         IReadOnlyList<string> sourceFiles = results.First(x => x.TargetFramework == "net462").SourceFiles;
-        sourceFiles.ShouldNotBeNull(log.ToString());
+        sourceFiles.Should().NotBeNull(log.ToString());
         new[]
         {
             "AssemblyAttributes",
             "Class1",
             "AssemblyInfo"
-        }.ShouldBeSubsetOf(sourceFiles.Select(x => Path.GetFileName(x).Split('.').TakeLast(2).First()), log.ToString());
+        }.Should().BeSubsetOf(sourceFiles.Select(x => Path.GetFileName(x).Split('.').TakeLast(2).First()), log.ToString());
     }
 
     [Test]
@@ -328,13 +331,13 @@ public class SimpleProjectsFixture
 
         // Then
         IReadOnlyList<string> sourceFiles = results.First(x => x.TargetFramework == "netstandard2.0").SourceFiles;
-        sourceFiles.ShouldNotBeNull(log.ToString());
+        sourceFiles.Should().NotBeNull(log.ToString());
         new[]
         {
             "AssemblyAttributes",
             "AssemblyInfo",
             "Class2"
-        }.ShouldBeSubsetOf(sourceFiles.Select(x => Path.GetFileName(x).Split('.').TakeLast(2).First()), log.ToString());
+        }.Should().BeSubsetOf(sourceFiles.Select(x => Path.GetFileName(x).Split('.').TakeLast(2).First()), log.ToString());
     }
 
     [Test]
@@ -348,8 +351,8 @@ public class SimpleProjectsFixture
         IReadOnlyList<string> references = analyzer.Build().First().References;
 
         // Then
-        references.ShouldNotBeNull(log.ToString());
-        references.ShouldContain(x => x.EndsWith("NodaTime.dll"), log.ToString());
+        references.Should().NotBeNull(log.ToString());
+        references.Should().Contain(x => x.EndsWith("NodaTime.dll"), log.ToString());
     }
 
     [Test]
@@ -363,8 +366,8 @@ public class SimpleProjectsFixture
         IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> packageReferences = analyzer.Build().First().PackageReferences;
 
         // Then
-        packageReferences.ShouldNotBeNull(log.ToString());
-        packageReferences.Keys.ShouldContain("NodaTime", log.ToString());
+        packageReferences.Should().NotBeNull(log.ToString());
+        packageReferences.Keys.Should().Contain("NodaTime", log.ToString());
     }
 
     [Test]
@@ -378,9 +381,9 @@ public class SimpleProjectsFixture
         IEnumerable<string> references = analyzer.Build().First().ProjectReferences;
 
         // Then
-        references.ShouldNotBeNull(log.ToString());
-        references.ShouldContain(x => x.EndsWith("SdkNetStandardProjectWithPackageReference.csproj"), log.ToString());
-        references.ShouldContain(x => x.EndsWith("SdkNetStandardProject.csproj"), log.ToString());
+        references.Should().NotBeNull(log.ToString());
+        references.Should().Contain(x => x.EndsWith("SdkNetStandardProjectWithPackageReference.csproj"), log.ToString());
+        references.Should().Contain(x => x.EndsWith("SdkNetStandardProject.csproj"), log.ToString());
     }
 
     [Test]
@@ -394,14 +397,14 @@ public class SimpleProjectsFixture
         IEnumerable<string> preprocessorSymbols = analyzer.Build().First().PreprocessorSymbols;
 
         // Then
-        preprocessorSymbols.ShouldNotBeNull(log.ToString());
-        preprocessorSymbols.ShouldContain("DEF2", log.ToString());
-        preprocessorSymbols.ShouldContain("NETSTANDARD2_0", log.ToString());
+        preprocessorSymbols.Should().NotBeNull(log.ToString());
+        preprocessorSymbols.Should().Contain("DEF2", log.ToString());
+        preprocessorSymbols.Should().Contain("NETSTANDARD2_0", log.ToString());
 
         // If this test runs on .NET 5 or greater, the NETSTANDARD2_0_OR_GREATER preprocessor symbol should be added. Can't test on lower SDK versions
 
 #if NETSTANDARD2_0_OR_GREATER
-        preprocessorSymbols.ShouldContain("NETSTANDARD2_0_OR_GREATER", log.ToString());
+        preprocessorSymbols.Should().Contain("NETSTANDARD2_0_OR_GREATER", log.ToString());
 #endif
     }
 
@@ -417,8 +420,8 @@ public class SimpleProjectsFixture
         IReadOnlyList<string> references = analyzer.Build().First().References;
 
         // Then
-        references.ShouldNotBeNull(log.ToString());
-        references.ShouldContain(x => x.EndsWith("NodaTime.dll"), log.ToString());
+        references.Should().NotBeNull(log.ToString());
+        references.Should().Contain(x => x.EndsWith("NodaTime.dll"), log.ToString());
     }
 
     [Test]
@@ -432,8 +435,8 @@ public class SimpleProjectsFixture
         IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> packageReferences = analyzer.Build().First().PackageReferences;
 
         // Then
-        packageReferences.ShouldNotBeNull(log.ToString());
-        packageReferences.Keys.ShouldContain("NodaTime", log.ToString());
+        packageReferences.Should().NotBeNull(log.ToString());
+        packageReferences.Keys.Should().Contain("NodaTime", log.ToString());
     }
 
     [Test]
@@ -447,9 +450,9 @@ public class SimpleProjectsFixture
         IEnumerable<string> references = analyzer.Build().First().ProjectReferences;
 
         // Then
-        references.ShouldNotBeNull(log.ToString());
-        references.ShouldContain(x => x.EndsWith("LegacyFrameworkProject.csproj"), log.ToString());
-        references.ShouldContain(x => x.EndsWith("LegacyFrameworkProjectWithPackageReference.csproj"), log.ToString());
+        references.Should().NotBeNull(log.ToString());
+        references.Should().Contain(x => x.EndsWith("LegacyFrameworkProject.csproj"), log.ToString());
+        references.Should().Contain(x => x.EndsWith("LegacyFrameworkProjectWithPackageReference.csproj"), log.ToString());
     }
 
     [Test]
@@ -472,7 +475,7 @@ public class SimpleProjectsFixture
         // Then
         // The generated GUIDs are based on subpath and can also change between MSBuild versions,
         // so this may need to be updated periodically
-        results.First().ProjectGuid.ToString().ShouldBe("1ff50b40-c27b-5cea-b265-29c5436a8a7b");
+        results.First().ProjectGuid.ToString().Should().Be("1ff50b40-c27b-5cea-b265-29c5436a8a7b");
     }
 
     [Test]
@@ -493,9 +496,9 @@ public class SimpleProjectsFixture
         IAnalyzerResults results = analyzer.Build(options);
 
         // Then
-        results.Count.ShouldBeGreaterThan(0);
-        results.OverallSuccess.ShouldBeTrue();
-        results.ShouldAllBe(x => x.Succeeded);
+        results.Count.Should().BeGreaterThan(0);
+        results.OverallSuccess.Should().BeTrue();
+        results.Should().AllSatisfy(x => x.Succeeded.Should().BeTrue());
     }
 
     [Test]
@@ -512,10 +515,10 @@ public class SimpleProjectsFixture
         IAnalyzerResults results = analyzer.Build();
 
         // Then
-        results.Count.ShouldBeGreaterThan(0, log.ToString());
-        results.First().SourceFiles.ShouldNotBeNull();
-        results.OverallSuccess.ShouldBeTrue(log.ToString());
-        results.ShouldAllBe(x => x.Succeeded, log.ToString());
+        results.Count.Should().BeGreaterThan(0, log.ToString());
+        results.First().SourceFiles.Should().NotBeNull();
+        results.OverallSuccess.Should().BeTrue(log.ToString());
+        results.Should().AllSatisfy(x => x.Succeeded.Should().BeTrue(), log.ToString());
     }
 
     [Test]
@@ -532,17 +535,17 @@ public class SimpleProjectsFixture
         IAnalyzerResults results = analyzer.Build();
 
         // Then
-        results.Count.ShouldBeGreaterThan(0, log.ToString());
-        results.OverallSuccess.ShouldBeTrue(log.ToString());
-        results.ShouldAllBe(x => x.Succeeded, log.ToString());
+        results.Count.Should().BeGreaterThan(0, log.ToString());
+        results.OverallSuccess.Should().BeTrue(log.ToString());
+        results.Should().AllSatisfy(x => x.Succeeded.Should().BeTrue(), log.ToString());
 
         IAnalyzerResult result = results.First();
-        result.PackageReferences.Count.ShouldBeGreaterThan(0);
-        result.PackageReferences.ShouldContain(x => x.Key == "BouncyCastle.NetCore");
-        result.SourceFiles.Length.ShouldBeGreaterThan(0);
-        result.SourceFiles.ShouldContain(x => x.Contains("Program.vb"));
-        result.References.Length.ShouldBeGreaterThan(0);
-        result.References.ShouldContain(x => x.Contains("BouncyCastle.Crypto.dll"));
+        result.PackageReferences.Count.Should().BeGreaterThan(0);
+        result.PackageReferences.Should().Contain(x => x.Key == "BouncyCastle.NetCore");
+        result.SourceFiles.Length.Should().BeGreaterThan(0);
+        result.SourceFiles.Should().Contain(x => x.Contains("Program.vb"));
+        result.References.Length.Should().BeGreaterThan(0);
+        result.References.Should().Contain(x => x.Contains("BouncyCastle.Crypto.dll"));
     }
 
     // To produce different versions, create a global.json and then run `dotnet clean` and `dotnet build -bl:SdkNetCore31Project-vX.binlog` from the source project folder
@@ -565,7 +568,7 @@ public class SimpleProjectsFixture
         using var stream = File.OpenRead(path);
         using GZipStream gzip = new GZipStream(stream, CompressionMode.Decompress);
         using BinaryReader reader = new BinaryReader(gzip);
-        reader.ReadInt32().ShouldBe(expectedVersion);
+        reader.ReadInt32().Should().Be(expectedVersion);
 
         // Given
         StringWriter log = new StringWriter();
@@ -580,13 +583,13 @@ public class SimpleProjectsFixture
         IReadOnlyList<string> sourceFiles = analyzerResults.First().SourceFiles;
 
         // Then
-        sourceFiles.ShouldNotBeNull(log.ToString());
+        sourceFiles.Should().NotBeNull(log.ToString());
         new[]
         {
         "AssemblyAttributes",
         "Class1",
         "AssemblyInfo"
-        }.ShouldBeSubsetOf(sourceFiles.Select(x => Path.GetFileName(x).Split('.').TakeLast(2).First()), log.ToString());
+        }.Should().BeSubsetOf(sourceFiles.Select(x => Path.GetFileName(x).Split('.').TakeLast(2).First()), log.ToString());
     }
 
     [Test]
