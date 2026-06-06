@@ -2,7 +2,6 @@ using System.IO;
 using System.Threading.Tasks;
 using Buildalyzer.TestTools;
 using Microsoft.CodeAnalysis;
-using Shouldly;
 
 namespace Buildalyzer.Workspaces.Tests;
 
@@ -35,10 +34,10 @@ public class ProjectAnalyzerExtensionsFixture
 
         // Then
         string logged = log.ToString();
-        logged.ShouldNotContain("Workspace failed");
-        workspace.CurrentSolution.FilePath.ShouldBe(solutionPath);
-        workspace.CurrentSolution.Projects.ShouldContain(p => p.Name == "LegacyFrameworkProject");
-        workspace.CurrentSolution.Projects.ShouldContain(p => p.Name == "SdkFrameworkProject");
+        logged.Should().NotContain("Workspace failed");
+        workspace.CurrentSolution.FilePath.Should().Be(solutionPath);
+        workspace.CurrentSolution.Projects.Should().Contain(p => p.Name == "LegacyFrameworkProject");
+        workspace.CurrentSolution.Projects.Should().Contain(p => p.Name == "SdkFrameworkProject");
     }
 
     [Test(Description = "Loading a workspace from a .slnx solution should not throw https://github.com/Buildalyzer/Buildalyzer/issues/350")]
@@ -54,9 +53,9 @@ public class ProjectAnalyzerExtensionsFixture
 
         // Then
         string logged = log.ToString();
-        logged.ShouldNotContain("Workspace failed");
-        workspace.CurrentSolution.FilePath.ShouldBe(solutionPath);
-        workspace.CurrentSolution.Projects.ShouldContain(p => p.Name == "SdkNetStandardProject");
+        logged.Should().NotContain("Workspace failed");
+        workspace.CurrentSolution.FilePath.Should().Be(solutionPath);
+        workspace.CurrentSolution.Projects.Should().Contain(p => p.Name == "SdkNetStandardProject");
     }
 
     [Test]
@@ -72,8 +71,8 @@ public class ProjectAnalyzerExtensionsFixture
 
         // Then
         string logged = log.ToString();
-        logged.ShouldNotContain("Workspace failed");
-        compilation.GetSymbolsWithName(x => x == "Class1").ShouldNotBeEmpty(log.ToString());
+        logged.Should().NotContain("Workspace failed");
+        compilation.GetSymbolsWithName(x => x == "Class1").Should().NotBeEmpty(log.ToString());
     }
 
     [Test]
@@ -89,8 +88,8 @@ public class ProjectAnalyzerExtensionsFixture
 
         // Then
         string logged = log.ToString();
-        logged.ShouldNotContain("Workspace failed");
-        compilationOptions.OutputKind.ShouldBe(OutputKind.DynamicallyLinkedLibrary, log.ToString());
+        logged.Should().NotContain("Workspace failed");
+        compilationOptions.OutputKind.Should().Be(OutputKind.DynamicallyLinkedLibrary, log.ToString());
     }
 
     [Test]
@@ -124,8 +123,8 @@ public class ProjectAnalyzerExtensionsFixture
 
         // Then
         string logged = log.ToString();
-        logged.ShouldNotContain("Workspace failed");
-        workspace.CurrentSolution.Projects.Count().ShouldBe(totalProjects, log.ToString());
+        logged.Should().NotContain("Workspace failed");
+        workspace.CurrentSolution.Projects.Count().Should().Be(totalProjects, log.ToString());
     }
 
     [TestCase(false, 1)]
@@ -141,8 +140,8 @@ public class ProjectAnalyzerExtensionsFixture
 
         // Then
         string logged = log.ToString();
-        logged.ShouldNotContain("Workspace failed");
-        workspace.CurrentSolution.Projects.Count().ShouldBe(totalProjects, log.ToString());
+        logged.Should().NotContain("Workspace failed");
+        workspace.CurrentSolution.Projects.Count().Should().Be(totalProjects, log.ToString());
     }
 
     [Test]
@@ -158,9 +157,9 @@ public class ProjectAnalyzerExtensionsFixture
 
         // Then
         string logged = log.ToString();
-        logged.ShouldNotContain("Workspace failed");
-        compilation.GetSymbolsWithName(x => x == "Class1").ShouldBeEmpty(log.ToString());
-        compilation.GetSymbolsWithName(x => x == "Class2").ShouldNotBeEmpty(log.ToString());
+        logged.Should().NotContain("Workspace failed");
+        compilation.GetSymbolsWithName(x => x == "Class1").Should().BeEmpty(log.ToString());
+        compilation.GetSymbolsWithName(x => x == "Class2").Should().NotBeEmpty(log.ToString());
     }
 
     [Test]
@@ -176,8 +175,8 @@ public class ProjectAnalyzerExtensionsFixture
 
         // Then
         string logged = log.ToString();
-        logged.ShouldNotContain("Workspace failed");
-        project.AnalyzerReferences.ShouldContain(reference => reference.Display == "Microsoft.CodeQuality.Analyzers");
+        logged.Should().NotContain("Workspace failed");
+        project.AnalyzerReferences.Should().Contain(reference => reference.Display == "Microsoft.CodeQuality.Analyzers");
     }
 
     [Test]
@@ -193,8 +192,8 @@ public class ProjectAnalyzerExtensionsFixture
 
         // Then
         string logged = log.ToString();
-        logged.ShouldNotContain("Workspace failed");
-        project.AdditionalDocuments.Select(d => d.Name).ShouldBe(["message.txt"]);
+        logged.Should().NotContain("Workspace failed");
+        project.AdditionalDocuments.Select(d => d.Name).Should().BeEquivalentTo("message.txt");
     }
 
     [Test]
@@ -211,7 +210,7 @@ public class ProjectAnalyzerExtensionsFixture
 
         Diagnostic[] diagnostics = [.. compilation.GetDiagnostics().Where(d => d.Id == "CS8632")];
 
-        diagnostics.ShouldBeEmpty();
+        diagnostics.Should().BeEmpty();
     }
 
     [Test(Description = "Test C#12 features https://github.com/phmonte/Buildalyzer/issues/281")]
@@ -229,7 +228,7 @@ public class ProjectAnalyzerExtensionsFixture
 
         Diagnostic[] diagnostics = [.. compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error)];
 
-        diagnostics.ShouldBeEmpty();
+        diagnostics.Should().BeEmpty();
     }
 
     [Test(Description = "Test Reference Alias support")]
@@ -247,7 +246,7 @@ public class ProjectAnalyzerExtensionsFixture
 
         Diagnostic[] diagnostics = [.. compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error)];
 
-        diagnostics.ShouldBeEmpty();
+        diagnostics.Should().BeEmpty();
     }
 
 #if Is_Windows
@@ -264,9 +263,9 @@ public class ProjectAnalyzerExtensionsFixture
 
         // Then
         string logged = log.ToString();
-        logged.ShouldNotContain("Workspace failed");
-        project.ShouldNotBeNull();
-        project.Documents.ShouldNotBeEmpty();
+        logged.Should().NotContain("Workspace failed");
+        project.Should().NotBeNull();
+        project.Documents.Should().NotBeEmpty();
     }
 #endif
 
