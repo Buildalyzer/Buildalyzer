@@ -1,13 +1,13 @@
 using System;
 using System.Linq;
 using Microsoft.Build.Framework;
-using MsBuildPipeLogger;
+using XenoAtom.MsBuildPipeLogger;
 
 namespace Buildalyzer.Logger;
 
 public class BuildalyzerLogger : PipeLogger
 {
-    private string _pipeHandleAsString;
+    private string _pipeHandleAsString = string.Empty;
     private bool _logEverything;
 
     public override void Initialize(IEventSource eventSource)
@@ -52,10 +52,10 @@ public class BuildalyzerLogger : PipeLogger
         }
 
         // Only log what we need for Buildalyzer
-        eventSource.ProjectStarted += (_, e) => Pipe.Write(e);
-        eventSource.ProjectFinished += (_, e) => Pipe.Write(e);
-        eventSource.BuildFinished += (_, e) => Pipe.Write(e);
-        eventSource.ErrorRaised += (_, e) => Pipe.Write(e);
+        eventSource.ProjectStarted += (_, e) => Pipe!.Write(e);
+        eventSource.ProjectFinished += (_, e) => Pipe!.Write(e);
+        eventSource.BuildFinished += (_, e) => Pipe!.Write(e);
+        eventSource.ErrorRaised += (_, e) => Pipe!.Write(e);
         eventSource.TargetStarted += TargetStarted;
         eventSource.TargetFinished += TargetFinished;
         eventSource.MessageRaised += MessageRaised;
@@ -66,7 +66,7 @@ public class BuildalyzerLogger : PipeLogger
         // Only send the CoreCompile target
         if (e.TargetName == "CoreCompile")
         {
-            Pipe.Write(e);
+            Pipe!.Write(e);
         }
     }
 
@@ -75,7 +75,7 @@ public class BuildalyzerLogger : PipeLogger
         // Only send the CoreCompile target
         if (e.TargetName == "CoreCompile")
         {
-            Pipe.Write(e);
+            Pipe!.Write(e);
         }
     }
 
@@ -87,7 +87,7 @@ public class BuildalyzerLogger : PipeLogger
             string.Equals(e.SenderName, "Fsc", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(e.SenderName, "Vbc", StringComparison.OrdinalIgnoreCase))
         {
-            Pipe.Write(e);
+            Pipe!.Write(e);
         }
     }
 }

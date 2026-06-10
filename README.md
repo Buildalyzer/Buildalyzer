@@ -123,7 +123,7 @@ Be careful though, you may break the ability to load, compile, or interpret the 
 ## Publish SingleFile
 If your application's output is a single file, you will need to provide the path to the following DLLs:
 
--MsBuildPipeLogger.Logger.dll
+-XenoAtom.MsBuildPipeLogger.Logger.dll
 -Buildalyzer.logger.dll
 
 Variable name: LoggerPathDll

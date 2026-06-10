@@ -8,7 +8,7 @@ using Buildalyzer.Logging;
 using Microsoft.Build.Construction;
 using Microsoft.Build.Logging;
 using Microsoft.Extensions.Logging;
-using MsBuildPipeLogger;
+using XenoAtom.MsBuildPipeLogger;
 using ILogger = Microsoft.Build.Framework.ILogger;
 
 namespace Buildalyzer;
