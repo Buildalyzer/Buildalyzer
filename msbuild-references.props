@@ -1,0 +1,26 @@
+<Project>
+
+  <!--
+    MSBuild engine assemblies are referenced for their compile-time API only. At runtime, Buildalyzer
+    registers MSBuildLocator (see src/Buildalyzer/MSBuildLocatorBootstrap.cs), which loads the matching
+    assemblies from the installed .NET SDK. This keeps the binlog reader in lock-step with the SDK's
+    MSBuild that produced the events - shipping our own (older) copy would make the reader reject newer
+    binlog records written by a newer SDK.
+
+    ExcludeAssets="runtime" keeps these assemblies out of every output directory so they never shadow the
+    SDK's copy; PrivateAssets="all" stops them (and the transitive runtime pulled in by MSBuild.StructuredLogger)
+    from flowing to referencing projects. Any project that touches Microsoft.Build.* types - directly or via
+    Buildalyzer's public API (e.g. AddBinaryLogger, Analyze, AddBuildLogger) - imports this file.
+  -->
+  <ItemGroup>
+    <AdditionalFiles Include="$(MSBuildThisFileFullPath)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Build" Version="17.10.46" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Build.Framework" Version="17.10.46" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Build.Utilities.Core" Version="17.10.46" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.NET.StringTools" Version="17.10.46" ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

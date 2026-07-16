@@ -27,6 +27,10 @@
     <PackageReference Include="NUnit.Analyzers" Version="*" PrivateAssets="all" />
   </ItemGroup>
 
+  <!-- Uses Buildalyzer's MSBuild-typed API (AddBinaryLogger, Analyze); references the MSBuild assemblies
+       for compile only, resolved from the SDK at runtime via MSBuildLocator. -->
+  <Import Project="../../msbuild-references.props" />
+
   <ItemGroup>
     <ProjectReference Include="../../src/Buildalyzer/Buildalyzer.csproj" />
     <ProjectReference Include="../Buildalyzer.TestTools/Buildalyzer.TestTools.csproj" />
