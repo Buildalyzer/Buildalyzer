@@ -182,15 +182,23 @@ public class SimpleProjectsFixture
         string binLogPath = Path.ChangeExtension(Path.GetTempFileName(), ".binlog");
         analyzer.AddBinaryLogger(binLogPath);
 
+        // Multi-targeted projects schedule one build per TFM and produce a
+        // per-TFM binlog so the iterations don't overwrite one another.
+        bool multiTargeted = analyzer.ProjectFile.IsMultiTargeted;
+        string analyzedBinLogPath = multiTargeted
+            ? Path.Combine(
+                Path.GetDirectoryName(binLogPath)!,
+                $"{Path.GetFileNameWithoutExtension(binLogPath)}.net462{Path.GetExtension(binLogPath)}")
+            : binLogPath;
+
         try
         {
             // When
             analyzer.Build(options);
-            IAnalyzerResults results = analyzer.Manager.Analyze(binLogPath);
+            IAnalyzerResults results = analyzer.Manager.Analyze(analyzedBinLogPath);
 
             // Then
-            // If this is the multi-targeted project, use the net462 target
-            IReadOnlyList<string> sourceFiles = results.Count == 1 ? results.First().SourceFiles : results["net462"].SourceFiles;
+            IReadOnlyList<string> sourceFiles = results.First().SourceFiles;
             sourceFiles.Should().NotBeNull(log.ToString());
             new[]
             {
@@ -201,9 +209,16 @@ public class SimpleProjectsFixture
         }
         finally
         {
+            // Clean up the original path and any per-TFM derivatives.
             if (File.Exists(binLogPath))
             {
                 File.Delete(binLogPath);
+            }
+            string binLogDir = Path.GetDirectoryName(binLogPath)!;
+            string baseName = Path.GetFileNameWithoutExtension(binLogPath);
+            foreach (string perTfmLog in Directory.GetFiles(binLogDir, $"{baseName}.*.binlog"))
+            {
+                File.Delete(perTfmLog);
             }
         }
     }
@@ -216,8 +231,16 @@ public class SimpleProjectsFixture
         StringWriter log = new StringWriter();
         IProjectAnalyzer analyzer = GetProjectAnalyzer(@"WpfCustomControlLibrary1\WpfCustomControlLibrary1.csproj", log);
 
+        // GeneratedInternalTypeHelper.g.cs is produced by WPF's MarkupCompilePass2,
+        // which is wired through PrepareResourcesDependsOn rather than CoreCompile's
+        // closure, so the default Compile target doesn't reach it. Callers that want
+        // those build-time-generated files surfaced opt into the Build closure.
+        EnvironmentOptions options = new();
+        options.TargetsToBuild.Clear();
+        options.TargetsToBuild.Add("Build");
+
         // When
-        IAnalyzerResults results = analyzer.Build();
+        IAnalyzerResults results = analyzer.Build(options);
 
         // Then
         IReadOnlyList<string> sourceFiles = results.SingleOrDefault()?.SourceFiles;
@@ -233,6 +256,30 @@ public class SimpleProjectsFixture
                 "GeneratedInternalTypeHelper.g.cs",
             ],
             because: log.ToString());
+    }
+
+    [Test]
+    [Platform("win")]
+    public void SdkWpfLibraryGetsXamlGeneratedSourceFilesWithDefaultTargets()
+    {
+        // Given
+        StringWriter log = new StringWriter();
+        IProjectAnalyzer analyzer = GetProjectAnalyzer(@"SdkWpfLibrary\SdkWpfLibrary.csproj", log);
+
+        // When
+        // Default options: the Compile target plus the design-time properties.
+        // WPF hooks DesignTimeMarkupCompilation into CoreCompileDependsOn when
+        // DesignTimeBuild is set, so MarkupCompilePass1 still runs and the XAML
+        // *.g.cs sources are surfaced — the same fidelity as a VS design-time build.
+        IAnalyzerResults results = analyzer.Build();
+
+        // Then
+        IReadOnlyList<string> sourceFiles = results.SingleOrDefault()?.SourceFiles;
+        sourceFiles.Should().NotBeNull(log.ToString());
+
+        IEnumerable<string> fileNames = sourceFiles.Select(Path.GetFileName);
+        fileNames.Should().Contain("UserControl1.xaml.cs", because: log.ToString());
+        fileNames.Should().Contain(x => x.StartsWith("UserControl1.g"), because: log.ToString());
     }
 
     [Test]
@@ -269,11 +316,10 @@ public class SimpleProjectsFixture
         IAnalyzerResults results = analyzer.Build();
 
         // Then
-        // Multi-targeting projects product an extra result with an empty target framework that holds some MSBuild properties (I.e. the "outer" build)
-        results.Count.Should().Be(3);
-        results.TargetFrameworks.Should().BeEquivalentTo(["net462", "netstandard2.0", string.Empty], log.ToString());
-        results[string.Empty].SourceFiles.Should().BeEmpty();
-
+        // Multi-targeted projects schedule one inner build per target framework
+        // (matching how VS schedules design-time builds), so only per-TFM results.
+        results.Count.Should().Be(2);
+        results.TargetFrameworks.Should().BeEquivalentTo(["net462", "netstandard2.0"], log.ToString());
         new[]
         {
             "AssemblyAttributes",

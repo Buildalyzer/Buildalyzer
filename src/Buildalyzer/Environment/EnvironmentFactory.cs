@@ -74,13 +74,11 @@ public class EnvironmentFactory
         // Clone the options global properties dictionary so we can add to it
         Dictionary<string, string> additionalGlobalProperties = new Dictionary<string, string>(options.GlobalProperties);
 
-        // Required to force CoreCompile target when it calculates everything is already built
-        // This can happen if the file wasn't previously generated (Clean only cleans what was in that file)
-        // Only required if we're not running a design-time build (otherwise the targets will be replaced anyway)
-        if (options.TargetsToBuild.Contains("Clean", StringComparer.OrdinalIgnoreCase))
-        {
-            additionalGlobalProperties.Add(MsBuildProperties.NonExistentFile, Path.Combine("__NonExistentSubDir__", "__NonExistentFile__"));
-        }
+        // Required to force CoreCompile target when it calculates everything is already built.
+        // CoreCompile's Inputs include $(NonExistentFile); pointing it at a path that does not
+        // exist makes MSBuild see CoreCompile as out-of-date on every invocation, so Csc fires
+        // its TaskCommandLineEventArgs (under SkipCompilerExecution=true) every time.
+        additionalGlobalProperties.Add(MsBuildProperties.NonExistentFile, Path.Combine("__NonExistentSubDir__", "__NonExistentFile__"));
 
         // Clone the options global properties dictionary so we can add to it
         Dictionary<string, string> additionalEnvironmentVariables = new Dictionary<string, string>(options.EnvironmentVariables);
@@ -112,13 +110,11 @@ public class EnvironmentFactory
         // Clone the options global properties dictionary so we can add to it
         Dictionary<string, string> additionalGlobalProperties = new Dictionary<string, string>(options.GlobalProperties);
 
-        // Required to force CoreCompile target when it calculates everything is already built
-        // This can happen if the file wasn't previously generated (Clean only cleans what was in that file)
-        // Only required if we're not running a design-time build (otherwise the targets will be replaced anyway)
-        if (options.TargetsToBuild.Contains("Clean", StringComparer.OrdinalIgnoreCase))
-        {
-            additionalGlobalProperties.Add(MsBuildProperties.NonExistentFile, Path.Combine("__NonExistentSubDir__", "__NonExistentFile__"));
-        }
+        // Required to force CoreCompile target when it calculates everything is already built.
+        // CoreCompile's Inputs include $(NonExistentFile); pointing it at a path that does not
+        // exist makes MSBuild see CoreCompile as out-of-date on every invocation, so Csc fires
+        // its TaskCommandLineEventArgs (under SkipCompilerExecution=true) every time.
+        additionalGlobalProperties.Add(MsBuildProperties.NonExistentFile, Path.Combine("__NonExistentSubDir__", "__NonExistentFile__"));
 
         if (!options.EnvironmentVariables.TryGetValue(EnvironmentVariables.MSBUILD_EXE_PATH, out var msBuildExePath)
             && !GetFrameworkMsBuildExePath(out msBuildExePath))

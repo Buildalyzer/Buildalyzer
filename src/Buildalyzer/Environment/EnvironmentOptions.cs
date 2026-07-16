@@ -9,18 +9,27 @@ public class EnvironmentOptions
     public EnvironmentPreference Preference { get; set; } = EnvironmentPreference.Core;
 
     /// <summary>
-    /// The default targets to build.
-    /// </summary>
-    public List<string> TargetsToBuild { get; } = ["Clean", "Build"];
-
-    /// <summary>
-    /// Indicates that a design-time build should be performed.
-    /// The default value is <c>true</c>. Note that when performing
-    /// a design-time build, the <see cref="TargetsToBuild"/> will
-    /// be ignored and the design-time targets will be used instead.
+    /// The targets to build. Defaults to <c>["Compile"]</c>, the target driven by
+    /// design-time builds in Visual Studio and Roslyn's <c>MSBuildWorkspace</c>.
     /// </summary>
     /// <remarks>
-    /// See https://github.com/dotnet/project-system/blob/master/docs/design-time-builds.md.
+    /// Targets hooked into the wider <c>Build</c> closure (such as <c>BeforeBuild</c>/<c>AfterBuild</c>
+    /// hooks and WPF's <c>MarkupCompilePass2</c>) do not run under <c>Compile</c>.
+    /// Callers that need the source files those targets generate should set this
+    /// to <c>["Build"]</c>. See https://github.com/dotnet/project-system/blob/main/docs/design-time-builds.md.
+    /// </remarks>
+    public List<string> TargetsToBuild { get; } = ["Compile"];
+
+    /// <summary>
+    /// Indicates that a design-time build should be performed. The default is <c>true</c>.
+    /// </summary>
+    /// <remarks>
+    /// See https://github.com/dotnet/project-system/blob/main/docs/design-time-builds.md.
+    /// Note that some SDKs rely on the design-time properties this sets to generate sources
+    /// under the default <see cref="TargetsToBuild"/> — e.g. WPF only runs its design-time
+    /// markup compilation (which generates the XAML <c>*.g.cs</c> files) when
+    /// <c>DesignTimeBuild</c> is set. When setting this to <c>false</c>, also set
+    /// <see cref="TargetsToBuild"/> to <c>["Build"]</c> to run full code generation.
     /// </remarks>
     public bool DesignTime { get; set; } = true;
 
