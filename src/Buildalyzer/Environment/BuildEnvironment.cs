@@ -31,8 +31,14 @@ public sealed class BuildEnvironment
     public bool DesignTime { get; }
 
     /// <summary>
-    /// Runs the restore target prior to any other targets using the MSBuild <c>restore</c> switch.
+    /// Runs the restore target prior to any other targets.
     /// </summary>
+    /// <remarks>
+    /// Builds without a pinned target framework use the MSBuild <c>-restore</c> switch.
+    /// Builds that pin the <c>TargetFramework</c> global property can't restore themselves
+    /// (restore is a per-project operation that must run on the outer build), so
+    /// <see cref="ProjectAnalyzer"/> runs restore as a separate up-front invocation instead.
+    /// </remarks>
     public bool Restore { get; }
 
     public string[] TargetsToBuild { get; }
@@ -141,5 +147,27 @@ public sealed class BuildEnvironment
             Arguments,
             _additionalGlobalProperties,
             _additionalEnvironmentVariables,
-            WorkingDirectory);
+            WorkingDirectory)
+    {
+        NoAutoResponse = NoAutoResponse,
+    };
+
+    /// <summary>
+    /// Clones the build environment with a different <see cref="Restore"/> setting.
+    /// </summary>
+    /// <param name="restore">Whether the restore target should run prior to any other targets.</param>
+    /// <returns>A new build environment with the specified restore setting.</returns>
+    public BuildEnvironment WithRestore(bool restore) => new(
+            DesignTime,
+            restore,
+            TargetsToBuild,
+            MsBuildExePath,
+            DotnetExePath,
+            Arguments,
+            _additionalGlobalProperties,
+            _additionalEnvironmentVariables,
+            WorkingDirectory)
+    {
+        NoAutoResponse = NoAutoResponse,
+    };
 }

@@ -335,6 +335,34 @@ public class SimpleProjectsFixture
     }
 
     [Test]
+    public void MultiTargetingCleanBuildRestoresAllTargetFrameworks()
+    {
+        // Given
+        const string projectFile = @"SdkMultiTargetingProject\SdkMultiTargetingProject.csproj";
+        StringWriter log = new StringWriter();
+        IProjectAnalyzer analyzer = GetProjectAnalyzer(projectFile, log);
+
+        // When
+        // Deleting obj forces the up-front restore to produce the assets file both inner
+        // builds use; a restore pinned to a TargetFramework would write a single-framework
+        // assets file and fail the other framework's build with NETSDK1005 (#346).
+        DeleteProjectDirectory(projectFile, "obj");
+        DeleteProjectDirectory(projectFile, "bin");
+        IAnalyzerResults results = analyzer.Build();
+
+        // Then
+        results.Count.Should().Be(2, log.ToString());
+        results.OverallSuccess.Should().BeTrue(log.ToString());
+        results.Should().AllSatisfy(r => r.Succeeded.Should().BeTrue(), log.ToString());
+
+        // Restore runs once as a separate unpinned invocation; the pinned per-TFM builds
+        // must not carry the -restore switch (it would restore the inner build).
+        string logContent = log.ToString();
+        logContent.Split("/target:Restore").Length.Should().Be(2, "restore should run exactly once");
+        logContent.Should().NotContain("/restore ");
+    }
+
+    [Test]
     public void SolutionDirShouldEndWithDirectorySeparator()
     {
         // Given

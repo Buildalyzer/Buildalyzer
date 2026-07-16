@@ -9,6 +9,7 @@
 
 ## Other changes
 
+- NuGet restore no longer runs with the `TargetFramework` global property pinned. Builds that pin a target framework (multi-targeted projects built without a specific TFM, and the `Build(targetFramework)` overloads) now restore in a single separate up-front `Restore`-target invocation without `TargetFramework`, instead of passing `-restore` to each pinned build. Restore is a per-project (outer build) operation: pinned restores executed the inner build's restore, producing a single-framework assets file, and re-ran restore once per framework (#346). Builds without a pinned target framework still use `-restore`. When a `BinaryLogger` is attached, the separate restore invocation writes a `.restore`-suffixed binlog (e.g. `project.restore.binlog`).
 - When a multi-targeted project is built without a specific TFM and a `BinaryLogger` is attached, each per-TFM build writes to a TFM-suffixed binlog path (e.g. `project.net8.0.binlog`) so the builds don't overwrite one another (#348).
 - Made the `NonExistentFile` workaround unconditional so `CoreCompile` reliably re-runs and `Csc` emits its command-line event regardless of which targets the caller specifies, matching Roslyn's `MSBuildWorkspace` (#348).
 

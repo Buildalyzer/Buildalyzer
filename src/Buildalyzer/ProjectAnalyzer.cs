@@ -84,15 +84,28 @@ public class ProjectAnalyzer : IProjectAnalyzer
             targetFrameworks = [null];
         }
 
-        // Create a new build environment for each target.
-        // Note that restore must run per iteration: restoring with the TargetFramework
-        // global property pinned produces an assets file for that framework only.
         AnalyzerResults results = [];
         bool perTfmBinlog = targetFrameworks.Length > 1;
+
+        // Builds that pin a target framework can't restore themselves (see Restore), so run
+        // a single up-front restore with the project's own (outer) build environment. It
+        // produces an assets file covering every framework, so one restore is enough.
+        bool restore = environmentOptions.Restore && targetFrameworks.Any(t => t is not null);
+        if (restore && !Restore(EnvironmentFactory.GetBuildEnvironment(null, environmentOptions), results))
+        {
+            return results;
+        }
+
+        // Create a new build environment for each target
         foreach (string targetFramework in targetFrameworks)
         {
             BuildEnvironment buildEnvironment = EnvironmentFactory.GetBuildEnvironment(targetFramework, environmentOptions);
-            using (WithPerTfmBinaryLogPaths(targetFramework, perTfmBinlog))
+            if (restore)
+            {
+                buildEnvironment = buildEnvironment.WithRestore(false);
+            }
+
+            using (WithSuffixedBinaryLogPaths(targetFramework, perTfmBinlog))
             {
                 BuildTargets(buildEnvironment, targetFramework, buildEnvironment.TargetsToBuild, results);
             }
@@ -114,9 +127,21 @@ public class ProjectAnalyzer : IProjectAnalyzer
 
         AnalyzerResults results = [];
         bool perTfmBinlog = targetFrameworks.Length > 1;
+
+        // Builds that pin a target framework can't restore themselves (see Restore), so run
+        // a single up-front restore covering every framework.
+        if (buildEnvironment.Restore && targetFrameworks.Any(t => t is not null))
+        {
+            if (!Restore(buildEnvironment, results))
+            {
+                return results;
+            }
+            buildEnvironment = buildEnvironment.WithRestore(false);
+        }
+
         foreach (string targetFramework in targetFrameworks)
         {
-            using (WithPerTfmBinaryLogPaths(targetFramework, perTfmBinlog))
+            using (WithSuffixedBinaryLogPaths(targetFramework, perTfmBinlog))
             {
                 BuildTargets(buildEnvironment, targetFramework, buildEnvironment.TargetsToBuild, results);
             }
@@ -125,12 +150,44 @@ public class ProjectAnalyzer : IProjectAnalyzer
         return results;
     }
 
-    // When invoking multiple per-TFM builds in succession, point any attached
-    // BinaryLogger at a TFM-suffixed path so each iteration's binlog isn't
-    // overwritten by the next. The original path is restored on dispose.
-    private IDisposable WithPerTfmBinaryLogPaths(string? targetFramework, bool active)
+    // Restore is a per-project operation that belongs to the outer build: restoring with the
+    // TargetFramework global property pinned executes the inner build's restore instead,
+    // writing an assets file that covers only that framework and breaking any other
+    // framework's build with NETSDK1005 (#346). So builds that pin a target framework never
+    // use the -restore switch; the Restore target runs in this separate up-front invocation
+    // that doesn't pin TargetFramework. Builds without a pinned target framework keep using
+    // -restore in the build invocation itself, which already restores the outer build.
+    // Returns whether the restore succeeded; callers short-circuit on failure rather than
+    // running builds that would only fail with a misleading (e.g. NETSDK1005) error.
+    private bool Restore(BuildEnvironment buildEnvironment, AnalyzerResults results)
     {
-        if (!active || targetFramework is null)
+        AnalyzerResults restoreResults = [];
+        using (WithSuffixedBinaryLogPaths("restore", true))
+        {
+            BuildTargets(buildEnvironment.WithRestore(false), null, ["Restore"], restoreResults);
+        }
+
+        // Only carry over the success flag: the restore invocation's evaluation would
+        // otherwise surface as an extra (empty) target framework result.
+        results.Add([], restoreResults.OverallSuccess);
+
+        // On failure the caller stops before any build overwrites BuildEventArguments, so
+        // carry the restore's events across to surface the actual restore diagnostics.
+        if (!restoreResults.OverallSuccess)
+        {
+            results.BuildEventArguments = restoreResults.BuildEventArguments;
+        }
+
+        return restoreResults.OverallSuccess;
+    }
+
+    // When invoking multiple builds in succession (per-TFM builds, or a restore preceding
+    // them), point any attached BinaryLogger at a suffixed path (e.g. the TFM or "restore")
+    // so each invocation's binlog isn't overwritten by the next. The original path is
+    // restored on dispose.
+    private IDisposable WithSuffixedBinaryLogPaths(string? suffix, bool active)
+    {
+        if (!active || suffix is null)
         {
             return NullScope.Instance;
         }
@@ -140,7 +197,7 @@ public class ProjectAnalyzer : IProjectAnalyzer
         {
             string original = logger.Parameters;
             snapshots.Add((logger, original));
-            logger.Parameters = AddTargetFrameworkToBinaryLogPath(original, targetFramework);
+            logger.Parameters = AddSuffixToBinaryLogPath(original, suffix);
         }
 
         return new RestoreBinaryLogPaths(snapshots);
@@ -149,7 +206,7 @@ public class ProjectAnalyzer : IProjectAnalyzer
     // BinaryLogger.Parameters is a semicolon-separated list where the log file is either a
     // bare path ending in ".binlog" or a "LogFile=" segment (possibly quoted), alongside
     // other segments like "ProjectImports=Embed". Only the log file segment is rewritten.
-    internal static string AddTargetFrameworkToBinaryLogPath(string parameters, string targetFramework)
+    internal static string AddSuffixToBinaryLogPath(string parameters, string suffix)
     {
         if (string.IsNullOrEmpty(parameters))
         {
@@ -176,7 +233,7 @@ public class ProjectAnalyzer : IProjectAnalyzer
             string quote = path.Length == segment.Length ? string.Empty : "\"";
             string extension = Path.GetExtension(path);
             string withoutExtension = Path.ChangeExtension(path, null);
-            segments[i] = $"{prefix}{quote}{withoutExtension}.{targetFramework}{extension}{quote}";
+            segments[i] = $"{prefix}{quote}{withoutExtension}.{suffix}{extension}{quote}";
             return string.Join(";", segments);
         }
 
@@ -216,12 +273,24 @@ public class ProjectAnalyzer : IProjectAnalyzer
                 Guard.NotNull(environmentOptions)));
 
     /// <inheritdoc/>
-    public IAnalyzerResults Build(string targetFramework, BuildEnvironment buildEnvironment) =>
-        BuildTargets(
-            Guard.NotNull(buildEnvironment),
-            targetFramework,
-            buildEnvironment.TargetsToBuild,
-            []);
+    public IAnalyzerResults Build(string targetFramework, BuildEnvironment buildEnvironment)
+    {
+        Guard.NotNull(buildEnvironment);
+
+        AnalyzerResults results = [];
+
+        // Builds that pin a target framework can't restore themselves (see Restore).
+        if (buildEnvironment.Restore && targetFramework is not null)
+        {
+            if (!Restore(buildEnvironment, results))
+            {
+                return results;
+            }
+            buildEnvironment = buildEnvironment.WithRestore(false);
+        }
+
+        return BuildTargets(buildEnvironment, targetFramework, buildEnvironment.TargetsToBuild, results);
+    }
 
     /// <inheritdoc/>
     public IAnalyzerResults Build() =>
@@ -371,7 +440,9 @@ public class ProjectAnalyzer : IProjectAnalyzer
     /// When a multi-targeted project is built without specifying a target framework,
     /// one build runs per target framework and each writes its own binlog with the
     /// target framework appended to the file name (e.g. <c>project.net8.0.binlog</c>)
-    /// so the builds don't overwrite one another.
+    /// so the builds don't overwrite one another. When restore runs as a separate
+    /// up-front invocation (any build that pins a target framework), it writes a
+    /// <c>.restore</c>-suffixed binlog (e.g. <c>project.restore.binlog</c>).
     /// </remarks>
     /// <param name="binaryLogFilePath">
     /// The binlog file path, defaulting to the project path with a <c>.binlog</c> extension.
