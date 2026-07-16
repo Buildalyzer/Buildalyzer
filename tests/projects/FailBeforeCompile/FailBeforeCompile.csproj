@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <DefineConstants>$(DefineConstants);CUSTOM_CONSTANT</DefineConstants>
+  </PropertyGroup>
+
+  <!--
+    Simulates an MSBuild failure that aborts the build before CoreCompile invokes Csc
+    (e.g. a shallow-clone Nerdbank.GitVersioning failure). CompilerCommand is therefore
+    never captured, so the workspace must be reconstructed from evaluation-time items.
+    See https://github.com/Buildalyzer/Buildalyzer/issues/341.
+  -->
+  <Target Name="FailBeforeCompile" BeforeTargets="CoreCompile">
+    <Error Text="Simulated failure before Csc runs (issue #341)" />
+  </Target>
+
+</Project>

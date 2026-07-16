@@ -160,7 +160,7 @@ public static class AnalyzerResultExtensions
                 CSharpParseOptions parseOptions = new CSharpParseOptions();
 
                 // Add any constants
-                parseOptions = parseOptions.WithPreprocessorSymbols(analyzerResult.PreprocessorSymbols);
+                parseOptions = parseOptions.WithPreprocessorSymbols(GetPreprocessorSymbols(analyzerResult));
 
                 // Get language version
                 string langVersion = analyzerResult.GetProperty("LangVersion");
@@ -294,6 +294,15 @@ public static class AnalyzerResultExtensions
     private static IEnumerable<DocumentInfo> GetDocuments(IAnalyzerResult analyzerResult, ProjectId projectId)
     {
         string[] sourceFiles = analyzerResult.SourceFiles ?? [];
+
+        // If MSBuild failed before the compiler ran, CompilerCommand is null and there are
+        // no source files. Fall back to the evaluation-time Compile items so the workspace
+        // still contains documents (see https://github.com/Buildalyzer/Buildalyzer/issues/341).
+        if (sourceFiles.Length == 0 && ShouldFallBackToItems(analyzerResult))
+        {
+            sourceFiles = GetItemPaths(analyzerResult, "Compile");
+        }
+
         return GetDocuments(sourceFiles, projectId);
     }
 
@@ -311,23 +320,99 @@ public static class AnalyzerResultExtensions
     {
         string projectDirectory = Path.GetDirectoryName(analyzerResult.ProjectFilePath);
         string[] additionalFiles = analyzerResult.AdditionalFiles ?? [];
+
+        // Fall back to evaluation-time AdditionalFiles items when the compiler never ran (issue #341).
+        if (additionalFiles.Length == 0 && ShouldFallBackToItems(analyzerResult))
+        {
+            return GetDocuments(GetItemPaths(analyzerResult, "AdditionalFiles"), projectId);
+        }
+
         return GetDocuments(additionalFiles.Select(x => Path.Combine(projectDirectory!, x)), projectId);
     }
 
-    private static IEnumerable<MetadataReference> GetMetadataReferences(IAnalyzerResult analyzerResult) =>
-        analyzerResult
-            .References?.Where(File.Exists)
-            .Select(x => MetadataReference.CreateFromFile(x, new MetadataReferenceProperties(aliases: analyzerResult.ReferenceAliases.GetValueOrDefault(x))))
-            ?? [];
+    private static IEnumerable<MetadataReference> GetMetadataReferences(IAnalyzerResult analyzerResult)
+    {
+        string[] references = analyzerResult.References ?? [];
+
+        // When the compiler never ran (issue #341) the resolved reference set is unavailable.
+        // Fall back to the evaluation-time reference items: ReferencePath (resolved by
+        // ResolveAssemblyReferences) is preferred; the raw Reference items are a last resort.
+        if (references.Length == 0 && ShouldFallBackToItems(analyzerResult))
+        {
+            string[] fallback = GetItemPaths(analyzerResult, "ReferencePath");
+            references = fallback.Length > 0 ? fallback : GetItemPaths(analyzerResult, "Reference");
+        }
+
+        return references
+            .Where(File.Exists)
+            .Select(x => MetadataReference.CreateFromFile(x, new MetadataReferenceProperties(aliases: analyzerResult.ReferenceAliases.GetValueOrDefault(x))));
+    }
 
     private static IEnumerable<AnalyzerReference> GetAnalyzerReferences(IAnalyzerResult analyzerResult, Workspace workspace)
     {
         IAnalyzerAssemblyLoader loader = workspace.Services.GetRequiredService<IAnalyzerService>().GetLoader();
 
         string projectDirectory = Path.GetDirectoryName(analyzerResult.ProjectFilePath);
-        return analyzerResult.AnalyzerReferences?.Where(x => File.Exists(Path.GetFullPath(x, projectDirectory!)))
-            .Select(x => new AnalyzerFileReference(Path.GetFullPath(x, projectDirectory!), loader))
-            ?? [];
+        string[] analyzerReferences = analyzerResult.AnalyzerReferences ?? [];
+
+        // Fall back to evaluation-time Analyzer items when the compiler never ran (issue #341).
+        if (analyzerReferences.Length == 0 && ShouldFallBackToItems(analyzerResult))
+        {
+            analyzerReferences = GetItemPaths(analyzerResult, "Analyzer");
+        }
+
+        return analyzerReferences.Where(x => File.Exists(Path.GetFullPath(x, projectDirectory!)))
+            .Select(x => new AnalyzerFileReference(Path.GetFullPath(x, projectDirectory!), loader));
+    }
+
+    /// <summary>
+    /// Determines whether workspace state should be reconstructed from evaluation-time
+    /// items and properties. This happens when MSBuild aborted before the compiler task
+    /// (<c>Csc</c>/<c>Vbc</c>/<c>Fsc</c>) ran, so <c>CompilerCommand</c> was never captured
+    /// and the compiler-backed accessors return empty, yet the project did evaluate its
+    /// <c>Compile</c> items. See https://github.com/Buildalyzer/Buildalyzer/issues/341.
+    /// </summary>
+    private static bool ShouldFallBackToItems(IAnalyzerResult analyzerResult) =>
+        (analyzerResult.SourceFiles is null || analyzerResult.SourceFiles.Length == 0)
+        && analyzerResult.Items.TryGetValue("Compile", out IProjectItem[] compileItems)
+        && compileItems.Length > 0;
+
+    /// <summary>
+    /// Resolves the <c>ItemSpec</c> of every item of the given type to a full path relative
+    /// to the project directory. Returns an empty array when the item type isn't present.
+    /// </summary>
+    private static string[] GetItemPaths(IAnalyzerResult analyzerResult, string itemType)
+    {
+        if (!analyzerResult.Items.TryGetValue(itemType, out IProjectItem[] items) || items.Length == 0)
+        {
+            return [];
+        }
+
+        string projectDirectory = Path.GetDirectoryName(analyzerResult.ProjectFilePath);
+        return items
+            .Select(x => Path.GetFullPath(x.ItemSpec, projectDirectory!))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static IEnumerable<string> GetPreprocessorSymbols(IAnalyzerResult analyzerResult)
+    {
+        if (analyzerResult.PreprocessorSymbols is { Length: > 0 } symbols)
+        {
+            return symbols;
+        }
+
+        // Fall back to the evaluated DefineConstants property when the compiler never ran (issue #341).
+        if (ShouldFallBackToItems(analyzerResult))
+        {
+            string defineConstants = analyzerResult.GetProperty("DefineConstants");
+            if (!string.IsNullOrWhiteSpace(defineConstants))
+            {
+                return defineConstants.Split([';'], StringSplitOptions.RemoveEmptyEntries);
+            }
+        }
+
+        return analyzerResult.PreprocessorSymbols ?? [];
     }
 
     private static bool TryGetSupportedLanguageName(string projectPath, out string languageName)
