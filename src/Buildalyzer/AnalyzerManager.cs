@@ -1,11 +1,10 @@
-extern alias StructuredLogger;
 using System.Collections.Concurrent;
 using System.IO;
 using Buildalyzer.IO;
 using Buildalyzer.Logging;
 using Microsoft.Build.Construction;
+using Microsoft.Build.Logging;
 using Microsoft.Extensions.Logging;
-using StructuredLogger::Microsoft.Build.Logging.StructuredLogger;
 
 namespace Buildalyzer;
 
@@ -100,7 +99,11 @@ public class AnalyzerManager : IAnalyzerManager
             throw new ArgumentException($"The path {binLogPath} could not be found.");
         }
 
-        BinLogReader reader = new BinLogReader();
+        // Read the binary log with MSBuild's own replay source (loaded from the SDK via MSBuildLocator),
+        // so the reader always matches the MSBuild version that wrote the log. The binary logger that
+        // produced the file is the same SDK MSBuild, so this avoids the binlog-format-version mismatch
+        // that a separately-versioned reader (e.g. MSBuild.StructuredLogger) is prone to.
+        BinaryLogReplayEventSource reader = new BinaryLogReplayEventSource();
 
         using EventProcessor eventProcessor = new EventProcessor(this, null, buildLoggers, reader, true);
         reader.Replay(binLogPath);

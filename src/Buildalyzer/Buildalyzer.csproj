@@ -35,7 +35,6 @@ ToBeReleased
     <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic" Version="[4,)" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
     <PackageReference Include="Microsoft.VisualStudio.SolutionPersistence" Version="1.0.52" />
-    <PackageReference Include="MSBuild.StructuredLogger" Version="2.2.158" Aliases="StructuredLogger" />
     <PackageReference Include="XenoAtom.MsBuildPipeLogger" Version="1.0.1" ExcludeAssets="contentFiles" />
   </ItemGroup>
 

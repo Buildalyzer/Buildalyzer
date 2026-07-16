@@ -1,4 +1,3 @@
-extern alias StructuredLogger;
 using Microsoft.Build.Framework;
 using Microsoft.Extensions.Logging;
 
