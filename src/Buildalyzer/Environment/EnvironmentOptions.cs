@@ -9,18 +9,27 @@ public class EnvironmentOptions
     public EnvironmentPreference Preference { get; set; } = EnvironmentPreference.Core;
 
     /// <summary>
-    /// The default targets to build.
+    /// The targets to build. Defaults to <c>["Compile"]</c>.
     /// </summary>
-    public List<string> TargetsToBuild { get; } = ["Clean", "Build"];
+    // Compile is the target the project-system design-time-builds docs identify
+    // as VS's language-service equivalent. It runs ResolveReferences and
+    // CoreCompile (so Csc fires its TaskCommandLineEventArgs under
+    // SkipCompilerExecution=true) without running BeforeBuild/AfterBuild or
+    // CopyFilesToOutputDirectory.
+    //
+    // Some SDKs only run their full code-generation under the Build closure
+    // — notably WPF's MarkupCompilePass2 (which produces
+    // GeneratedInternalTypeHelper.g.cs) is wired through
+    // PrepareResourcesDependsOn rather than CoreCompileDependsOn. Callers that
+    // need those build-time-generated source files should set
+    // <c>TargetsToBuild = ["Build"]</c>.
+    public List<string> TargetsToBuild { get; } = ["Compile"];
 
     /// <summary>
-    /// Indicates that a design-time build should be performed.
-    /// The default value is <c>true</c>. Note that when performing
-    /// a design-time build, the <see cref="TargetsToBuild"/> will
-    /// be ignored and the design-time targets will be used instead.
+    /// Indicates that a design-time build should be performed. The default is <c>true</c>.
     /// </summary>
     /// <remarks>
-    /// See https://github.com/dotnet/project-system/blob/master/docs/design-time-builds.md.
+    /// See https://github.com/dotnet/project-system/blob/main/docs/design-time-builds.md.
     /// </remarks>
     public bool DesignTime { get; set; } = true;
 
