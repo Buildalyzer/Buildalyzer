@@ -34,10 +34,17 @@ public class EnvironmentOptions
     public bool DesignTime { get; set; } = true;
 
     /// <summary>
-    /// Runs the restore target prior to any other targets using the MSBuild <c>restore</c> switch.
+    /// Runs the restore target prior to any other targets. The default is <c>true</c>.
+    /// Set to <c>false</c> when the project is already restored externally
+    /// (e.g. <c>dotnet restore</c> on the solution).
     /// </summary>
     /// <remarks>
-    /// See https://github.com/Microsoft/msbuild/pull/2414.
+    /// Builds without a pinned target framework use the MSBuild <c>-restore</c> switch
+    /// (see https://github.com/Microsoft/msbuild/pull/2414). Builds that pin the
+    /// <c>TargetFramework</c> global property (multi-targeted projects and the
+    /// <c>Build(targetFramework)</c> overloads) restore in a separate up-front invocation
+    /// without <c>TargetFramework</c> instead, since restore is a per-project operation
+    /// whose assets file must cover every target framework (#346).
     /// </remarks>
     public bool Restore { get; set; } = true;
 
