@@ -142,4 +142,20 @@ public sealed class BuildEnvironment
             _additionalGlobalProperties,
             _additionalEnvironmentVariables,
             WorkingDirectory);
+
+    /// <summary>
+    /// Clones the build environment with a different <see cref="Restore"/> setting.
+    /// </summary>
+    /// <param name="restore">Whether the MSBuild <c>-restore</c> switch should be used.</param>
+    /// <returns>A new build environment with the specified restore setting.</returns>
+    public BuildEnvironment WithRestore(bool restore) => new(
+            DesignTime,
+            restore,
+            TargetsToBuild,
+            MsBuildExePath,
+            DotnetExePath,
+            Arguments,
+            _additionalGlobalProperties,
+            _additionalEnvironmentVariables,
+            WorkingDirectory);
 }

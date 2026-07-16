@@ -87,13 +87,23 @@ public class ProjectAnalyzer : IProjectAnalyzer
         // Create a new build environment for each target
         AnalyzerResults results = [];
         bool perTfmBinlog = targetFrameworks.Length > 1;
+        bool restored = false;
         foreach (string targetFramework in targetFrameworks)
         {
             BuildEnvironment buildEnvironment = EnvironmentFactory.GetBuildEnvironment(targetFramework, environmentOptions);
+
+            // Restore evaluates every framework in <TargetFrameworks> regardless of the
+            // TargetFramework global property, so one restore covers all iterations.
+            if (restored && buildEnvironment.Restore)
+            {
+                buildEnvironment = buildEnvironment.WithRestore(false);
+            }
+
             using (WithPerTfmBinaryLogPaths(targetFramework, perTfmBinlog))
             {
                 BuildTargets(buildEnvironment, targetFramework, buildEnvironment.TargetsToBuild, results);
             }
+            restored = true;
         }
 
         return results;
@@ -112,12 +122,20 @@ public class ProjectAnalyzer : IProjectAnalyzer
 
         AnalyzerResults results = [];
         bool perTfmBinlog = targetFrameworks.Length > 1;
+        bool restored = false;
         foreach (string targetFramework in targetFrameworks)
         {
+            // Restore evaluates every framework in <TargetFrameworks> regardless of the
+            // TargetFramework global property, so one restore covers all iterations.
+            BuildEnvironment tfmBuildEnvironment = restored && buildEnvironment.Restore
+                ? buildEnvironment.WithRestore(false)
+                : buildEnvironment;
+
             using (WithPerTfmBinaryLogPaths(targetFramework, perTfmBinlog))
             {
-                BuildTargets(buildEnvironment, targetFramework, buildEnvironment.TargetsToBuild, results);
+                BuildTargets(tfmBuildEnvironment, targetFramework, tfmBuildEnvironment.TargetsToBuild, results);
             }
+            restored = true;
         }
 
         return results;
@@ -144,16 +162,41 @@ public class ProjectAnalyzer : IProjectAnalyzer
         return new RestoreBinaryLogPaths(snapshots);
     }
 
-    private static string AddTargetFrameworkToBinaryLogPath(string parameters, string targetFramework)
+    // BinaryLogger.Parameters is a semicolon-separated list where the log file is either a
+    // bare path ending in ".binlog" or a "LogFile=" segment (possibly quoted), alongside
+    // other segments like "ProjectImports=Embed". Only the log file segment is rewritten.
+    internal static string AddTargetFrameworkToBinaryLogPath(string parameters, string targetFramework)
     {
         if (string.IsNullOrEmpty(parameters))
         {
             return parameters;
         }
 
-        string extension = Path.GetExtension(parameters);
-        string withoutExtension = Path.ChangeExtension(parameters, null);
-        return $"{withoutExtension}.{targetFramework}{extension}";
+        string[] segments = parameters.Split(';');
+        for (int i = 0; i < segments.Length; i++)
+        {
+            string segment = segments[i];
+            string prefix = string.Empty;
+            if (segment.StartsWith("LogFile=", StringComparison.OrdinalIgnoreCase))
+            {
+                prefix = segment[.."LogFile=".Length];
+                segment = segment[prefix.Length..];
+            }
+
+            string path = segment.Trim('"');
+            if (!path.EndsWith(".binlog", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            string quote = path.Length == segment.Length ? string.Empty : "\"";
+            string extension = Path.GetExtension(path);
+            string withoutExtension = Path.ChangeExtension(path, null);
+            segments[i] = $"{prefix}{quote}{withoutExtension}.{targetFramework}{extension}{quote}";
+            return string.Join(";", segments);
+        }
+
+        return parameters;
     }
 
     private sealed class RestoreBinaryLogPaths(List<(BinaryLogger Logger, string OriginalParameters)> snapshots) : IDisposable
@@ -200,19 +243,19 @@ public class ProjectAnalyzer : IProjectAnalyzer
     public IAnalyzerResults Build() =>
         ProjectFile.IsMultiTargeted
             ? Build(ProjectFile.TargetFrameworks)
-            : Build((string)null);
+            : Build((string?)null);
 
     /// <inheritdoc/>
     public IAnalyzerResults Build(EnvironmentOptions environmentOptions) =>
         ProjectFile.IsMultiTargeted
             ? Build(ProjectFile.TargetFrameworks, environmentOptions)
-            : Build((string)null, environmentOptions);
+            : Build((string?)null, environmentOptions);
 
     /// <inheritdoc/>
     public IAnalyzerResults Build(BuildEnvironment buildEnvironment) =>
         ProjectFile.IsMultiTargeted
             ? Build(ProjectFile.TargetFrameworks, buildEnvironment)
-            : Build((string)null, buildEnvironment);
+            : Build((string?)null, buildEnvironment);
 
     // This is where the magic happens - returns one result per result target framework
     private IAnalyzerResults BuildTargets(
@@ -337,6 +380,19 @@ public class ProjectAnalyzer : IProjectAnalyzer
         return effectiveDictionary;
     }
 
+    /// <summary>
+    /// Adds a <see cref="BinaryLogger"/> that writes a binlog file for each build.
+    /// </summary>
+    /// <remarks>
+    /// When a multi-targeted project is built without specifying a target framework,
+    /// one build runs per target framework and each writes its own binlog with the
+    /// target framework appended to the file name (e.g. <c>project.net8.0.binlog</c>)
+    /// so the builds don't overwrite one another.
+    /// </remarks>
+    /// <param name="binaryLogFilePath">
+    /// The binlog file path, defaulting to the project path with a <c>.binlog</c> extension.
+    /// </param>
+    /// <param name="collectProjectImports">How MSBuild project imports are collected in the log.</param>
     public void AddBinaryLogger(
         string? binaryLogFilePath = null,
         BinaryLogger.ProjectImportsCollectionMode collectProjectImports = BinaryLogger.ProjectImportsCollectionMode.Embed) =>

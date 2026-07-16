@@ -260,6 +260,30 @@ public class SimpleProjectsFixture
 
     [Test]
     [Platform("win")]
+    public void SdkWpfLibraryGetsXamlGeneratedSourceFilesWithDefaultTargets()
+    {
+        // Given
+        StringWriter log = new StringWriter();
+        IProjectAnalyzer analyzer = GetProjectAnalyzer(@"SdkWpfLibrary\SdkWpfLibrary.csproj", log);
+
+        // When
+        // Default options: the Compile target plus the design-time properties.
+        // WPF hooks DesignTimeMarkupCompilation into CoreCompileDependsOn when
+        // DesignTimeBuild is set, so MarkupCompilePass1 still runs and the XAML
+        // *.g.cs sources are surfaced — the same fidelity as a VS design-time build.
+        IAnalyzerResults results = analyzer.Build();
+
+        // Then
+        IReadOnlyList<string> sourceFiles = results.SingleOrDefault()?.SourceFiles;
+        sourceFiles.Should().NotBeNull(log.ToString());
+
+        IEnumerable<string> fileNames = sourceFiles.Select(Path.GetFileName);
+        fileNames.Should().Contain("UserControl1.xaml.cs", because: log.ToString());
+        fileNames.Should().Contain(x => x.StartsWith("UserControl1.g"), because: log.ToString());
+    }
+
+    [Test]
+    [Platform("win")]
     public void AzureFunctionSourceFiles()
     {
         // Given
