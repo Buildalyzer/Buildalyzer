@@ -10,7 +10,6 @@
 ## Other changes
 
 - When a multi-targeted project is built without a specific TFM and a `BinaryLogger` is attached, each per-TFM build writes to a TFM-suffixed binlog path (e.g. `project.net8.0.binlog`) so the builds don't overwrite one another (#348).
-- NuGet restore now runs only on the first per-TFM build of a multi-targeted project — a single restore covers every framework in `<TargetFrameworks>` (#348).
 - Made the `NonExistentFile` workaround unconditional so `CoreCompile` reliably re-runs and `Csc` emits its command-line event regardless of which targets the caller specifies, matching Roslyn's `MSBuildWorkspace` (#348).
 
 # 6.0.4

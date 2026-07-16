@@ -84,26 +84,18 @@ public class ProjectAnalyzer : IProjectAnalyzer
             targetFrameworks = [null];
         }
 
-        // Create a new build environment for each target
+        // Create a new build environment for each target.
+        // Note that restore must run per iteration: restoring with the TargetFramework
+        // global property pinned produces an assets file for that framework only.
         AnalyzerResults results = [];
         bool perTfmBinlog = targetFrameworks.Length > 1;
-        bool restored = false;
         foreach (string targetFramework in targetFrameworks)
         {
             BuildEnvironment buildEnvironment = EnvironmentFactory.GetBuildEnvironment(targetFramework, environmentOptions);
-
-            // Restore evaluates every framework in <TargetFrameworks> regardless of the
-            // TargetFramework global property, so one restore covers all iterations.
-            if (restored && buildEnvironment.Restore)
-            {
-                buildEnvironment = buildEnvironment.WithRestore(false);
-            }
-
             using (WithPerTfmBinaryLogPaths(targetFramework, perTfmBinlog))
             {
                 BuildTargets(buildEnvironment, targetFramework, buildEnvironment.TargetsToBuild, results);
             }
-            restored = true;
         }
 
         return results;
@@ -122,20 +114,12 @@ public class ProjectAnalyzer : IProjectAnalyzer
 
         AnalyzerResults results = [];
         bool perTfmBinlog = targetFrameworks.Length > 1;
-        bool restored = false;
         foreach (string targetFramework in targetFrameworks)
         {
-            // Restore evaluates every framework in <TargetFrameworks> regardless of the
-            // TargetFramework global property, so one restore covers all iterations.
-            BuildEnvironment tfmBuildEnvironment = restored && buildEnvironment.Restore
-                ? buildEnvironment.WithRestore(false)
-                : buildEnvironment;
-
             using (WithPerTfmBinaryLogPaths(targetFramework, perTfmBinlog))
             {
-                BuildTargets(tfmBuildEnvironment, targetFramework, tfmBuildEnvironment.TargetsToBuild, results);
+                BuildTargets(buildEnvironment, targetFramework, buildEnvironment.TargetsToBuild, results);
             }
-            restored = true;
         }
 
         return results;
