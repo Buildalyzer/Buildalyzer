@@ -9,26 +9,42 @@ public class EnvironmentOptions
     public EnvironmentPreference Preference { get; set; } = EnvironmentPreference.Core;
 
     /// <summary>
-    /// The default targets to build.
-    /// </summary>
-    public List<string> TargetsToBuild { get; } = ["Clean", "Build"];
-
-    /// <summary>
-    /// Indicates that a design-time build should be performed.
-    /// The default value is <c>true</c>. Note that when performing
-    /// a design-time build, the <see cref="TargetsToBuild"/> will
-    /// be ignored and the design-time targets will be used instead.
+    /// The targets to build. Defaults to <c>["Compile"]</c>, the target driven by
+    /// design-time builds in Visual Studio and Roslyn's <c>MSBuildWorkspace</c>.
     /// </summary>
     /// <remarks>
-    /// See https://github.com/dotnet/project-system/blob/master/docs/design-time-builds.md.
+    /// Targets hooked into the wider <c>Build</c> closure (such as <c>BeforeBuild</c>/<c>AfterBuild</c>
+    /// hooks and WPF's <c>MarkupCompilePass2</c>) do not run under <c>Compile</c>.
+    /// Callers that need the source files those targets generate should set this
+    /// to <c>["Build"]</c>. See https://github.com/dotnet/project-system/blob/main/docs/design-time-builds.md.
+    /// </remarks>
+    public List<string> TargetsToBuild { get; } = ["Compile"];
+
+    /// <summary>
+    /// Indicates that a design-time build should be performed. The default is <c>true</c>.
+    /// </summary>
+    /// <remarks>
+    /// See https://github.com/dotnet/project-system/blob/main/docs/design-time-builds.md.
+    /// Note that some SDKs rely on the design-time properties this sets to generate sources
+    /// under the default <see cref="TargetsToBuild"/> — e.g. WPF only runs its design-time
+    /// markup compilation (which generates the XAML <c>*.g.cs</c> files) when
+    /// <c>DesignTimeBuild</c> is set. When setting this to <c>false</c>, also set
+    /// <see cref="TargetsToBuild"/> to <c>["Build"]</c> to run full code generation.
     /// </remarks>
     public bool DesignTime { get; set; } = true;
 
     /// <summary>
-    /// Runs the restore target prior to any other targets using the MSBuild <c>restore</c> switch.
+    /// Runs the restore target prior to any other targets. The default is <c>true</c>.
+    /// Set to <c>false</c> when the project is already restored externally
+    /// (e.g. <c>dotnet restore</c> on the solution).
     /// </summary>
     /// <remarks>
-    /// See https://github.com/Microsoft/msbuild/pull/2414.
+    /// Builds without a pinned target framework use the MSBuild <c>-restore</c> switch
+    /// (see https://github.com/Microsoft/msbuild/pull/2414). Builds that pin the
+    /// <c>TargetFramework</c> global property (multi-targeted projects and the
+    /// <c>Build(targetFramework)</c> overloads) restore in a separate up-front invocation
+    /// without <c>TargetFramework</c> instead, since restore is a per-project operation
+    /// whose assets file must cover every target framework (#346).
     /// </remarks>
     public bool Restore { get; set; } = true;
 
