@@ -7,8 +7,6 @@
 
   <ItemGroup Label="Test versions">
     <PackageReference Include="FSharp.Compiler.Service" Version="*" />
-    <PackageReference Update="Microsoft.CodeAnalysis.CSharp" Version="4.*" />
-    <PackageReference Update="Microsoft.CodeAnalysis.VisualBasic" Version="4.*" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,10 +24,6 @@
     <PackageReference Include="AwesomeAssertions.Analyzers" Version="9.0.8" PrivateAssets="all" />
     <PackageReference Include="NUnit.Analyzers" Version="*" PrivateAssets="all" />
   </ItemGroup>
-
-  <!-- Uses Buildalyzer's MSBuild-typed API (AddBinaryLogger, Analyze); references the MSBuild assemblies
-       for compile only, resolved from the SDK at runtime via MSBuildLocator. -->
-  <Import Project="../../msbuild-references.props" />
 
   <ItemGroup>
     <ProjectReference Include="../../src/Buildalyzer/Buildalyzer.csproj" />

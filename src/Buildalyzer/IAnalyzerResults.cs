@@ -1,11 +1,11 @@
-using Microsoft.Build.Framework;
+using XenoAtom.MsBuildPipeLogger;
 
 namespace Buildalyzer;
 
 public interface IAnalyzerResults : IReadOnlyCollection<IAnalyzerResult>
 {
-    /// <summary>The collected <see cref="BuildEventArgs"/> during the analysis.</summary>
-    ImmutableArray<BuildEventArgs> BuildEventArguments { get; }
+    /// <summary>The collected <see cref="PipeBuildEventArgs"/> during the analysis.</summary>
+    ImmutableArray<PipeBuildEventArgs> BuildEventArguments { get; }
 
     IAnalyzerResult this[string targetFramework] { get; }
 

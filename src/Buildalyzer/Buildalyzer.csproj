@@ -19,23 +19,18 @@ ToBeReleased
     </PackageReleaseNotes>
   </PropertyGroup>
 
-  <!-- Compile-time-only MSBuild engine references; resolved from the SDK at runtime via MSBuildLocator. -->
-  <Import Project="../../msbuild-references.props" />
-
   <ItemGroup>
-    <!-- MSBuildLocator registers the SDK's MSBuild at startup (see MSBuildLocatorBootstrap). This is a
-         real runtime dependency, so it flows to consumers (unlike the compile-only references above).
-         1.9.0+ dropped its net6.0 asset, so pin the last net6.0-capable version there. -->
-    <PackageReference Include="Microsoft.Build.Locator" Version="1.11.2" Condition="'$(TargetFramework)' != 'net6.0'" />
-    <PackageReference Include="Microsoft.Build.Locator" Version="1.7.8" Condition="'$(TargetFramework)' == 'net6.0'" />
-    <!-- Buildalyzer-internal compile references not part of the shared API surface; excluded at runtime. -->
-    <PackageReference Include="Microsoft.Build.Tasks.Core" Version="17.10.46" ExcludeAssets="runtime" PrivateAssets="all" />
-    <PackageReference Include="NuGet.Frameworks" Version="6.9.1" ExcludeAssets="runtime" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="[4,)" />
-    <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic" Version="[4,)" />
+    <!-- Buildalyzer runs builds out-of-process and reads their events over the pipe (as XenoAtom's
+         version-independent PipeBuildEventArgs), so it no longer needs a version-matched in-process
+         MSBuild - no MSBuildLocator. A pinned Microsoft.Build is used in-process only for solution parsing
+         (Microsoft.Build.Construction.SolutionFile), the BinaryLogger type, and the ITaskItem result model.
+         Compiler inputs come from the compiler task's parameters over the pipe, so there is no Roslyn/NuGet
+         dependency, and Microsoft.Build.Utilities.Core is not needed (the logger dll that inherits its Logger
+         base class runs out-of-process). -->
+    <PackageReference Include="Microsoft.Build" Version="17.10.46" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
     <PackageReference Include="Microsoft.VisualStudio.SolutionPersistence" Version="1.0.52" />
-    <PackageReference Include="XenoAtom.MsBuildPipeLogger" Version="1.0.1" ExcludeAssets="contentFiles" />
+    <PackageReference Include="XenoAtom.MsBuildPipeLogger" Version="1.0.3-local" ExcludeAssets="contentFiles" />
   </ItemGroup>
 
   <ItemGroup Label="Build dependencies">

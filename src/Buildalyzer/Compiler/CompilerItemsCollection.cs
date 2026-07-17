@@ -41,23 +41,24 @@ public sealed class CompilerItemsCollection : IReadOnlyCollection<CompilerItems>
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     [Pure]
-    internal static CompilerItemsCollection FromDictionaryEntries(IEnumerable? properties)
+    internal static CompilerItemsCollection FromPipeItems(IReadOnlyList<XenoAtom.MsBuildPipeLogger.PipeItem> items)
     {
-        CompilerItemsCollection props = new CompilerItemsCollection();
-
-        foreach (DictionaryEntry entry in properties.ToDictionaryEntries())
+        CompilerItemsCollection collection = new CompilerItemsCollection();
+        foreach (var item in items)
         {
-            if (entry.Key?.ToString() is { Length: > 0 } key && entry.Value is ITaskItem task)
+            if (item.ItemType is { Length: > 0 } key)
             {
-                if (!props._values.TryGetValue(key, out IReadOnlyCollection<ITaskItem>? values)
+                if (!collection._values.TryGetValue(key, out IReadOnlyCollection<ITaskItem>? values)
                     || values is not List<ITaskItem> editable)
                 {
                     editable = [];
-                    props._values[key] = editable;
+                    collection._values[key] = editable;
                 }
-                editable.Add(task);
+
+                editable.Add(new Logging.PipeTaskItem(item));
             }
         }
-        return props;
+
+        return collection;
     }
 }

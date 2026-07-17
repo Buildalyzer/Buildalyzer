@@ -1,8 +1,6 @@
-using Microsoft.CodeAnalysis.CSharp;
-
 namespace Buildalyzer;
 
-public sealed record CSharpCompilerCommand : RoslynBasedCompilerCommand<CSharpCommandLineArguments>
+public sealed record CSharpCompilerCommand : CompilerCommand
 {
     /// <inheritdoc />
     public override CompilerLanguage Language => CompilerLanguage.CSharp;

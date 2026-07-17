@@ -17,6 +17,15 @@ public class ProjectAnalyzer : IProjectAnalyzer
 {
     private readonly List<ILogger> _buildLoggers = [];
 
+    // Binary logs requested via AddBinaryLogger. MSBuild writes these natively via /bl (full fidelity,
+    // SDK version) rather than an in-process BinaryLogger, and they're read back by replaying them
+    // through MSBuild on the command line (see AnalyzerManager.Analyze).
+    private readonly List<(string Path, string ImportsMode)> _binaryLogPaths = [];
+
+    // When a build is one of several in succession (restore, or per-TFM builds), each binlog path is
+    // suffixed (e.g. ".restore" or ".net8.0") so the invocations don't overwrite one another.
+    private string? _binaryLogSuffix;
+
     // Project-specific global properties and environment variables
     private readonly ConcurrentDictionary<string, string> _globalProperties = new(StringComparer.OrdinalIgnoreCase);
 
@@ -192,62 +201,46 @@ public class ProjectAnalyzer : IProjectAnalyzer
             return NullScope.Instance;
         }
 
-        List<(BinaryLogger Logger, string OriginalParameters)> snapshots = [];
-        foreach (BinaryLogger logger in _buildLoggers.OfType<BinaryLogger>())
-        {
-            string original = logger.Parameters;
-            snapshots.Add((logger, original));
-            logger.Parameters = AddSuffixToBinaryLogPath(original, suffix);
-        }
-
-        return new RestoreBinaryLogPaths(snapshots);
+        var previous = _binaryLogSuffix;
+        _binaryLogSuffix = suffix;
+        return new RestoreBinaryLogSuffix(this, previous);
     }
 
-    // BinaryLogger.Parameters is a semicolon-separated list where the log file is either a
-    // bare path ending in ".binlog" or a "LogFile=" segment (possibly quoted), alongside
-    // other segments like "ProjectImports=Embed". Only the log file segment is rewritten.
-    internal static string AddSuffixToBinaryLogPath(string parameters, string suffix)
+    // Inserts a suffix before the extension of a binlog path, e.g. "foo.binlog" + "restore" => "foo.restore.binlog".
+    internal static string AddSuffixToBinaryLogPath(string path, string suffix)
     {
-        if (string.IsNullOrEmpty(parameters))
+        if (string.IsNullOrEmpty(path))
         {
-            return parameters;
+            return path;
         }
 
-        string[] segments = parameters.Split(';');
-        for (int i = 0; i < segments.Length; i++)
-        {
-            string segment = segments[i];
-            string prefix = string.Empty;
-            if (segment.StartsWith("LogFile=", StringComparison.OrdinalIgnoreCase))
-            {
-                prefix = segment[.."LogFile=".Length];
-                segment = segment[prefix.Length..];
-            }
-
-            string path = segment.Trim('"');
-            if (!path.EndsWith(".binlog", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            string quote = path.Length == segment.Length ? string.Empty : "\"";
-            string extension = Path.GetExtension(path);
-            string withoutExtension = Path.ChangeExtension(path, null);
-            segments[i] = $"{prefix}{quote}{withoutExtension}.{suffix}{extension}{quote}";
-            return string.Join(";", segments);
-        }
-
-        return parameters;
+        string extension = Path.GetExtension(path);
+        string withoutExtension = Path.ChangeExtension(path, null);
+        return $"{withoutExtension}.{suffix}{extension}";
     }
 
-    private sealed class RestoreBinaryLogPaths(List<(BinaryLogger Logger, string OriginalParameters)> snapshots) : IDisposable
+    // Builds the /bl arguments (with the current suffix applied) for the requested binary logs.
+    private IReadOnlyCollection<string> BinaryLogArguments()
+    {
+        if (_binaryLogPaths.Count == 0)
+        {
+            return [];
+        }
+
+        return _binaryLogPaths
+            .Select(bl =>
+            {
+                var path = _binaryLogSuffix is { } suffix ? AddSuffixToBinaryLogPath(bl.Path, suffix) : bl.Path;
+                return $"/bl:LogFile=\"{path}\";ProjectImports={bl.ImportsMode}";
+            })
+            .ToList();
+    }
+
+    private sealed class RestoreBinaryLogSuffix(ProjectAnalyzer analyzer, string? previous) : IDisposable
     {
         public void Dispose()
         {
-            foreach (var (logger, original) in snapshots)
-            {
-                logger.Parameters = original;
-            }
+            analyzer._binaryLogSuffix = previous;
         }
     }
 
@@ -318,7 +311,8 @@ public class ProjectAnalyzer : IProjectAnalyzer
 
         using var pipeLogger = new AnonymousPipeLoggerServer(cancellation.Token);
         using var eventCollector = new BuildEventArgsCollector(pipeLogger);
-        using var eventProcessor = new EventProcessor(Manager, this, BuildLoggers, pipeLogger, true);
+        using var eventProcessor = new EventProcessor(Manager, this, true);
+        eventProcessor.SubscribePipe(pipeLogger);
 
         // Run MSBuild
         int exitCode;
@@ -340,8 +334,9 @@ public class ProjectAnalyzer : IProjectAnalyzer
             new LoggerConfiguration
             {
                 ClientHandle = pipeLogger.GetClientHandle(),
-                LogEverything = _buildLoggers.Count > 0,
-            });
+                LogEverything = _buildLoggers.Count > 0 || _binaryLogPaths.Count > 0,
+            },
+            BinaryLogArguments());
 
         using var processRunner = new ProcessRunner(
             cmd.Command,
@@ -451,12 +446,9 @@ public class ProjectAnalyzer : IProjectAnalyzer
     public void AddBinaryLogger(
         string? binaryLogFilePath = null,
         BinaryLogger.ProjectImportsCollectionMode collectProjectImports = BinaryLogger.ProjectImportsCollectionMode.Embed) =>
-        AddBuildLogger(new BinaryLogger
-        {
-            Parameters = binaryLogFilePath ?? Path.ChangeExtension(ProjectFile.Path, "binlog"),
-            CollectProjectImports = collectProjectImports,
-            Verbosity = Microsoft.Build.Framework.LoggerVerbosity.Diagnostic
-        });
+        _binaryLogPaths.Add((
+            binaryLogFilePath ?? Path.ChangeExtension(ProjectFile.Path, "binlog"),
+            collectProjectImports.ToString()));
 
     /// <inheritdoc/>
     public void AddBuildLogger(ILogger logger) => _buildLoggers.Add(Guard.NotNull(logger));

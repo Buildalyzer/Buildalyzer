@@ -1,10 +1,12 @@
 using System.Collections.Concurrent;
 using System.IO;
+using System.Threading;
+using Buildalyzer.Environment;
 using Buildalyzer.IO;
 using Buildalyzer.Logging;
 using Microsoft.Build.Construction;
-using Microsoft.Build.Logging;
 using Microsoft.Extensions.Logging;
+using XenoAtom.MsBuildPipeLogger;
 
 namespace Buildalyzer;
 
@@ -99,14 +101,50 @@ public class AnalyzerManager : IAnalyzerManager
             throw new ArgumentException($"The path {binLogPath} could not be found.");
         }
 
-        // Read the binary log with MSBuild's own replay source (loaded from the SDK via MSBuildLocator),
-        // so the reader always matches the MSBuild version that wrote the log. The binary logger that
-        // produced the file is the same SDK MSBuild, so this avoids the binlog-format-version mismatch
-        // that a separately-versioned reader (e.g. MSBuild.StructuredLogger) is prone to.
-        BinaryLogReplayEventSource reader = new BinaryLogReplayEventSource();
+        // Replay the binary log by handing it to MSBuild on the command line with the pipe logger
+        // attached. MSBuild reads and replays the log out-of-process, so its version always matches
+        // whatever wrote the log (no in-process reader, no MSBuildLocator, no version mismatch). The
+        // replayed events stream over the pipe as XenoAtom PipeBuildEventArgs, through the same
+        // EventProcessor the live build uses.
+        using var cancellation = new CancellationTokenSource();
+        using var pipeLogger = new AnonymousPipeLoggerServer(cancellation.Token);
+        using var eventProcessor = new EventProcessor(this, null, true);
+        eventProcessor.SubscribePipe(pipeLogger);
 
-        using EventProcessor eventProcessor = new EventProcessor(this, null, buildLoggers, reader, true);
-        reader.Replay(binLogPath);
+        var loggerArgument = BuildArgument.Logger(
+            isDotNet: true,
+            new LoggerConfiguration
+            {
+                ClientHandle = pipeLogger.GetClientHandle(),
+                LogEverything = true,
+            });
+
+        var arguments = string.Join(
+            ' ',
+            "msbuild",
+            BuildArgument.Path(IOPath.Parse(binLogPath)),
+            BuildArgument.NoConsoleLogger,
+            loggerArgument);
+
+        using var processRunner = new ProcessRunner(
+            "dotnet",
+            arguments,
+            Path.GetDirectoryName(binLogPath) ?? System.Environment.CurrentDirectory,
+            new Dictionary<string, string?>(),
+            LoggerFactory);
+
+        processRunner.Start();
+        try
+        {
+            pipeLogger.ReadAll();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Ignore
+        }
+
+        processRunner.WaitForExit();
+
         return new AnalyzerResults
         {
             { eventProcessor.Results, eventProcessor.OverallSuccess }

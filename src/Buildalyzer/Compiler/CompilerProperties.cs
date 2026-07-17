@@ -43,17 +43,17 @@ public sealed class CompilerProperties : IReadOnlyCollection<CompilerProperty>
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     [Pure]
-    internal static CompilerProperties FromDictionaryEntries(IEnumerable? properties)
+    internal static CompilerProperties FromPipeProperties(IReadOnlyList<XenoAtom.MsBuildPipeLogger.PipeProperty> properties)
     {
         CompilerProperties props = new CompilerProperties();
-
-        foreach (DictionaryEntry entry in properties.ToDictionaryEntries())
+        foreach (var property in properties)
         {
-            if (entry.Key?.ToString() is { Length: > 0 } key && entry.Value is { })
+            if (property.Name is { Length: > 0 } key && property.Value is { } value)
             {
-                props._values.Add(key, entry.Value);
+                props._values[key] = value;
             }
         }
+
         return props;
     }
 }

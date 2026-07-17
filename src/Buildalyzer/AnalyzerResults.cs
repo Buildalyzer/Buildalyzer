@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using Microsoft.Build.Framework;
+using XenoAtom.MsBuildPipeLogger;
 
 namespace Buildalyzer;
 
@@ -21,7 +21,7 @@ public class AnalyzerResults : IAnalyzerResults
     }
 
     /// <inheritdoc />
-    public ImmutableArray<BuildEventArgs> BuildEventArguments { get; set; } = [];
+    public ImmutableArray<PipeBuildEventArgs> BuildEventArguments { get; set; } = [];
 
     public IAnalyzerResult this[string targetFramework] => _results[targetFramework];
 

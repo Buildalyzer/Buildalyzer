@@ -4,10 +4,6 @@
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
 
-  <!-- Uses Buildalyzer's MSBuild-typed API (e.g. AddBinaryLogger); references the MSBuild assemblies
-       for compile only, resolved from the SDK at runtime via MSBuildLocator. -->
-  <Import Project="../../msbuild-references.props" />
-
   <ItemGroup>
     <ProjectReference Include="../../src/Buildalyzer/Buildalyzer.csproj" />
   </ItemGroup>
