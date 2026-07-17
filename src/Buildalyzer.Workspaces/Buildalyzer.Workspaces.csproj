@@ -3,7 +3,7 @@
   <Import Project="../../package.props" />
 
   <PropertyGroup>
-    <TargetFrameworks>net6.0;net8.0;net10.0</TargetFrameworks>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
     <Description>
       A little utility to perform design-time builds of .NET projects without
       having to think too hard about it. This extension library adds support

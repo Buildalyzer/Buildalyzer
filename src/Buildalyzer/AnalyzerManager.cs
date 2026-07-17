@@ -4,7 +4,6 @@ using System.Threading;
 using Buildalyzer.Environment;
 using Buildalyzer.IO;
 using Buildalyzer.Logging;
-using Microsoft.Build.Construction;
 using Microsoft.Extensions.Logging;
 using XenoAtom.MsBuildPipeLogger;
 
@@ -12,12 +11,6 @@ namespace Buildalyzer;
 
 public class AnalyzerManager : IAnalyzerManager
 {
-    internal static readonly SolutionProjectType[] SupportedProjectTypes =
-    [
-        SolutionProjectType.KnownToBeMSBuildFormat,
-        SolutionProjectType.WebProject
-    ];
-
     private readonly ConcurrentDictionary<string, IProjectAnalyzer> _projects = new();
 
     public IReadOnlyDictionary<string, IProjectAnalyzer> Projects => _projects;
@@ -38,9 +31,6 @@ public class AnalyzerManager : IAnalyzerManager
 #pragma warning restore SA1401 // Fields should be private
 
     public string? SolutionFilePath => Solution?.Path.ToString();
-
-    [Obsolete("Use Solution instead.")]
-    public SolutionFile? SolutionFile => Solution?.Reference as SolutionFile;
 
     public SolutionInfo? Solution { get; }
 

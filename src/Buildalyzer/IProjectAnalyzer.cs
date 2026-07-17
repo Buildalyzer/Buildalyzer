@@ -1,7 +1,5 @@
 using Buildalyzer.Construction;
 using Buildalyzer.Environment;
-using Microsoft.Build.Construction;
-using Microsoft.Build.Logging;
 using Microsoft.Extensions.Logging;
 
 namespace Buildalyzer;
@@ -45,8 +43,6 @@ public interface IProjectAnalyzer
     /// will generate a UUID GUID by hashing the project path relative to the solution path (so it's repeatable).
     /// </summary>
     Guid ProjectGuid { get; }
-
-    ProjectInSolution? ProjectInSolution { get; }
 
     string SolutionDirectory { get; }
 
@@ -124,7 +120,7 @@ public interface IProjectAnalyzer
 
     void AddBinaryLogger(
         string? binaryLogFilePath = null,
-        BinaryLogger.ProjectImportsCollectionMode collectProjectImports = BinaryLogger.ProjectImportsCollectionMode.Embed);
+        BinaryLogImports collectProjectImports = BinaryLogImports.Embed);
 
     /// <summary>
     /// Adds an MSBuild logger to the build. Note that this may have a large penalty on build performance.

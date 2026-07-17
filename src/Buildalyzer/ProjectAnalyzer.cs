@@ -5,8 +5,6 @@ using Buildalyzer.Construction;
 using Buildalyzer.Environment;
 using Buildalyzer.IO;
 using Buildalyzer.Logging;
-using Microsoft.Build.Construction;
-using Microsoft.Build.Logging;
 using Microsoft.Extensions.Logging;
 using XenoAtom.MsBuildPipeLogger;
 using ILogger = Microsoft.Build.Framework.ILogger;
@@ -40,9 +38,6 @@ public class ProjectAnalyzer : IProjectAnalyzer
     public string SolutionDirectory { get; }
 
     public ProjectInfo? Project { get; }
-
-    [Obsolete("Use Project instead.")]
-    public ProjectInSolution? ProjectInSolution => Project?.Reference as ProjectInSolution;
 
     /// <inheritdoc/>
     public Guid ProjectGuid { get; }
@@ -429,7 +424,7 @@ public class ProjectAnalyzer : IProjectAnalyzer
     }
 
     /// <summary>
-    /// Adds a <see cref="BinaryLogger"/> that writes a binlog file for each build.
+    /// Adds a binary logger that writes a binlog file for each build.
     /// </summary>
     /// <remarks>
     /// When a multi-targeted project is built without specifying a target framework,
@@ -445,7 +440,7 @@ public class ProjectAnalyzer : IProjectAnalyzer
     /// <param name="collectProjectImports">How MSBuild project imports are collected in the log.</param>
     public void AddBinaryLogger(
         string? binaryLogFilePath = null,
-        BinaryLogger.ProjectImportsCollectionMode collectProjectImports = BinaryLogger.ProjectImportsCollectionMode.Embed) =>
+        BinaryLogImports collectProjectImports = BinaryLogImports.Embed) =>
         _binaryLogPaths.Add((
             binaryLogFilePath ?? Path.ChangeExtension(ProjectFile.Path, "binlog"),
             collectProjectImports.ToString()));

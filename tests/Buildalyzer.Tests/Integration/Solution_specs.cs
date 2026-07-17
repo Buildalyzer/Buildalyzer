@@ -66,7 +66,7 @@ public class Filters
     {
         using var ctx = Context.ForSolution(
             "TestProjects.sln",
-            o => o.ProjectFilter = x => x.AbsolutePath.Contains("Core"));
+            o => o.ProjectFilter = x => x.Path.ToString().Contains("Core"));
 
         ctx.Manager.Projects.Should().HaveCount(6);
     }

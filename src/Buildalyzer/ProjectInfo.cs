@@ -1,6 +1,4 @@
-using Buildalyzer.Construction;
 using Buildalyzer.IO;
-using Microsoft.Build.Construction;
 using Microsoft.VisualStudio.SolutionPersistence.Model;
 
 namespace Buildalyzer;
@@ -33,18 +31,11 @@ public sealed class ProjectInfo
     private string DebuggerDisplay => $"{Path.File()?.Name}, TFM = {string.Join(", ", TargetFrameworks)}";
 
     [Pure]
-    internal static ProjectInfo New(ProjectInSolution proj)
-    {
-        var path = IOPath.Parse(Guard.NotNull(proj).AbsolutePath);
-        var reference = new ProjectFile(path.ToString());
-        var guid = Guid.Parse(proj.ProjectGuid);
-        return new(reference, path, guid, reference.TargetFrameworks);
-    }
-
-    [Pure]
     internal static ProjectInfo New(SolutionProjectModel reference, IOPath root)
     {
-        var path = root.Combine(Guard.NotNull(reference).FilePath);
+        // Canonicalize: solution files may reference projects with relative segments
+        // (e.g. "../DependentProject/DependentProject.csproj") that MSBuild reports back fully resolved.
+        var path = IOPath.Parse(System.IO.Path.GetFullPath(root.Combine(Guard.NotNull(reference).FilePath).ToString()));
         var prop = reference.FindProperties("TargetFrameworks")
             ?? reference.FindProperties("TargetFramework");
 

@@ -1,5 +1,4 @@
 using Buildalyzer.IO;
-using Microsoft.Build.Construction;
 using Microsoft.Extensions.Logging;
 
 namespace Buildalyzer;
@@ -12,9 +11,6 @@ public interface IAnalyzerManager
 
     /// <inheritdoc cref="SolutionInfo" />
     SolutionInfo? Solution { get; }
-
-    [Obsolete("Use SolutionInfo instead.")]
-    SolutionFile? SolutionFile { get; }
 
     [Obsolete("Use SolutionInfo.Path instead.")]
     string? SolutionFilePath { get; }
