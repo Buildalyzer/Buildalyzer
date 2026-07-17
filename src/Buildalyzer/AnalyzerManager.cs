@@ -83,7 +83,7 @@ public class AnalyzerManager : IAnalyzerManager
     public IProjectAnalyzer? GetProject(IOPath projectFilePath) => GetProject(projectFilePath, null);
 
     /// <inheritdoc/>
-    public IAnalyzerResults Analyze(string binLogPath, IEnumerable<Microsoft.Build.Framework.ILogger>? buildLoggers = null)
+    public IAnalyzerResults Analyze(string binLogPath)
     {
         binLogPath = NormalizePath(binLogPath);
         if (!File.Exists(binLogPath))

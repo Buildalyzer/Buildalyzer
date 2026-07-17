@@ -6,8 +6,6 @@ namespace Buildalyzer;
 
 public interface IProjectAnalyzer
 {
-    IEnumerable<Microsoft.Build.Framework.ILogger> BuildLoggers { get; }
-
     EnvironmentFactory EnvironmentFactory { get; }
 
     /// <summary>
@@ -121,22 +119,6 @@ public interface IProjectAnalyzer
     void AddBinaryLogger(
         string? binaryLogFilePath = null,
         BinaryLogImports collectProjectImports = BinaryLogImports.Embed);
-
-    /// <summary>
-    /// Adds an MSBuild logger to the build. Note that this may have a large penalty on build performance.
-    /// </summary>
-    /// <remarks>
-    /// Normally, the minimum required amount of log events are forwarded from the MSBuild process to Buildalyzer.
-    /// By attaching arbitrary loggers, MSBuild must forward every log event so the logger has a chance to handle it.
-    /// </remarks>
-    /// <param name="logger">The logger to add.</param>
-    void AddBuildLogger(Microsoft.Build.Framework.ILogger logger);
-
-    /// <summary>
-    /// Removes an MSBuild logger from the build.
-    /// </summary>
-    /// <param name="logger">The logger to remove.</param>
-    void RemoveBuildLogger(Microsoft.Build.Framework.ILogger logger);
 
     void RemoveGlobalProperty(string key);
 

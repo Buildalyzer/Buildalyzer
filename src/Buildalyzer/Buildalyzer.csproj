@@ -21,13 +21,11 @@ ToBeReleased
 
   <ItemGroup>
     <!-- Buildalyzer runs builds out-of-process and reads their events over the pipe (as XenoAtom's
-         version-independent PipeBuildEventArgs), so it needs no in-process MSBuild engine at all - no
-         Microsoft.Build, no MSBuildLocator. Only the tiny interface-only Microsoft.Build.Framework is
-         referenced (for ITaskItem/ILogger in the result model). Solutions (.sln and .slnx) are parsed
-         with Microsoft.VisualStudio.SolutionPersistence. Compiler inputs come from the compiler task's
-         parameters over the pipe, so there is no Roslyn/NuGet dependency, and Microsoft.Build.Utilities.Core
-         is not needed (the logger dll that inherits its Logger base class runs out-of-process). -->
-    <PackageReference Include="Microsoft.Build.Framework" Version="17.10.46" />
+         version-independent PipeBuildEventArgs), so the core library has NO Microsoft.Build.* dependency at
+         all - no engine, no MSBuildLocator, no Framework. Solutions (.sln and .slnx) are parsed with
+         Microsoft.VisualStudio.SolutionPersistence; compiler inputs arrive as the compiler task's parameters
+         over the pipe and surface through Buildalyzer's own IProjectItem model. The Buildalyzer.Logger dll
+         (which does reference Microsoft.Build.Framework) runs inside the out-of-process MSBuild. -->
     <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
     <PackageReference Include="Microsoft.VisualStudio.SolutionPersistence" Version="1.0.52" />
     <PackageReference Include="XenoAtom.MsBuildPipeLogger" Version="1.0.3-local" ExcludeAssets="contentFiles" />

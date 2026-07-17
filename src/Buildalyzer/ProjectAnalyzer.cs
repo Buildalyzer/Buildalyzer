@@ -7,14 +7,11 @@ using Buildalyzer.IO;
 using Buildalyzer.Logging;
 using Microsoft.Extensions.Logging;
 using XenoAtom.MsBuildPipeLogger;
-using ILogger = Microsoft.Build.Framework.ILogger;
 
 namespace Buildalyzer;
 
 public class ProjectAnalyzer : IProjectAnalyzer
 {
-    private readonly List<ILogger> _buildLoggers = [];
-
     // Binary logs requested via AddBinaryLogger. MSBuild writes these natively via /bl (full fidelity,
     // SDK version) rather than an in-process BinaryLogger, and they're read back by replaying them
     // through MSBuild on the command line (see AnalyzerManager.Analyze).
@@ -47,8 +44,6 @@ public class ProjectAnalyzer : IProjectAnalyzer
 
     /// <inheritdoc/>
     public IReadOnlyDictionary<string, string> EnvironmentVariables => GetEffectiveEnvironmentVariables(null);
-
-    public IEnumerable<ILogger> BuildLoggers => _buildLoggers;
 
     public ILogger<ProjectAnalyzer> Logger { get; set; }
 
@@ -329,7 +324,7 @@ public class ProjectAnalyzer : IProjectAnalyzer
             new LoggerConfiguration
             {
                 ClientHandle = pipeLogger.GetClientHandle(),
-                LogEverything = _buildLoggers.Count > 0 || _binaryLogPaths.Count > 0,
+                LogEverything = _binaryLogPaths.Count > 0,
             },
             BinaryLogArguments());
 
@@ -444,10 +439,4 @@ public class ProjectAnalyzer : IProjectAnalyzer
         _binaryLogPaths.Add((
             binaryLogFilePath ?? Path.ChangeExtension(ProjectFile.Path, "binlog"),
             collectProjectImports.ToString()));
-
-    /// <inheritdoc/>
-    public void AddBuildLogger(ILogger logger) => _buildLoggers.Add(Guard.NotNull(logger));
-
-    /// <inheritdoc/>
-    public void RemoveBuildLogger(ILogger logger) => _buildLoggers.Remove(Guard.NotNull(logger));
 }
