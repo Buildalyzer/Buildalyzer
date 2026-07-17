@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <CustomProperty>Custom value</CustomProperty>
+  </PropertyGroup>
+
+ <ItemGroup>
+   <CompilerVisibleProperty Include="CustomProperty" />
+ </ItemGroup>
+ 
+</Project>
