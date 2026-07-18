@@ -1,6 +1,8 @@
+using System.Collections.Immutable;
 using Microsoft.Build.Utilities.ProjectCreation;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Buildalyzer.Differential.Tests;
 
@@ -520,6 +522,89 @@ public class Differential_specs
         Microsoft.CodeAnalysis.Emit.EmitResult result = compilation.Emit(stream);
         return result.Success
             && compilation.Assembly.Identity.PublicKey.Length > 0;
+    }
+
+    [Test]
+    public async Task Editorconfig_severity_flows_into_compiler_diagnostics()
+    {
+        using ProjectFixture fixture = new();
+        string projectPath = fixture.AddProject(
+            "SeverityProject",
+            p => p.Property("TargetFramework", TargetFramework),
+            new Dictionary<string, string>
+            {
+                // 'unused' triggers CS0219 (assigned but never used), normally a warning.
+                ["Class1.cs"] = "namespace SeverityProject;\npublic class Class1 { public int M() { int unused = 1; return 2; } }\n",
+                [".editorconfig"] = "root = true\n\n[*.cs]\ndotnet_diagnostic.CS0219.severity = error\n",
+            });
+        fixture.Restore(projectPath);
+
+        using WorkspaceComparison comparison = await WorkspaceComparison.LoadAsync(projectPath);
+        AssertLoadedCleanly(comparison);
+
+        (string Id, DiagnosticSeverity Severity)[] ms = await CompilerDiagnostics(comparison.MSBuild);
+        (string Id, DiagnosticSeverity Severity)[] ba = await CompilerDiagnostics(comparison.Buildalyzer);
+
+        // The .editorconfig must promote CS0219 to an error, and Buildalyzer's compilation must
+        // produce the exact same set of compiler diagnostics as the reference.
+        ms.Should().Contain(("CS0219", DiagnosticSeverity.Error), "the reference applies the editorconfig severity");
+        ba.Should().BeEquivalentTo(ms);
+    }
+
+    private static async Task<(string Id, DiagnosticSeverity Severity)[]> CompilerDiagnostics(Project project)
+    {
+        Compilation compilation = await project.GetCompilationAsync();
+        return [.. compilation.GetDiagnostics()
+            .Where(d => d.Severity is DiagnosticSeverity.Warning or DiagnosticSeverity.Error)
+            .Select(d => (d.Id, d.Severity))
+            .Distinct()
+            .OrderBy(x => x.Id, StringComparer.Ordinal)];
+    }
+
+    [Test]
+    public async Task Analyzer_diagnostics_match_reference()
+    {
+        using ProjectFixture fixture = new();
+        string projectPath = fixture.AddProject(
+            "AnalyzerDiagnosticsProject",
+            p => p.Property("TargetFramework", TargetFramework),
+            new Dictionary<string, string>
+            {
+                // M() uses no instance state, so the SDK analyzer CA1822 (mark as static) fires
+                // once it is turned on via the editorconfig below.
+                ["Class1.cs"] = "namespace AnalyzerDiagnosticsProject;\npublic class Class1 { public int M() => 2; }\n",
+                [".editorconfig"] = "root = true\n\n[*.cs]\ndotnet_diagnostic.CA1822.severity = warning\n",
+            });
+        fixture.Restore(projectPath);
+
+        using WorkspaceComparison comparison = await WorkspaceComparison.LoadAsync(projectPath);
+        AssertLoadedCleanly(comparison);
+
+        (string Id, DiagnosticSeverity Severity)[] ms = await AnalyzerDiagnostics(comparison.MSBuild, "CA1822");
+        (string Id, DiagnosticSeverity Severity)[] ba = await AnalyzerDiagnostics(comparison.Buildalyzer, "CA1822");
+
+        // The analyzer must run and honour the editorconfig severity, identically on both sides.
+        ms.Should().Contain(("CA1822", DiagnosticSeverity.Warning), "the reference runs the SDK analyzer");
+        ba.Should().BeEquivalentTo(ms);
+    }
+
+    private static async Task<(string Id, DiagnosticSeverity Severity)[]> AnalyzerDiagnostics(Project project, string id)
+    {
+        Compilation compilation = await project.GetCompilationAsync();
+        ImmutableArray<DiagnosticAnalyzer> analyzers =
+            [.. project.AnalyzerReferences.SelectMany(r => r.GetAnalyzers(project.Language))];
+        if (analyzers.IsEmpty)
+        {
+            return [];
+        }
+
+        ImmutableArray<Diagnostic> diagnostics = await compilation
+            .WithAnalyzers(analyzers, project.AnalyzerOptions)
+            .GetAnalyzerDiagnosticsAsync();
+        return [.. diagnostics
+            .Where(d => d.Id == id)
+            .Select(d => (d.Id, d.Severity))
+            .OrderBy(x => x.Id, StringComparer.Ordinal)];
     }
 
     [Test]
