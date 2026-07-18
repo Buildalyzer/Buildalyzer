@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/tests/">
+    <Project Path="tests/Buildalyzer.Differential.Tests/Buildalyzer.Differential.Tests.csproj" />
     <Project Path="tests/Buildalyzer.Tests/Buildalyzer.Tests.csproj" />
     <Project Path="tests/Buildalyzer.TestTools/Buildalyzer.TestTools.csproj" Id="d438142f-c1a3-49b5-849a-af36776604a8" />
     <Project Path="tests/Buildalyzer.Workspaces.Tests/Buildalyzer.Workspaces.Tests.csproj" />
