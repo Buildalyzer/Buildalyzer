@@ -19,6 +19,7 @@ ToBeReleased
 - Upgrade Microsoft.CodeAnalysis.Workspaces (Roslyn) to 5.6.0.
 - The workspace now includes analyzer config documents (.editorconfig/.globalconfig, including the SDK-generated ones), matching MSBuildWorkspace.
 - Workspace documents now carry their logical folder path (Document.Folders), derived from the file's location relative to the project directory, matching MSBuildWorkspace.
+- The workspace project now sets its reference-assembly output path (Project.OutputRefFilePath) from TargetRefPath.
 - The workspace project now honours AssemblyName and RootNamespace (Project.AssemblyName/DefaultNamespace) instead of always using the project file name.
 - Compilation and parse options are now derived by parsing the compiler command line with Roslyn's own parser - the same approach as MSBuildWorkspace - so defines, language version, unsafe/checked/nullable, optimization, platform, warning level, documentation mode and the full diagnostic configuration (including SDK-injected warnaserror/nowarn defaults) all match the compiler. Reconstruction from MSBuild properties remains as a fallback when no command line was captured.
 - Compilation options now carry the same services MSBuildWorkspace attaches: XML/source reference resolvers, a DesktopStrongNameProvider (so signed assemblies can be emitted from the workspace) and DesktopAssemblyIdentityComparer.

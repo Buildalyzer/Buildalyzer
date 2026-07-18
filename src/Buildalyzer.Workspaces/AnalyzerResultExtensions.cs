@@ -148,6 +148,7 @@ public static class AnalyzerResultExtensions
             languageName,
             filePath: analyzerResult.ProjectFilePath,
             outputFilePath: analyzerResult.GetProperty("TargetPath"),
+            outputRefFilePath: analyzerResult.GetProperty("TargetRefPath"),
             compilationOptions: compilationOptions,
             parseOptions: parseOptions,
             documents: GetDocuments(analyzerResult, projectId),

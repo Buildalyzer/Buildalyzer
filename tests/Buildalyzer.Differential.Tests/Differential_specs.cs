@@ -672,6 +672,71 @@ public class Differential_specs
         .Where(d => d.FilePath is not null)
         .ToDictionary(d => Path.GetFileName(d.FilePath!), d => d.Folders.ToArray(), StringComparer.OrdinalIgnoreCase);
 
+    [Test]
+    public async Task Additional_file_folders_match_reference()
+    {
+        using ProjectFixture fixture = new();
+        string projectPath = fixture.AddProject(
+            "AdditionalFolderProject",
+            p => p.Property("TargetFramework", TargetFramework),
+            new Dictionary<string, string>
+            {
+                ["Class1.cs"] = "namespace AdditionalFolderProject;\npublic class Class1 { }\n",
+                ["Docs/notes.txt"] = "notes\n",
+            });
+        ProjectFixture.AddItem(projectPath, "AdditionalFiles", @"Docs\notes.txt");
+        fixture.Restore(projectPath);
+
+        using WorkspaceComparison comparison = await WorkspaceComparison.LoadAsync(projectPath);
+        AssertLoadedCleanly(comparison);
+
+        Dictionary<string, string[]> ba = comparison.Buildalyzer.AdditionalDocuments
+            .ToDictionary(d => Path.GetFileName(d.FilePath!), d => d.Folders.ToArray(), StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, string[]> ms = comparison.MSBuild.AdditionalDocuments
+            .ToDictionary(d => Path.GetFileName(d.FilePath!), d => d.Folders.ToArray(), StringComparer.OrdinalIgnoreCase);
+        ba.Should().BeEquivalentTo(ms);
+    }
+
+    [Test]
+    public async Task Output_ref_assembly_path_matches_reference()
+    {
+        using ProjectFixture fixture = new();
+        string projectPath = fixture.AddProject(
+            "RefAssemblyProject",
+            p => p.Property("TargetFramework", TargetFramework),
+            Source("Class1.cs", "namespace RefAssemblyProject;\npublic class Class1 { }\n"));
+        fixture.Restore(projectPath);
+
+        using WorkspaceComparison comparison = await WorkspaceComparison.LoadAsync(projectPath);
+        AssertLoadedCleanly(comparison);
+
+        comparison.MSBuild.OutputRefFilePath.Should().NotBeNull();
+        Path.GetFileName(comparison.Buildalyzer.OutputRefFilePath)
+            .Should().Be(Path.GetFileName(comparison.MSBuild.OutputRefFilePath));
+    }
+
+    [Test]
+    public async Task Nullable_diagnostics_match_reference()
+    {
+        using ProjectFixture fixture = new();
+        string projectPath = fixture.AddProject(
+            "NullableProject",
+            p => p
+                .Property("TargetFramework", TargetFramework)
+                .Property("Nullable", "enable"),
+            Source("Class1.cs", "namespace NullableProject;\npublic class Class1 { public int M(string? s) => s.Length; }\n"));
+        fixture.Restore(projectPath);
+
+        using WorkspaceComparison comparison = await WorkspaceComparison.LoadAsync(projectPath);
+        AssertLoadedCleanly(comparison);
+
+        (string Id, DiagnosticSeverity Severity)[] ms = await CompilerDiagnostics(comparison.MSBuild);
+        (string Id, DiagnosticSeverity Severity)[] ba = await CompilerDiagnostics(comparison.Buildalyzer);
+
+        ms.Should().Contain(("CS8602", DiagnosticSeverity.Warning), "nullable is enabled, so dereferencing s warns");
+        ba.Should().BeEquivalentTo(ms);
+    }
+
     private static async Task<string[]> CompilationErrors(Project project)
     {
         Compilation compilation = await project.GetCompilationAsync();
