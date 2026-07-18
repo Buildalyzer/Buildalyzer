@@ -1,3 +1,4 @@
+using System.IO;
 using Buildalyzer.IO;
 using Microsoft.Extensions.Logging;
 using XenoAtom.MsBuildPipeLogger;
@@ -79,6 +80,16 @@ internal sealed class EventProcessor : IDisposable
         // Nested MSBuild tasks may spawn builds of other projects; only track the primary one.
         if (!projectPath.Equals(_projectFilePath))
         {
+            // WPF's full Build compiles the primary project's real source set - including the
+            // markup-generated GeneratedInternalTypeHelper.g.cs - inside a sibling "*_wpftmp" project
+            // spun up by GenerateTemporaryTargetAssembly. That temp build has its own project-context id,
+            // so register it as primary; otherwise OnPipeTaskParameter rejects its CoreCompile inputs and
+            // the primary result is left with no source files.
+            if (projectContextId is { } tempContextId && IsPrimaryMarkupCompilation(projectPath))
+            {
+                _primaryProjectContextIds.Add(tempContextId);
+            }
+
             return;
         }
 
@@ -107,6 +118,16 @@ internal sealed class EventProcessor : IDisposable
         // Push a null result so the stack stays balanced on project finish.
         _currentResult.Push(null);
     }
+
+    // WPF markup compilation compiles the primary project under a generated "<name>_<hash>_wpftmp" project
+    // (GenerateTemporaryTargetAssembly). "_wpftmp" is a PresentationBuildTasks-reserved suffix that a real
+    // referenced project never carries, so it cleanly tells the primary's own markup compile apart from a
+    // referenced project that we must keep out of the result. Legacy WPF drops the temp project beside the
+    // original and the SDK drops it under obj/, so match on the suffix rather than the location.
+    private static bool IsPrimaryMarkupCompilation(IOPath projectPath)
+        => projectPath.File() is { } file
+        && Path.GetFileNameWithoutExtension(file.Name)
+            .EndsWith("_wpftmp", IOPath.IsCaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase);
 
     private void OnProjectFinished(string? projectFile, bool succeeded)
     {
