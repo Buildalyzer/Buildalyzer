@@ -437,9 +437,16 @@ public static class AnalyzerResultExtensions
                Path.GetFileName(x),
                folders: GetDocumentFolders(x, projectDirectory),
                loader: TextLoader.From(
-                   TextAndVersion.Create(
-                       SourceText.From(File.ReadAllText(x), Encoding.Unicode, checksumAlgorithm), VersionStamp.Create())),
+                   TextAndVersion.Create(ReadSourceText(x, checksumAlgorithm), VersionStamp.Create())),
                filePath: x));
+
+    // Preserve the file's own encoding (detecting a BOM, defaulting to UTF-8) rather than forcing a
+    // fixed encoding, so Document text encoding matches MSBuildWorkspace and the compiler.
+    private static SourceText ReadSourceText(string path, SourceHashAlgorithm checksumAlgorithm)
+    {
+        using FileStream stream = File.OpenRead(path);
+        return SourceText.From(stream, Encoding.UTF8, checksumAlgorithm);
+    }
 
     // The SDK hashes source with SHA256 by default (older projects used SHA1); mirror MSBuildWorkspace,
     // which takes the algorithm from the ChecksumAlgorithm property, so document checksums match.

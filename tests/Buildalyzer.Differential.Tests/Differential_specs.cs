@@ -480,6 +480,24 @@ public class Differential_specs
         ba.ChecksumAlgorithm.Should().Be(ms.ChecksumAlgorithm);
     }
 
+    [Test]
+    public async Task Source_encoding_matches_reference()
+    {
+        using ProjectFixture fixture = new();
+        string projectPath = fixture.AddProject(
+            "EncodingProject",
+            p => p.Property("TargetFramework", TargetFramework),
+            Source("Class1.cs", "namespace EncodingProject;\npublic class Class1 { }\n"));
+        fixture.Restore(projectPath);
+
+        using WorkspaceComparison comparison = await WorkspaceComparison.LoadAsync(projectPath);
+        AssertLoadedCleanly(comparison);
+
+        string? ba = (await DocumentSource(comparison.Buildalyzer, "Class1.cs")).Encoding?.WebName;
+        string? ms = (await DocumentSource(comparison.MSBuild, "Class1.cs")).Encoding?.WebName;
+        ba.Should().Be(ms);
+    }
+
     private static async Task<Microsoft.CodeAnalysis.Text.SourceText> DocumentSource(Project project, string fileName)
     {
         Document document = project.Documents.Single(
@@ -780,6 +798,72 @@ public class Differential_specs
 
         ms.Should().Contain(("CS8602", DiagnosticSeverity.Warning), "nullable is enabled, so dereferencing s warns");
         ba.Should().BeEquivalentTo(ms);
+    }
+
+    [Test]
+    public async Task Unsafe_code_compiles_the_same()
+    {
+        using ProjectFixture fixture = new();
+        string projectPath = fixture.AddProject(
+            "UnsafeProject",
+            p => p
+                .Property("TargetFramework", TargetFramework)
+                .Property("AllowUnsafeBlocks", "true"),
+            Source("Class1.cs", "namespace UnsafeProject;\npublic unsafe class Class1 { public int* P; }\n"));
+        fixture.Restore(projectPath);
+
+        using WorkspaceComparison comparison = await WorkspaceComparison.LoadAsync(projectPath);
+        AssertLoadedCleanly(comparison);
+
+        // Unsafe code compiles only when AllowUnsafe flowed through; otherwise CS0227.
+        (await CompilationErrors(comparison.MSBuild)).Should().BeEmpty();
+        (await CompilationErrors(comparison.Buildalyzer)).Should().BeEquivalentTo(await CompilationErrors(comparison.MSBuild));
+    }
+
+    [Test]
+    public async Task Checked_overflow_diagnostics_match_reference()
+    {
+        using ProjectFixture fixture = new();
+        string projectPath = fixture.AddProject(
+            "CheckedProject",
+            p => p
+                .Property("TargetFramework", TargetFramework)
+                .Property("CheckForOverflowUnderflow", "true"),
+            Source("Class1.cs", "namespace CheckedProject;\npublic class Class1 { public int V = int.MaxValue + 1; }\n"));
+        fixture.Restore(projectPath);
+
+        using WorkspaceComparison comparison = await WorkspaceComparison.LoadAsync(projectPath);
+        AssertLoadedCleanly(comparison);
+
+        // In checked mode the constant overflow is a compile error (CS0220); both must agree.
+        (await CompilationErrors(comparison.MSBuild)).Should().Contain("CS0220");
+        (await CompilationErrors(comparison.Buildalyzer)).Should().BeEquivalentTo(await CompilationErrors(comparison.MSBuild));
+    }
+
+    [Test]
+    public async Task Internals_visible_to_resolves_across_projects()
+    {
+        using ProjectFixture fixture = new();
+        string libraryPath = fixture.AddProject(
+            "Library",
+            p => p.Property("TargetFramework", TargetFramework),
+            Source("Secret.cs", "namespace Library;\ninternal class Secret { public int Value => 1; }\n"));
+        ProjectFixture.AddItem(libraryPath, "InternalsVisibleTo", "App");
+
+        string appPath = fixture.AddProject(
+            "App",
+            p => p.Property("TargetFramework", TargetFramework),
+            Source("Program.cs", "namespace App;\npublic class Program { object U = new Library.Secret(); }\n"));
+        ProjectFixture.AddProjectReference(appPath, libraryPath);
+        fixture.Restore(appPath);
+
+        using WorkspaceComparison comparison = await WorkspaceComparison.LoadAsync(appPath);
+        AssertLoadedCleanly(comparison);
+
+        // App can touch Library's internal type only if Library's generated InternalsVisibleTo
+        // attribute is part of its compilation. Otherwise CS0122 (inaccessible).
+        (await CompilationErrors(comparison.MSBuild)).Should().BeEmpty();
+        (await CompilationErrors(comparison.Buildalyzer)).Should().BeEquivalentTo(await CompilationErrors(comparison.MSBuild));
     }
 
     private static async Task<string[]> CompilationErrors(Project project)
