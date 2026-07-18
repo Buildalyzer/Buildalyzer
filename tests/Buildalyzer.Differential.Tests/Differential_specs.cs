@@ -673,6 +673,26 @@ public class Differential_specs
         .ToDictionary(d => Path.GetFileName(d.FilePath!), d => d.Folders.ToArray(), StringComparer.OrdinalIgnoreCase);
 
     [Test]
+    public async Task Linked_file_folders_match_reference()
+    {
+        using ProjectFixture fixture = new();
+        File.WriteAllText(Path.Combine(fixture.Root.FullName, "Shared.cs"), "namespace Shared;\npublic class Shared { }\n");
+        string projectPath = fixture.AddProject(
+            "LinkedFolderProject",
+            p => p.Property("TargetFramework", TargetFramework),
+            Source("Class1.cs", "namespace LinkedFolderProject;\npublic class Class1 { }\n"));
+        ProjectFixture.AddItem(projectPath, "Compile", @"..\Shared.cs");
+        fixture.Restore(projectPath);
+
+        using WorkspaceComparison comparison = await WorkspaceComparison.LoadAsync(projectPath);
+        AssertLoadedCleanly(comparison);
+
+        // A file above the project directory is the edge case of the relative-folder computation.
+        DocumentFolders(comparison.Buildalyzer)["Shared.cs"]
+            .Should().BeEquivalentTo(DocumentFolders(comparison.MSBuild)["Shared.cs"]);
+    }
+
+    [Test]
     public async Task Additional_file_folders_match_reference()
     {
         using ProjectFixture fixture = new();

@@ -441,8 +441,9 @@ public static class AnalyzerResultExtensions
                        SourceText.From(File.ReadAllText(x), Encoding.Unicode), VersionStamp.Create())),
                filePath: x));
 
-    // Mirrors MSBuildWorkspace's GetRelativeFolders: a document's logical folders are the directory
-    // of its path taken relative to the project directory, split into segments.
+    // Mirrors MSBuildWorkspace: a document's logical folders are the directory of its path relative
+    // to the project directory. Files outside the project cone are auto-linked by the SDK and keep no
+    // folders, so anything whose relative path escapes the project directory yields none.
     private static IEnumerable<string> GetDocumentFolders(string filePath, string? projectDirectory)
     {
         if (string.IsNullOrEmpty(projectDirectory))
@@ -451,7 +452,9 @@ public static class AnalyzerResultExtensions
         }
 
         string relativeDirectory = Path.GetDirectoryName(Path.GetRelativePath(projectDirectory!, filePath)) ?? string.Empty;
-        return relativeDirectory.Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries);
+        return relativeDirectory.Length == 0 || relativeDirectory.StartsWith("..", StringComparison.Ordinal)
+            ? []
+            : relativeDirectory.Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries);
     }
 
     private static IEnumerable<DocumentInfo> GetAdditionalDocuments(IAnalyzerResult analyzerResult, ProjectId projectId)
