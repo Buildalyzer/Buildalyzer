@@ -24,7 +24,7 @@ public class AnalyzerManagerOptions
                 return;
             }
 
-            LoggerFactory ??= new LoggerFactory();
+            LoggerFactory ??= new SimpleLoggerFactory();
             LoggerFactory.AddProvider(new TextWriterLoggerProvider(value));
         }
     }

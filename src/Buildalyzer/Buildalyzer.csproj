@@ -26,7 +26,7 @@ ToBeReleased
          Microsoft.VisualStudio.SolutionPersistence; compiler inputs arrive as the compiler task's parameters
          over the pipe and surface through Buildalyzer's own IProjectItem model. The Buildalyzer.Logger dll
          (which does reference Microsoft.Build.Framework) runs inside the out-of-process MSBuild. -->
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.0" />
     <PackageReference Include="Microsoft.VisualStudio.SolutionPersistence" Version="1.0.52" />
     <PackageReference Include="XenoAtom.MsBuildPipeLogger" Version="1.1.0" ExcludeAssets="contentFiles" />
   </ItemGroup>
