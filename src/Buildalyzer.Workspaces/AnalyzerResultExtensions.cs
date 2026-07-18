@@ -243,7 +243,7 @@ public static class AnalyzerResultExtensions
         // SDK-generated <Project>.GeneratedMSBuildEditorConfig.editorconfig that surfaces
         // build_property.* values many source generators depend on.
         string[] analyzerConfigFiles = analyzerResult.AnalyzerConfigFiles ?? [];
-        return GetDocuments(analyzerConfigFiles, projectId);
+        return GetDocuments(analyzerConfigFiles, projectId, Path.GetDirectoryName(analyzerResult.ProjectFilePath));
     }
 
     private static ParseOptions CreateParseOptions(IAnalyzerResult analyzerResult, string languageName)
@@ -426,24 +426,38 @@ public static class AnalyzerResultExtensions
     private static IEnumerable<DocumentInfo> GetDocuments(IAnalyzerResult analyzerResult, ProjectId projectId)
     {
         string[] sourceFiles = analyzerResult.SourceFiles ?? [];
-        return GetDocuments(sourceFiles, projectId);
+        return GetDocuments(sourceFiles, projectId, Path.GetDirectoryName(analyzerResult.ProjectFilePath));
     }
 
-    private static IEnumerable<DocumentInfo> GetDocuments(IEnumerable<string> files, ProjectId projectId) =>
+    private static IEnumerable<DocumentInfo> GetDocuments(IEnumerable<string> files, ProjectId projectId, string? projectDirectory) =>
        files.Where(File.Exists)
            .Select(x => DocumentInfo.Create(
                DocumentId.CreateNewId(projectId),
                Path.GetFileName(x),
+               folders: GetDocumentFolders(x, projectDirectory),
                loader: TextLoader.From(
                    TextAndVersion.Create(
                        SourceText.From(File.ReadAllText(x), Encoding.Unicode), VersionStamp.Create())),
                filePath: x));
 
+    // Mirrors MSBuildWorkspace's GetRelativeFolders: a document's logical folders are the directory
+    // of its path taken relative to the project directory, split into segments.
+    private static IEnumerable<string> GetDocumentFolders(string filePath, string? projectDirectory)
+    {
+        if (string.IsNullOrEmpty(projectDirectory))
+        {
+            return [];
+        }
+
+        string relativeDirectory = Path.GetDirectoryName(Path.GetRelativePath(projectDirectory!, filePath)) ?? string.Empty;
+        return relativeDirectory.Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries);
+    }
+
     private static IEnumerable<DocumentInfo> GetAdditionalDocuments(IAnalyzerResult analyzerResult, ProjectId projectId)
     {
         string projectDirectory = Path.GetDirectoryName(analyzerResult.ProjectFilePath);
         string[] additionalFiles = analyzerResult.AdditionalFiles ?? [];
-        return GetDocuments(additionalFiles.Select(x => Path.Combine(projectDirectory!, x)), projectId);
+        return GetDocuments(additionalFiles.Select(x => Path.Combine(projectDirectory!, x)), projectId, projectDirectory);
     }
 
     private static IEnumerable<MetadataReference> GetMetadataReferences(IAnalyzerResult analyzerResult) =>

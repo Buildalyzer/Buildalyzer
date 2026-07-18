@@ -646,6 +646,32 @@ public class Differential_specs
         ba.Should().BeEquivalentTo(ms);
     }
 
+    [Test]
+    public async Task Document_folders_match_reference()
+    {
+        using ProjectFixture fixture = new();
+        string projectPath = fixture.AddProject(
+            "FoldersProject",
+            p => p.Property("TargetFramework", TargetFramework),
+            new Dictionary<string, string>
+            {
+                ["Class1.cs"] = "namespace FoldersProject;\npublic class Class1 { }\n",
+                ["Models/Thing.cs"] = "namespace FoldersProject.Models;\npublic class Thing { }\n",
+                ["Models/Nested/Deep.cs"] = "namespace FoldersProject.Models.Nested;\npublic class Deep { }\n",
+            });
+        fixture.Restore(projectPath);
+
+        using WorkspaceComparison comparison = await WorkspaceComparison.LoadAsync(projectPath);
+        AssertLoadedCleanly(comparison);
+
+        // MSBuildWorkspace records each document's logical folder path (e.g. Models/Nested).
+        DocumentFolders(comparison.Buildalyzer).Should().BeEquivalentTo(DocumentFolders(comparison.MSBuild));
+    }
+
+    private static Dictionary<string, string[]> DocumentFolders(Project project) => project.Documents
+        .Where(d => d.FilePath is not null)
+        .ToDictionary(d => Path.GetFileName(d.FilePath!), d => d.Folders.ToArray(), StringComparer.OrdinalIgnoreCase);
+
     private static async Task<string[]> CompilationErrors(Project project)
     {
         Compilation compilation = await project.GetCompilationAsync();
