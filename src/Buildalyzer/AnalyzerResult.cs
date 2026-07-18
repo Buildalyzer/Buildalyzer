@@ -103,6 +103,9 @@ public class AnalyzerResult : IAnalyzerResult
     public ImmutableDictionary<string, ImmutableArray<string>> ReferenceAliases =>
         CompilerCommand?.Aliases ?? ImmutableDictionary<string, ImmutableArray<string>>.Empty;
 
+    public ImmutableHashSet<string> ReferencesEmbeddingInteropTypes =>
+        CompilerCommand?.EmbedInteropTypes ?? ImmutableHashSet<string>.Empty;
+
     public string[] AnalyzerReferences =>
           CompilerCommand?.AnalyzerReferences.ToArray() ?? [];
 

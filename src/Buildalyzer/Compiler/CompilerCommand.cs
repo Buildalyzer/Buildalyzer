@@ -43,6 +43,12 @@ public abstract record CompilerCommand
     /// </summary>
     public ImmutableDictionary<string, ImmutableArray<string>> Aliases { get; init; } = ImmutableDictionary<string, ImmutableArray<string>>.Empty;
 
+    /// <summary>
+    /// The metadata references whose interop types are embedded (the <c>EmbedInteropTypes</c> metadata
+    /// is <c>true</c>).
+    /// </summary>
+    public ImmutableHashSet<string> EmbedInteropTypes { get; init; } = ImmutableHashSet<string>.Empty;
+
     /// <inheritdoc />
     [Pure]
     public override string ToString() => Text ?? string.Empty;

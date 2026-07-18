@@ -106,6 +106,19 @@ public sealed class ProjectFixture : IDisposable
         root.Save();
     }
 
+    /// <summary>Adds an MSBuild item with metadata to an already-authored project.</summary>
+    public static void AddItem(string projectPath, string itemType, string include, IReadOnlyDictionary<string, string> metadata)
+    {
+        ProjectRootElement root = ProjectRootElement.Open(projectPath)!;
+        ProjectItemElement item = root.AddItem(itemType, include);
+        foreach ((string name, string value) in metadata)
+        {
+            item.AddMetadata(name, value);
+        }
+
+        root.Save();
+    }
+
     /// <summary>Adds a <c>ProjectReference</c> from one generated project to another.</summary>
     public static void AddProjectReference(string fromProjectPath, string toProjectPath)
     {

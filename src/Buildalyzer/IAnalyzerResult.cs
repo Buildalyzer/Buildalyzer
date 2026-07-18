@@ -40,6 +40,12 @@ public interface IAnalyzerResult
 
     ImmutableDictionary<string, ImmutableArray<string>> ReferenceAliases { get; }
 
+    /// <summary>
+    /// The metadata references (by path) whose interop types should be embedded
+    /// (the <c>EmbedInteropTypes</c> metadata is <c>true</c>).
+    /// </summary>
+    ImmutableHashSet<string> ReferencesEmbeddingInteropTypes { get; }
+
     string[] AnalyzerReferences { get; }
 
     string[] SourceFiles { get; }

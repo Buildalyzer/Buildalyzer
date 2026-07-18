@@ -252,6 +252,45 @@ public class Differential_specs
     }
 
     [Test]
+    public async Task Embed_interop_types_reference_matches_reference()
+    {
+        using ProjectFixture fixture = new();
+        string projectPath = fixture.AddProject(
+            "EmbedProject",
+            p => p.Property("TargetFramework", TargetFramework),
+            Source("Class1.cs", "namespace EmbedProject;\npublic class Class1 { }\n"));
+
+        // Copy a real assembly next to the project and reference it with EmbedInteropTypes=true. The
+        // design-time build carries the metadata through without the compiler running (which is where a
+        // non-PIA would actually be rejected), so this exercises the plumbing cross-platform.
+        string source = typeof(Microsoft.Build.Locator.MSBuildLocator).Assembly.Location;
+        File.Copy(source, Path.Combine(Path.GetDirectoryName(projectPath)!, "Embedded.dll"));
+        ProjectFixture.AddItem(projectPath, "Reference", "Embedded", new Dictionary<string, string>
+        {
+            ["HintPath"] = "Embedded.dll",
+            ["EmbedInteropTypes"] = "true",
+            ["Private"] = "false",
+        });
+        fixture.Restore(projectPath);
+
+        using WorkspaceComparison comparison = await WorkspaceComparison.LoadAsync(projectPath);
+        AssertLoadedCleanly(comparison);
+
+        string[] ms = EmbedInteropReferences(comparison.MSBuild);
+        string[] ba = EmbedInteropReferences(comparison.Buildalyzer);
+        ms.Should().Contain("Embedded.dll", "the reference is marked EmbedInteropTypes");
+        ba.Should().BeEquivalentTo(ms);
+    }
+
+    private static string[] EmbedInteropReferences(Project project) =>
+    [
+        .. project.MetadataReferences.OfType<PortableExecutableReference>()
+            .Where(r => r.Properties.EmbedInteropTypes && r.FilePath is not null)
+            .Select(r => Path.GetFileName(r.FilePath!))
+            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+    ];
+
+    [Test]
     public async Task Visual_basic_class_library_matches_reference()
     {
         using ProjectFixture fixture = new();

@@ -73,8 +73,18 @@ internal static class CompilerCommandBuilder
             EmbeddedFiles = [.. embedded.Select(spec => Resolve(projectDirectory, spec).ToString())],
             PreprocessorSymbolNames = [.. PreprocessorSymbols(language, arguments)],
             Aliases = BuildAliases(references),
+            EmbedInteropTypes = BuildEmbedInteropTypes(references),
         };
     }
+
+    [Pure]
+    private static ImmutableHashSet<string> BuildEmbedInteropTypes(List<CompilerInputItem> references) =>
+    [
+        .. references
+            .Where(r => r.Metadata.Any(m => m.Name.IsMatch("EmbedInteropTypes")
+                && string.Equals((m.Value ?? string.Empty).Trim(), "true", StringComparison.OrdinalIgnoreCase)))
+            .Select(r => r.Spec)
+    ];
 
     [Pure]
     private static List<CompilerInputItem> Items(IReadOnlyDictionary<string, List<CompilerInputItem>> taskInputs, string key)
