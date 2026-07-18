@@ -99,6 +99,7 @@ public class AnalyzerManager : IAnalyzerManager
         // EventProcessor the live build uses.
         using var cancellation = new CancellationTokenSource();
         using var pipeLogger = new AnonymousPipeLoggerServer(cancellation.Token);
+        using var eventCollector = new BuildEventArgsCollector(pipeLogger);
         using var eventProcessor = new EventProcessor(this, null, true);
         eventProcessor.SubscribePipe(pipeLogger);
 
@@ -124,6 +125,18 @@ public class AnalyzerManager : IAnalyzerManager
             new Dictionary<string, string?>(),
             LoggerFactory);
 
+        // If MSBuild exits without ever writing to the pipe (e.g. an invalid binary log or a startup
+        // failure), the server keeps its client handle open so the read never sees EOF. Dispose the
+        // logger on such an exit to unblock ReadAll rather than hang indefinitely.
+        void OnProcessRunnerExited()
+        {
+            if (eventCollector.IsEmpty && processRunner.ExitCode != 0)
+            {
+                pipeLogger.Dispose();
+            }
+        }
+
+        processRunner.Exited += OnProcessRunnerExited;
         processRunner.Start();
         try
         {

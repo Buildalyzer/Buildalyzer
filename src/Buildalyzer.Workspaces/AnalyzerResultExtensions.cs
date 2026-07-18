@@ -519,8 +519,18 @@ public static class AnalyzerResultExtensions
             return [];
         }
 
-        string relativeDirectory = Path.GetDirectoryName(Path.GetRelativePath(projectDirectory!, filePath)) ?? string.Empty;
-        return relativeDirectory.Length == 0 || relativeDirectory.StartsWith("..", StringComparison.Ordinal)
+        string relativePath = Path.GetRelativePath(projectDirectory!, filePath);
+
+        // GetRelativePath returns a rooted path when the file sits on a different drive/UNC root, and a
+        // ..-prefixed path when it escapes the project directory on the same root. Either way the file is
+        // outside the project cone, so it keeps no folders.
+        if (Path.IsPathRooted(relativePath) || relativePath.StartsWith("..", StringComparison.Ordinal))
+        {
+            return [];
+        }
+
+        string relativeDirectory = Path.GetDirectoryName(relativePath) ?? string.Empty;
+        return relativeDirectory.Length == 0
             ? []
             : relativeDirectory.Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries);
     }

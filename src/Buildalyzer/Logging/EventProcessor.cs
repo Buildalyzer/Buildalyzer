@@ -174,7 +174,7 @@ internal sealed class EventProcessor : IDisposable
         }
 
         bool IsRelevant()
-            => !result.HasCommandLine
+            => result is not { HasCommandLine: true }
             || IOPath.Parse(projectFile).Root().Equals(_projectFilePath);
     }
 
