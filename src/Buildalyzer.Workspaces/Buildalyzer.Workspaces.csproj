@@ -16,14 +16,15 @@
 ToBeReleased
 - Target .NET 10.0. #252
 - Drop .NET 6.0.
+- Upgrade Microsoft.CodeAnalysis.Workspaces (Roslyn) to 5.6.0.
 - Publish SBOM.
 ]]>
     </PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.10.0" />
-    <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Workspaces" Version="4.10.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.6.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Workspaces" Version="5.6.0" />
   </ItemGroup>
 
   <ItemGroup>

@@ -14,8 +14,8 @@ public static class AnalyzerManagerExtensions
     {
         ILogger logger = manager.LoggerFactory?.CreateLogger<AdhocWorkspace>();
         AdhocWorkspace workspace = new AdhocWorkspace();
-        workspace.WorkspaceChanged += (sender, args) => logger?.LogDebug("Workspace changed: {Kind}{NewLine}", args.Kind, System.Environment.NewLine);
-        workspace.WorkspaceFailed += (sender, args) => logger?.LogError("Workspace failed: {Diagnostic}{NewLine}", args.Diagnostic, System.Environment.NewLine);
+        workspace.RegisterWorkspaceChangedHandler(args => logger?.LogDebug("Workspace changed: {Kind}{NewLine}", args.Kind, System.Environment.NewLine));
+        workspace.RegisterWorkspaceFailedHandler(args => logger?.LogError("Workspace failed: {Diagnostic}{NewLine}", args.Diagnostic, System.Environment.NewLine));
         return workspace;
     }
 
