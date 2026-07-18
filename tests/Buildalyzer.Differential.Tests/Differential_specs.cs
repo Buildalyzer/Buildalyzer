@@ -468,6 +468,61 @@ public class Differential_specs
     }
 
     [Test]
+    public async Task Compilation_services_match_reference()
+    {
+        using ProjectFixture fixture = new();
+        string projectPath = fixture.AddProject(
+            "ServicesProject",
+            p => p.Property("TargetFramework", TargetFramework),
+            Source("Class1.cs", "namespace ServicesProject;\npublic class Class1 { }\n"));
+        fixture.Restore(projectPath);
+
+        using WorkspaceComparison comparison = await WorkspaceComparison.LoadAsync(projectPath);
+        CompilationOptions ba = comparison.Buildalyzer.CompilationOptions!;
+        CompilationOptions ms = comparison.MSBuild.CompilationOptions!;
+
+        // MSBuildWorkspace attaches these to every project; the command-line parser leaves them null.
+        // (The metadata reference resolver it uses is internal to Roslyn and only affects #r, so we
+        // deliberately do not match that one.)
+        ba.XmlReferenceResolver!.GetType().Should().Be(ms.XmlReferenceResolver!.GetType());
+        ba.SourceReferenceResolver!.GetType().Should().Be(ms.SourceReferenceResolver!.GetType());
+        ba.StrongNameProvider!.GetType().Should().Be(ms.StrongNameProvider!.GetType());
+        ba.AssemblyIdentityComparer.GetType().Should().Be(ms.AssemblyIdentityComparer.GetType());
+    }
+
+    [Test]
+    public async Task Signed_assembly_emits_from_workspace()
+    {
+        using ProjectFixture fixture = new();
+        string projectPath = fixture.AddProject(
+            "SignedProject",
+            p => p
+                .Property("TargetFramework", TargetFramework)
+                .Property("SignAssembly", "true")
+                .Property("AssemblyOriginatorKeyFile", "key.snk"),
+            Source("Class1.cs", "namespace SignedProject;\npublic class Class1 { }\n"));
+        StrongNameKey.Write(Path.Combine(Path.GetDirectoryName(projectPath)!, "key.snk"));
+        fixture.Restore(projectPath);
+
+        using WorkspaceComparison comparison = await WorkspaceComparison.LoadAsync(projectPath);
+        AssertLoadedCleanly(comparison);
+
+        // Emitting a strong-named assembly needs a StrongNameProvider; without it Emit fails. Both
+        // workspaces should produce a signed assembly.
+        (await Emits(comparison.MSBuild)).Should().BeTrue("the reference workspace should emit a signed assembly");
+        (await Emits(comparison.Buildalyzer)).Should().BeTrue("Buildalyzer's workspace should emit a signed assembly");
+    }
+
+    private static async Task<bool> Emits(Project project)
+    {
+        Compilation compilation = await project.GetCompilationAsync();
+        using MemoryStream stream = new();
+        Microsoft.CodeAnalysis.Emit.EmitResult result = compilation.Emit(stream);
+        return result.Success
+            && compilation.Assembly.Identity.PublicKey.Length > 0;
+    }
+
+    [Test]
     [Explicit("Diagnostic: dumps project-level facts for triage.")]
     public async Task Exploratory_project_facts_diff()
     {

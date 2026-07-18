@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -169,10 +170,21 @@ public static class AnalyzerResultExtensions
     /// </summary>
     private static (CompilationOptions? CompilationOptions, ParseOptions? ParseOptions) CreateOptions(IAnalyzerResult analyzerResult, string languageName)
     {
+        string? projectDirectory = Path.GetDirectoryName(analyzerResult.ProjectFilePath);
+        (CompilationOptions? compilationOptions, ParseOptions? parseOptions) = CreateRawOptions(analyzerResult, languageName, projectDirectory);
+
+        if (compilationOptions is not null)
+        {
+            compilationOptions = WithWorkspaceServices(compilationOptions, projectDirectory);
+        }
+
+        return (compilationOptions, parseOptions);
+    }
+
+    private static (CompilationOptions? CompilationOptions, ParseOptions? ParseOptions) CreateRawOptions(IAnalyzerResult analyzerResult, string languageName, string? projectDirectory)
+    {
         if (analyzerResult.CompilerArguments is { Length: > 0 } arguments)
         {
-            string? projectDirectory = Path.GetDirectoryName(analyzerResult.ProjectFilePath);
-
             // Language-specific parsing stays in local functions so the parser assembly for the other
             // language is never loaded for a project that does not use it.
             if (languageName == LanguageNames.CSharp)
@@ -199,6 +211,24 @@ public static class AnalyzerResultExtensions
         }
 
         return (CreateCompilationOptions(analyzerResult, languageName), CreateParseOptions(analyzerResult, languageName));
+    }
+
+    /// <summary>
+    /// Attaches the same compilation "services" MSBuildWorkspace puts on every project, so features
+    /// relying on them behave the same: assembly identity/version unification (<see cref="DesktopAssemblyIdentityComparer"/>),
+    /// XML documentation <c>&lt;include&gt;</c> resolution, <c>#load</c>/<c>#line</c> source resolution, and
+    /// strong-name signing during <c>Emit</c>. The command-line parser leaves these null. The metadata
+    /// reference resolver MSBuildWorkspace uses is internal to Roslyn and only affects <c>#r</c>, so it is
+    /// left at its default.
+    /// </summary>
+    private static CompilationOptions WithWorkspaceServices(CompilationOptions options, string? projectDirectory)
+    {
+        ImmutableArray<string> keyFileSearchPaths = projectDirectory is null ? [] : [projectDirectory];
+        return options
+            .WithXmlReferenceResolver(new XmlFileResolver(projectDirectory))
+            .WithSourceReferenceResolver(new SourceFileResolver([], projectDirectory))
+            .WithStrongNameProvider(new DesktopStrongNameProvider(keyFileSearchPaths, Path.GetTempPath()))
+            .WithAssemblyIdentityComparer(DesktopAssemblyIdentityComparer.Default);
     }
 
     // A documentation file (DocumentationFile / GenerateDocumentationFile) causes MSBuild to pass
