@@ -462,6 +462,31 @@ public class Differential_specs
             .Should().BeEquivalentTo(comparison.MSBuild.CSharpOptions().SpecificDiagnosticOptions);
     }
 
+    [Test]
+    public async Task Source_checksum_algorithm_matches_reference()
+    {
+        using ProjectFixture fixture = new();
+        string projectPath = fixture.AddProject(
+            "ChecksumProject",
+            p => p.Property("TargetFramework", TargetFramework),
+            Source("Class1.cs", "namespace ChecksumProject;\npublic class Class1 { }\n"));
+        fixture.Restore(projectPath);
+
+        using WorkspaceComparison comparison = await WorkspaceComparison.LoadAsync(projectPath);
+        AssertLoadedCleanly(comparison);
+
+        Microsoft.CodeAnalysis.Text.SourceText ba = await DocumentSource(comparison.Buildalyzer, "Class1.cs");
+        Microsoft.CodeAnalysis.Text.SourceText ms = await DocumentSource(comparison.MSBuild, "Class1.cs");
+        ba.ChecksumAlgorithm.Should().Be(ms.ChecksumAlgorithm);
+    }
+
+    private static async Task<Microsoft.CodeAnalysis.Text.SourceText> DocumentSource(Project project, string fileName)
+    {
+        Document document = project.Documents.Single(
+            d => string.Equals(Path.GetFileName(d.FilePath), fileName, StringComparison.OrdinalIgnoreCase));
+        return await document.GetTextAsync();
+    }
+
     private static async Task<string> DocumentText(Project project, string fileName)
     {
         Document document = project.Documents.Single(

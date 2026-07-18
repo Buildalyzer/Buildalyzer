@@ -244,7 +244,7 @@ public static class AnalyzerResultExtensions
         // SDK-generated <Project>.GeneratedMSBuildEditorConfig.editorconfig that surfaces
         // build_property.* values many source generators depend on.
         string[] analyzerConfigFiles = analyzerResult.AnalyzerConfigFiles ?? [];
-        return GetDocuments(analyzerConfigFiles, projectId, Path.GetDirectoryName(analyzerResult.ProjectFilePath));
+        return GetDocuments(analyzerConfigFiles, projectId, Path.GetDirectoryName(analyzerResult.ProjectFilePath), GetChecksumAlgorithm(analyzerResult));
     }
 
     private static ParseOptions CreateParseOptions(IAnalyzerResult analyzerResult, string languageName)
@@ -427,10 +427,10 @@ public static class AnalyzerResultExtensions
     private static IEnumerable<DocumentInfo> GetDocuments(IAnalyzerResult analyzerResult, ProjectId projectId)
     {
         string[] sourceFiles = analyzerResult.SourceFiles ?? [];
-        return GetDocuments(sourceFiles, projectId, Path.GetDirectoryName(analyzerResult.ProjectFilePath));
+        return GetDocuments(sourceFiles, projectId, Path.GetDirectoryName(analyzerResult.ProjectFilePath), GetChecksumAlgorithm(analyzerResult));
     }
 
-    private static IEnumerable<DocumentInfo> GetDocuments(IEnumerable<string> files, ProjectId projectId, string? projectDirectory) =>
+    private static IEnumerable<DocumentInfo> GetDocuments(IEnumerable<string> files, ProjectId projectId, string? projectDirectory, SourceHashAlgorithm checksumAlgorithm) =>
        files.Where(File.Exists)
            .Select(x => DocumentInfo.Create(
                DocumentId.CreateNewId(projectId),
@@ -438,8 +438,17 @@ public static class AnalyzerResultExtensions
                folders: GetDocumentFolders(x, projectDirectory),
                loader: TextLoader.From(
                    TextAndVersion.Create(
-                       SourceText.From(File.ReadAllText(x), Encoding.Unicode), VersionStamp.Create())),
+                       SourceText.From(File.ReadAllText(x), Encoding.Unicode, checksumAlgorithm), VersionStamp.Create())),
                filePath: x));
+
+    // The SDK hashes source with SHA256 by default (older projects used SHA1); mirror MSBuildWorkspace,
+    // which takes the algorithm from the ChecksumAlgorithm property, so document checksums match.
+    private static SourceHashAlgorithm GetChecksumAlgorithm(IAnalyzerResult analyzerResult) =>
+        analyzerResult.GetProperty("ChecksumAlgorithm")?.ToUpperInvariant() switch
+        {
+            "SHA1" => SourceHashAlgorithm.Sha1,
+            _ => SourceHashAlgorithm.Sha256,
+        };
 
     // Mirrors MSBuildWorkspace: a document's logical folders are the directory of its path relative
     // to the project directory. Files outside the project cone are auto-linked by the SDK and keep no
@@ -461,7 +470,7 @@ public static class AnalyzerResultExtensions
     {
         string projectDirectory = Path.GetDirectoryName(analyzerResult.ProjectFilePath);
         string[] additionalFiles = analyzerResult.AdditionalFiles ?? [];
-        return GetDocuments(additionalFiles.Select(x => Path.Combine(projectDirectory!, x)), projectId, projectDirectory);
+        return GetDocuments(additionalFiles.Select(x => Path.Combine(projectDirectory!, x)), projectId, projectDirectory, GetChecksumAlgorithm(analyzerResult));
     }
 
     private static IEnumerable<MetadataReference> GetMetadataReferences(IAnalyzerResult analyzerResult) =>
