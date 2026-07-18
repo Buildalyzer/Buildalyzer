@@ -53,6 +53,12 @@ public interface IAnalyzerResult
     string[] AdditionalFiles { get; }
 
     /// <summary>
+    /// Gets the analyzer config files (<c>.editorconfig</c> and <c>.globalconfig</c>, including
+    /// the SDK-generated ones) passed to the compiler via <c>/analyzerconfig:</c>.
+    /// </summary>
+    string[] AnalyzerConfigFiles { get; }
+
+    /// <summary>
     /// Gets the compiler command produced by the CoreCompile task.
     /// This is <see cref="CompilerFilePath"/> + <see cref="CompilerArguments"/>.
     /// </summary>

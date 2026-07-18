@@ -17,6 +17,8 @@ ToBeReleased
 - Publish SBOM.
 - Introduction of SolutionInfo and ProjectInfo.
 - Support SLNX.
+- The log writer (AnalyzerManagerOptions.LogWriter) is now written to under a lock, so a non-thread-safe TextWriter such as a StringWriter can be passed safely.
+- IAnalyzerResult now exposes AnalyzerConfigFiles (the .editorconfig/.globalconfig paths passed to the compiler). (BREAKING for implementers)
 ]]>
     </PackageReleaseNotes>
   </PropertyGroup>

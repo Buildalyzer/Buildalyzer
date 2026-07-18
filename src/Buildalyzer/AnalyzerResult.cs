@@ -111,6 +111,9 @@ public class AnalyzerResult : IAnalyzerResult
     public string[] AdditionalFiles =>
           CompilerCommand?.AdditionalFiles.ToArray() ?? [];
 
+    public string[] AnalyzerConfigFiles =>
+          CompilerCommand?.AnalyzerConfigPaths.ToArray() ?? [];
+
     public IEnumerable<string> ProjectReferences =>
         Items.TryGetValue("ProjectReference", out IProjectItem[] items)
             ? items.Distinct(new ProjectItemItemSpecEqualityComparer())
