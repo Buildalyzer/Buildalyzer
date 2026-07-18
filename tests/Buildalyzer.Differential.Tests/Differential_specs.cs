@@ -588,6 +588,74 @@ public class Differential_specs
         ba.Should().BeEquivalentTo(ms);
     }
 
+    [Test]
+    public async Task Project_reference_resolves_cross_project_symbols()
+    {
+        using ProjectFixture fixture = new();
+        string libraryPath = fixture.AddProject(
+            "Library",
+            p => p.Property("TargetFramework", TargetFramework),
+            Source("Widget.cs", "namespace Library;\npublic class Widget { public int Value => 42; }\n"));
+        string appPath = fixture.AddProject(
+            "App",
+            p => p.Property("TargetFramework", TargetFramework),
+            Source("Program.cs", "namespace App;\npublic class Program { public Library.Widget W = new(); }\n"));
+        ProjectFixture.AddProjectReference(appPath, libraryPath);
+        fixture.Restore(appPath);
+
+        using WorkspaceComparison comparison = await WorkspaceComparison.LoadAsync(appPath);
+        AssertLoadedCleanly(comparison);
+
+        // A design-time build never produces Library.dll, so App can only bind Library.Widget if the
+        // project reference is wired into the workspace as a compilation reference. The app should
+        // compile without errors on both sides.
+        (await CompilationErrors(comparison.MSBuild)).Should().BeEmpty("the reference resolves Library.Widget");
+        (await CompilationErrors(comparison.Buildalyzer))
+            .Should().BeEquivalentTo(await CompilationErrors(comparison.MSBuild));
+    }
+
+    [Test]
+    public async Task Xml_documentation_include_resolves_from_workspace()
+    {
+        using ProjectFixture fixture = new();
+        string projectPath = fixture.AddProject(
+            "XmlIncludeProject",
+            p => p
+                .Property("TargetFramework", TargetFramework)
+                .Property("GenerateDocumentationFile", "true"),
+            new Dictionary<string, string>
+            {
+                ["Class1.cs"] =
+                    "namespace XmlIncludeProject;\n"
+                    + "public class Class1\n{\n"
+                    + "    /// <include file='docs.xml' path='docs/member[@name=\"M\"]/*'/>\n"
+                    + "    public void M() { }\n}\n",
+                ["docs.xml"] = "<docs><member name=\"M\"><summary>Documented.</summary></member></docs>\n",
+            });
+        fixture.Restore(projectPath);
+
+        using WorkspaceComparison comparison = await WorkspaceComparison.LoadAsync(projectPath);
+        AssertLoadedCleanly(comparison);
+
+        // Resolving the <include> needs an XmlReferenceResolver; without one the compiler reports
+        // CS1589. Both workspaces should resolve it and report the same (empty) diagnostics.
+        (string Id, DiagnosticSeverity Severity)[] ms = await CompilerDiagnostics(comparison.MSBuild);
+        (string Id, DiagnosticSeverity Severity)[] ba = await CompilerDiagnostics(comparison.Buildalyzer);
+
+        ms.Should().NotContain(("CS1589", DiagnosticSeverity.Warning));
+        ba.Should().BeEquivalentTo(ms);
+    }
+
+    private static async Task<string[]> CompilationErrors(Project project)
+    {
+        Compilation compilation = await project.GetCompilationAsync();
+        return [.. compilation.GetDiagnostics()
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Select(d => d.Id)
+            .Distinct()
+            .OrderBy(x => x, StringComparer.Ordinal)];
+    }
+
     private static async Task<(string Id, DiagnosticSeverity Severity)[]> AnalyzerDiagnostics(Project project, string id)
     {
         Compilation compilation = await project.GetCompilationAsync();
