@@ -24,6 +24,11 @@ internal sealed class EventProcessor : IDisposable
     private PipeEventDispatcher? _pipeSource;
     private IOPath _projectFilePath;
 
+    // The project-context ids of the primary project's builds (one per inner build when multi-targeting).
+    // Used to attribute compiler task-input events to the primary result and reject those raised by
+    // referenced projects that are compiled in the same MSBuild invocation.
+    private readonly HashSet<int> _primaryProjectContextIds = [];
+
     public EventProcessor(AnalyzerManager manager, ProjectAnalyzer analyzer, bool analyze)
     {
         _manager = manager;
@@ -61,7 +66,7 @@ internal sealed class EventProcessor : IDisposable
     private void OnEvaluationFinished(int evaluationId, PropertiesAndItems propertiesAndItems)
         => _evaluationResults[evaluationId] = propertiesAndItems;
 
-    private void OnProjectStarted(string? projectFile, PropertiesAndItems? propertiesAndItems)
+    private void OnProjectStarted(string? projectFile, PropertiesAndItems? propertiesAndItems, int? projectContextId)
     {
         var projectPath = IOPath.Parse(projectFile).Root();
 
@@ -75,6 +80,13 @@ internal sealed class EventProcessor : IDisposable
         if (!projectPath.Equals(_projectFilePath))
         {
             return;
+        }
+
+        // Remember this project build's context so its compiler task-input events can be told apart from
+        // those raised by referenced projects that build in the same invocation (see OnPipeTaskParameter).
+        if (projectContextId is { } contextId)
+        {
+            _primaryProjectContextIds.Add(contextId);
         }
 
         string tfm = propertiesAndItems?.Properties.TryGet("TargetFrameworkMoniker")?.StringValue ?? string.Empty;
@@ -173,7 +185,7 @@ internal sealed class EventProcessor : IDisposable
                 ? existing
                 : null;
 
-        OnProjectStarted(e.ProjectFile, propertiesAndItems);
+        OnProjectStarted(e.ProjectFile, propertiesAndItems, e.BuildEventContext?.ProjectContextId);
     }
 
     private void OnPipeProjectFinished(PipeProjectFinishedEventArgs e) => OnProjectFinished(e.ProjectFile, e.Succeeded);
@@ -181,11 +193,16 @@ internal sealed class EventProcessor : IDisposable
     // Collect the compiler task's resolved input parameters (structured items with metadata). For live builds
     // the logger has already filtered to CoreCompile's compiler-input item groups; for a replayed binary log
     // every task parameter is forwarded, so we gate on TaskInput kind, item type, and the CoreCompile target.
+    // The event must also originate from the primary project's build context: referenced projects compiled in
+    // the same invocation raise their own compiler-input events (the logger's CoreCompile filter is project-
+    // agnostic), and without this check their Sources/References would be merged into the primary result.
     private void OnPipeTaskParameter(PipeTaskParameterEventArgs e)
     {
         if (e.Kind == PipeTaskParameterKind.TaskInput
             && e.ItemType is { Length: > 0 } itemType
             && IsCompilerInput(itemType)
+            && e.BuildEventContext is { } context
+            && _primaryProjectContextIds.Contains(context.ProjectContextId)
             && _targetStack.Any(x => x == "CoreCompile")
             && _currentResult.TryPeek(out var result)
             && result is not null)
