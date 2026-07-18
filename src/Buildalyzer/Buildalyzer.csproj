@@ -20,6 +20,7 @@ ToBeReleased
 - The log writer (AnalyzerManagerOptions.LogWriter) is now written to under a lock, so a non-thread-safe TextWriter such as a StringWriter can be passed safely.
 - IAnalyzerResult now exposes AnalyzerConfigFiles (the .editorconfig/.globalconfig paths passed to the compiler). (BREAKING for implementers)
 - IAnalyzerResult now exposes ReferencesEmbeddingInteropTypes (the references whose EmbedInteropTypes metadata is true). (BREAKING for implementers)
+- IAnalyzerResults.BuildEventArguments has been removed from the public API; the raw pipe events are an implementation detail (XenoAtom.MsBuildPipeLogger types are no longer exposed). (BREAKING)
 ]]>
     </PackageReleaseNotes>
   </PropertyGroup>
