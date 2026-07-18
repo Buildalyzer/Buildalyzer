@@ -594,6 +594,37 @@ public class Differential_specs
         ba.Should().BeEquivalentTo(ms);
     }
 
+    [Test]
+    public async Task Visual_basic_option_strict_diagnostics_match_reference()
+    {
+        using ProjectFixture fixture = new();
+        string projectPath = fixture.AddProject(
+            "VbStrict",
+            p => p
+                .Property("TargetFramework", TargetFramework)
+                .Property("OptionStrict", "On"),
+            Source("Widget.vb", "Namespace VbStrict\n    Public Class Widget\n        Public Sub M()\n            Dim x As Integer = 1.5\n        End Sub\n    End Class\nEnd Namespace\n"),
+            extension: ".vbproj");
+        fixture.Restore(projectPath);
+
+        using WorkspaceComparison comparison = await WorkspaceComparison.LoadAsync(projectPath);
+        AssertLoadedCleanly(comparison);
+
+        // Option Strict On makes the narrowing conversion an error (BC30512); both must agree.
+        (string Id, DiagnosticSeverity Severity)[] ms = await CompilerDiagnostics(comparison.MSBuild);
+        (string Id, DiagnosticSeverity Severity)[] ba = await CompilerDiagnostics(comparison.Buildalyzer);
+
+        // Both workspaces must apply Option Strict (BC30512 on the narrowing conversion).
+        ms.Should().Contain(("BC30512", DiagnosticSeverity.Error), "Option Strict On disallows the implicit narrowing");
+        ba.Should().Contain(("BC30512", DiagnosticSeverity.Error));
+
+        // NB: we do not require the full diagnostic sets to match here. For a .NET VB class library,
+        // MSBuildWorkspace injects the VB "My" template and emits spurious BC30002 errors for
+        // Microsoft.VisualBasic.ApplicationServices/Devices types that are not referenced - errors the
+        // real compiler and Buildalyzer do not produce. Buildalyzer is the more faithful one in this case.
+        ba.Should().NotContain(("BC30002", DiagnosticSeverity.Error));
+    }
+
     private static async Task<(string Id, DiagnosticSeverity Severity)[]> CompilerDiagnostics(Project project)
     {
         Compilation compilation = await project.GetCompilationAsync();
