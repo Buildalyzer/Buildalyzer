@@ -1,5 +1,6 @@
 using System.IO;
 using Buildalyzer.Construction;
+using Buildalyzer.IO;
 using Buildalyzer.Logging;
 
 namespace Buildalyzer;
@@ -94,7 +95,7 @@ public class AnalyzerResult : IAnalyzerResult
         .FirstOrDefault();
 
     public string[] SourceFiles =>
-      CompilerCommand?.SourceFiles.Select(file => file.ToString()).ToArray() ?? [];
+      CompilerCommand?.SourceFiles.ToArray() ?? [];
 
     public string[] References =>
         CompilerCommand?.MetadataReferences.ToArray() ?? [];
@@ -103,18 +104,18 @@ public class AnalyzerResult : IAnalyzerResult
         CompilerCommand?.Aliases ?? ImmutableDictionary<string, ImmutableArray<string>>.Empty;
 
     public string[] AnalyzerReferences =>
-          CompilerCommand?.AnalyzerReferences.Select(r => r.ToString()).ToArray() ?? [];
+          CompilerCommand?.AnalyzerReferences.ToArray() ?? [];
 
     public string[] PreprocessorSymbols => CompilerCommand?.PreprocessorSymbolNames.ToArray() ?? [];
 
     public string[] AdditionalFiles =>
-          CompilerCommand?.AdditionalFiles.Select(file => file.ToString()).ToArray() ?? [];
+          CompilerCommand?.AdditionalFiles.ToArray() ?? [];
 
     public IEnumerable<string> ProjectReferences =>
         Items.TryGetValue("ProjectReference", out IProjectItem[] items)
             ? items.Distinct(new ProjectItemItemSpecEqualityComparer())
-                   .Select(x => AnalyzerManager.NormalizePath(
-                        Path.Combine(Path.GetDirectoryName(ProjectFilePath), x.ItemSpec)))
+                   .Select(x => IOPath.Parse(
+                        Path.Combine(Path.GetDirectoryName(ProjectFilePath), x.ItemSpec)).Root().ToString())
             : [];
 
     /// <inheritdoc/>

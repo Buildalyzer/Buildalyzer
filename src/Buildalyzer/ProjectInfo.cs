@@ -10,7 +10,8 @@ public sealed class ProjectInfo
     private ProjectInfo(object reference, IOPath path, Guid guid, IEnumerable<string> tfms)
     {
         Reference = reference;
-        Path = path;
+        Location = path;
+        Path = path.ToString();
         Guid = guid;
         TargetFrameworks = [.. tfms];
     }
@@ -18,8 +19,11 @@ public sealed class ProjectInfo
     /// <summary>The GUID of the project.</summary>
     public Guid Guid { get; }
 
-    /// <summary>The path to the protject.</summary>
-    public IOPath Path { get; }
+    /// <summary>The path to the project.</summary>
+    public string Path { get; }
+
+    /// <summary>The normalized path to the project, used for file-system-aware comparisons.</summary>
+    internal IOPath Location { get; }
 
     /// <summary>Gets the target framework(s) of the project.</summary>
     public ImmutableArray<string> TargetFrameworks { get; }
@@ -28,7 +32,7 @@ public sealed class ProjectInfo
     public object Reference { get; }
 
     [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-    private string DebuggerDisplay => $"{Path.File()?.Name}, TFM = {string.Join(", ", TargetFrameworks)}";
+    private string DebuggerDisplay => $"{Location.File()?.Name}, TFM = {string.Join(", ", TargetFrameworks)}";
 
     [Pure]
     internal static ProjectInfo New(SolutionProjectModel reference, IOPath root)

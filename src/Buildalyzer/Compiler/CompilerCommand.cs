@@ -1,5 +1,4 @@
 using System.IO;
-using Buildalyzer.IO;
 
 namespace Buildalyzer;
 
@@ -19,19 +18,19 @@ public abstract record CompilerCommand
     public FileInfo? CompilerLocation { get; init; }
 
     /// <summary>The source files fed to the compiler.</summary>
-    public ImmutableArray<IOPath> SourceFiles { get; init; } = [];
+    public ImmutableArray<string> SourceFiles { get; init; } = [];
 
     /// <summary>The additional files fed to the compiler.</summary>
-    public ImmutableArray<IOPath> AdditionalFiles { get; init; } = [];
+    public ImmutableArray<string> AdditionalFiles { get; init; } = [];
 
     /// <summary>The embedded files.</summary>
-    public ImmutableArray<IOPath> EmbeddedFiles { get; init; } = [];
+    public ImmutableArray<string> EmbeddedFiles { get; init; } = [];
 
     /// <summary>The analyzer (assembly) references.</summary>
-    public ImmutableArray<IOPath> AnalyzerReferences { get; init; } = [];
+    public ImmutableArray<string> AnalyzerReferences { get; init; } = [];
 
     /// <summary>The analyzer config (.editorconfig) paths.</summary>
-    public ImmutableArray<IOPath> AnalyzerConfigPaths { get; init; } = [];
+    public ImmutableArray<string> AnalyzerConfigPaths { get; init; } = [];
 
     /// <summary>The preprocessor symbol names.</summary>
     public ImmutableArray<string> PreprocessorSymbolNames { get; init; } = [];

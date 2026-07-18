@@ -125,8 +125,8 @@ public class CompilerCommandFixture
         command.PreprocessorSymbolNames.Should().BeEquivalentTo("TRACE", "DEBUG", "NETCOREAPP");
     }
 
-    private static IEnumerable<string> FileNames(IEnumerable<IOPath> paths)
-        => paths.Select(p => Path.GetFileName(p.ToString()));
+    private static IEnumerable<string> FileNames(IEnumerable<string> paths)
+        => paths.Select(Path.GetFileName);
 
     private static List<CompilerInputItem> Items(params string[] specs)
         => [.. specs.Select(s => new CompilerInputItem(s, CompilerInputItem.NoMetadata))];

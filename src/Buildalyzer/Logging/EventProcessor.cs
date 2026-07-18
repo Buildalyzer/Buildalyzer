@@ -1,3 +1,4 @@
+using Buildalyzer.IO;
 using Microsoft.Extensions.Logging;
 using XenoAtom.MsBuildPipeLogger;
 
@@ -21,7 +22,7 @@ internal sealed class EventProcessor : IDisposable
     private readonly bool _analyze;
 
     private PipeEventDispatcher? _pipeSource;
-    private string _projectFilePath;
+    private IOPath _projectFilePath;
 
     public EventProcessor(AnalyzerManager manager, ProjectAnalyzer analyzer, bool analyze)
     {
@@ -29,7 +30,7 @@ internal sealed class EventProcessor : IDisposable
         _analyzer = analyzer;
         _logger = manager.LoggerFactory?.CreateLogger<EventProcessor>();
         _analyze = analyze;
-        _projectFilePath = _analyzer?.ProjectFile.Path;
+        _projectFilePath = IOPath.Parse(_analyzer?.ProjectFile.Path).Root();
     }
 
     public bool OverallSuccess { get; private set; }
@@ -62,11 +63,16 @@ internal sealed class EventProcessor : IDisposable
 
     private void OnProjectStarted(string? projectFile, PropertiesAndItems? propertiesAndItems)
     {
+        var projectPath = IOPath.Parse(projectFile).Root();
+
         // If we're replaying a binary log and this is the first project we've seen, treat it as the primary.
-        _projectFilePath ??= AnalyzerManager.NormalizePath(projectFile);
+        if (!_projectFilePath.HasValue)
+        {
+            _projectFilePath = projectPath;
+        }
 
         // Nested MSBuild tasks may spawn builds of other projects; only track the primary one.
-        if (AnalyzerManager.NormalizePath(projectFile) != _projectFilePath)
+        if (!projectPath.Equals(_projectFilePath))
         {
             return;
         }
@@ -77,7 +83,7 @@ internal sealed class EventProcessor : IDisposable
         {
             if (!_results.TryGetValue(tfm, out AnalyzerResult result))
             {
-                result = new AnalyzerResult(_projectFilePath, _manager, _analyzer);
+                result = new AnalyzerResult(_projectFilePath.ToString(), _manager, _analyzer);
                 _results[tfm] = result;
             }
 
@@ -92,7 +98,7 @@ internal sealed class EventProcessor : IDisposable
 
     private void OnProjectFinished(string? projectFile, bool succeeded)
     {
-        if (AnalyzerManager.NormalizePath(projectFile) == _projectFilePath)
+        if (IOPath.Parse(projectFile).Root().Equals(_projectFilePath))
         {
             AnalyzerResult result = _currentResult.Pop();
             result?.Succeeded = succeeded;
@@ -136,7 +142,7 @@ internal sealed class EventProcessor : IDisposable
 
         bool IsRelevant()
             => !result.HasCommandLine
-            || AnalyzerManager.NormalizePath(projectFile) == _projectFilePath;
+            || IOPath.Parse(projectFile).Root().Equals(_projectFilePath);
     }
 
     private void OnBuildFinished(bool succeeded) => OverallSuccess = succeeded;

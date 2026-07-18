@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.IO;
 using System.Threading;
 using Buildalyzer.Environment;
 using Buildalyzer.IO;
@@ -11,7 +10,11 @@ namespace Buildalyzer;
 
 public class AnalyzerManager : IAnalyzerManager
 {
-    private readonly ConcurrentDictionary<string, IProjectAnalyzer> _projects = new();
+    // Match project paths the way the current file system does (ordinal on case-sensitive
+    // file systems, case-insensitive elsewhere) so the same project isn't tracked twice when
+    // its path arrives with different casing.
+    private readonly ConcurrentDictionary<string, IProjectAnalyzer> _projects
+        = new(IOPath.IsCaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
 
     public IReadOnlyDictionary<string, IProjectAnalyzer> Projects => _projects;
 
@@ -30,8 +33,6 @@ public class AnalyzerManager : IAnalyzerManager
     internal ConcurrentDictionary<Guid, string[]> WorkspaceProjectReferences = new();
 #pragma warning restore SA1401 // Fields should be private
 
-    public string? SolutionFilePath => Solution?.Path.ToString();
-
     public SolutionInfo? Solution { get; }
 
     public AnalyzerManager(AnalyzerManagerOptions? options = null)
@@ -39,11 +40,14 @@ public class AnalyzerManager : IAnalyzerManager
     {
     }
 
-    [Obsolete("Use AnalyzerManager(IOPath, AnalyzerManagerOptions) instead.")]
     public AnalyzerManager(string solutionFilePath, AnalyzerManagerOptions? options = null)
-        : this(IOPath.Parse(solutionFilePath), options) { }
+        : this(IOPath.Parse(solutionFilePath), options)
+    {
+    }
 
-    public AnalyzerManager(IOPath solutionFilePath, AnalyzerManagerOptions? options = null)
+    // Paths are normalized to IOPath here, at the public boundary; IOPath is an internal
+    // detail and is deliberately kept out of the consumer-facing input surface.
+    private AnalyzerManager(IOPath solutionFilePath, AnalyzerManagerOptions? options)
     {
         options ??= new AnalyzerManagerOptions();
         LoggerFactory = options.LoggerFactory;
@@ -55,8 +59,8 @@ public class AnalyzerManager : IAnalyzerManager
             // init projects.
             foreach (var proj in Solution)
             {
-                var analyzer = new ProjectAnalyzer(this, proj.Path, proj);
-                _projects.TryAdd(proj.Path.ToString(), analyzer);
+                var analyzer = new ProjectAnalyzer(this, proj.Location, proj);
+                _projects.TryAdd(proj.Path, analyzer);
             }
         }
     }
@@ -77,18 +81,15 @@ public class AnalyzerManager : IAnalyzerManager
         EnvironmentVariables[key] = value;
     }
 
-    [Obsolete("Use GetProject(IOPath) instead.")]
-    public IProjectAnalyzer? GetProject(string projectFilePath) => GetProject(IOPath.Parse(projectFilePath));
-
-    public IProjectAnalyzer? GetProject(IOPath projectFilePath) => GetProject(projectFilePath, null);
+    public IProjectAnalyzer? GetProject(string projectFilePath) => GetProject(IOPath.Parse(projectFilePath), null);
 
     /// <inheritdoc/>
     public IAnalyzerResults Analyze(string binLogPath)
     {
-        binLogPath = NormalizePath(binLogPath);
-        if (!File.Exists(binLogPath))
+        var path = IOPath.Parse(binLogPath).Root();
+        if (path.File() is not { Exists: true } file)
         {
-            throw new ArgumentException($"The path {binLogPath} could not be found.");
+            throw new ArgumentException($"The path {path} could not be found.");
         }
 
         // Replay the binary log by handing it to MSBuild on the command line with the pipe logger
@@ -112,14 +113,14 @@ public class AnalyzerManager : IAnalyzerManager
         var arguments = string.Join(
             ' ',
             "msbuild",
-            BuildArgument.Path(IOPath.Parse(binLogPath)),
+            BuildArgument.Path(path),
             BuildArgument.NoConsoleLogger,
             loggerArgument);
 
         using var processRunner = new ProcessRunner(
             "dotnet",
             arguments,
-            Path.GetDirectoryName(binLogPath) ?? System.Environment.CurrentDirectory,
+            file.DirectoryName ?? System.Environment.CurrentDirectory,
             new Dictionary<string, string?>(),
             LoggerFactory);
 
@@ -148,8 +149,4 @@ public class AnalyzerManager : IAnalyzerManager
             (_, not null) => null,
             _ => throw new ArgumentException($"The path {path} could not be found."),
         };
-
-    [Obsolete("Use IOPath instead.")]
-    internal static string? NormalizePath(string? path) =>
-        path == null ? null : Path.GetFullPath(path.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar));
 }

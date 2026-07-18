@@ -58,8 +58,9 @@ public class ProjectAnalyzer : IProjectAnalyzer
         ProjectFile = new ProjectFile(path.ToString());
         EnvironmentFactory = new EnvironmentFactory(Manager, ProjectFile);
         Project = project;
-        SolutionDirectory = (string.IsNullOrEmpty(manager.SolutionFilePath)
-            ? path.File()!.Directory.FullName : Path.GetDirectoryName(manager.SolutionFilePath)) + Path.DirectorySeparatorChar;
+        string? solutionFilePath = manager.Solution?.Path;
+        SolutionDirectory = (string.IsNullOrEmpty(solutionFilePath)
+            ? path.File()!.Directory.FullName : Path.GetDirectoryName(solutionFilePath)) + Path.DirectorySeparatorChar;
 
         // Get(or create) a project GUID
         ProjectGuid = project?.Guid ?? Buildalyzer.ProjectGuid.Create(ProjectFile.Name);

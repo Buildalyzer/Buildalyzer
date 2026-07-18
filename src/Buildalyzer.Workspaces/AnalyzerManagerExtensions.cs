@@ -32,7 +32,7 @@ public static class AnalyzerManagerExtensions
         AdhocWorkspace workspace = manager.CreateWorkspace();
         if (manager.Solution is { } solution)
         {
-            string solutionPath = solution.Path.ToString();
+            string solutionPath = solution.Path;
             Microsoft.CodeAnalysis.SolutionInfo solutionInfo = Microsoft.CodeAnalysis.SolutionInfo.Create(SolutionId.CreateNewId(), VersionStamp.Default, solutionPath);
             workspace.AddSolution(solutionInfo);
 
@@ -42,7 +42,7 @@ public static class AnalyzerManagerExtensions
             Dictionary<IOPath, int> order = [];
             for (int i = 0; i < solution.Projects.Length; i++)
             {
-                order[solution.Projects[i].Path] = i;
+                order[solution.Projects[i].Location] = i;
             }
 
             results = [.. results.OrderBy(p => order.TryGetValue(IOPath.Parse(p.ProjectFilePath), out int index) ? index : int.MaxValue)];

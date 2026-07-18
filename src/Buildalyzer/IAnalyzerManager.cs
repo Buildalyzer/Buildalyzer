@@ -1,4 +1,3 @@
-using Buildalyzer.IO;
 using Microsoft.Extensions.Logging;
 
 namespace Buildalyzer;
@@ -12,9 +11,6 @@ public interface IAnalyzerManager
     /// <inheritdoc cref="SolutionInfo" />
     SolutionInfo? Solution { get; }
 
-    [Obsolete("Use SolutionInfo.Path instead.")]
-    string? SolutionFilePath { get; }
-
     /// <summary>
     /// Analyzes an MSBuild binary log file.
     /// </summary>
@@ -23,9 +19,6 @@ public interface IAnalyzerManager
     IAnalyzerResults Analyze(string binLogPath);
 
     IProjectAnalyzer? GetProject(string projectFilePath);
-
-    [Obsolete("Use GetProject(IOPath) instead.")]
-    IProjectAnalyzer? GetProject(IOPath projectFilePath);
 
     void RemoveGlobalProperty(string key);
 
