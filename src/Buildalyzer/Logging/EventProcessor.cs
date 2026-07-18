@@ -198,16 +198,30 @@ internal sealed class EventProcessor : IDisposable
     // agnostic), and without this check their Sources/References would be merged into the primary result.
     private void OnPipeTaskParameter(PipeTaskParameterEventArgs e)
     {
+        if (e.BuildEventContext is not { } context
+            || !_primaryProjectContextIds.Contains(context.ProjectContextId)
+            || !_currentResult.TryPeek(out var result)
+            || result is null)
+        {
+            return;
+        }
+
+        // The compiler task's resolved inputs (Sources/References/...), captured inside CoreCompile.
         if (e.Kind == PipeTaskParameterKind.TaskInput
             && e.ItemType is { Length: > 0 } itemType
             && IsCompilerInput(itemType)
-            && e.BuildEventContext is { } context
-            && _primaryProjectContextIds.Contains(context.ProjectContextId)
-            && _targetStack.Any(x => x == "CoreCompile")
-            && _currentResult.TryPeek(out var result)
-            && result is not null)
+            && _targetStack.Any(x => x == "CoreCompile"))
         {
             result.AddTaskParameterInput(itemType, e.Items.Select(ToInputItem));
+        }
+
+        // ResolveAssemblyReference's resolved references, produced before CoreCompile. Kept so the workspace
+        // can still be reconstructed when the build fails before the compiler runs (issue #341). On a
+        // successful build the compiler task inputs above supersede this.
+        else if (e.Kind == PipeTaskParameterKind.TaskOutput
+            && string.Equals(e.ItemType, "ReferencePath", StringComparison.OrdinalIgnoreCase))
+        {
+            result.AddItems("ReferencePath", e.Items.Select(item => (IProjectItem)new PipeProjectItem(item)));
         }
     }
 

@@ -702,6 +702,38 @@ public class Differential_specs
     }
 
     [Test]
+    public void Recovers_workspace_when_build_fails_before_compile()
+    {
+        using ProjectFixture fixture = new();
+        string projectPath = fixture.AddProject(
+            "FailBeforeCompile",
+            p => p
+                .Property("TargetFramework", TargetFramework)
+                .Property("DefineConstants", "$(DefineConstants);CUSTOM_CONSTANT")
+                .Target(name: "FailBeforeCompile", beforeTargets: "CoreCompile")
+                .TaskError(text: "Simulated failure before Csc (#341)"),
+            Source("Class1.cs", "namespace FailBeforeCompile;\npublic class Class1 { }\n"));
+        fixture.Restore(projectPath);
+
+        SafeStringWriter log = new();
+        AnalyzerManager manager = new(new AnalyzerManagerOptions { LogWriter = log });
+        IAnalyzerResult result = manager.GetProject(projectPath).Build().First();
+
+        // The build failed before the compiler ran, so CompilerCommand was never captured.
+        result.Succeeded.Should().BeFalse(log.ToString());
+        result.SourceFiles.Should().BeEmpty(log.ToString());
+
+        using AdhocWorkspace workspace = result.GetWorkspace();
+        Project project = workspace.CurrentSolution.Projects.Single();
+
+        // The workspace is reconstructed from evaluation-time items and the references resolved before
+        // the failure, so documents, references and preprocessor symbols are all recovered (issue #341).
+        project.SourceFileNames().Should().Contain("Class1.cs", log.ToString());
+        project.MetadataReferenceNames().Should().Contain("System.Runtime.dll", log.ToString());
+        project.PreprocessorSymbols().Should().Contain("CUSTOM_CONSTANT", log.ToString());
+    }
+
+    [Test]
     public async Task Solution_projects_match_reference()
     {
         using ProjectFixture fixture = new();

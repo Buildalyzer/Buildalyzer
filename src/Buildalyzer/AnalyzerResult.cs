@@ -195,6 +195,20 @@ public class AnalyzerResult : IAnalyzerResult
         list.AddRange(items);
     }
 
+    /// <summary>
+    /// Records an item group captured during the build (e.g. the resolved <c>ReferencePath</c> produced by
+    /// <c>ResolveAssemblyReference</c>). Used to reconstruct workspace state when the build fails before the
+    /// compiler runs (issue #341); ignored on successful builds, where the compiler task inputs are richer.
+    /// </summary>
+    internal void AddItems(string itemType, IEnumerable<IProjectItem> items)
+    {
+        IProjectItem[] array = [.. items];
+        if (array.Length > 0)
+        {
+            _items[itemType] = array;
+        }
+    }
+
     internal void ProcessCscCommandLine(string? commandLine, bool coreCompile)
     {
         // Some projects can have multiple Csc calls (see #92) so if this is the one inside CoreCompile use it, otherwise use the first.

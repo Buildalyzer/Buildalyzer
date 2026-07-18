@@ -257,7 +257,7 @@ public static class AnalyzerResultExtensions
                 CSharpParseOptions parseOptions = new CSharpParseOptions();
 
                 // Add any constants
-                parseOptions = parseOptions.WithPreprocessorSymbols(analyzerResult.PreprocessorSymbols);
+                parseOptions = parseOptions.WithPreprocessorSymbols(GetPreprocessorSymbols(analyzerResult));
 
                 // Get language version
                 string langVersion = analyzerResult.GetProperty("LangVersion");
@@ -427,6 +427,14 @@ public static class AnalyzerResultExtensions
     private static IEnumerable<DocumentInfo> GetDocuments(IAnalyzerResult analyzerResult, ProjectId projectId)
     {
         string[] sourceFiles = analyzerResult.SourceFiles ?? [];
+
+        // When MSBuild fails before the compiler runs, CompilerCommand (and so SourceFiles) is empty.
+        // Fall back to the evaluation-time Compile items so the workspace still has documents (issue #341).
+        if (sourceFiles.Length == 0 && ShouldFallBackToItems(analyzerResult))
+        {
+            sourceFiles = GetItemPaths(analyzerResult, "Compile");
+        }
+
         return GetDocuments(sourceFiles, projectId, Path.GetDirectoryName(analyzerResult.ProjectFilePath), GetChecksumAlgorithm(analyzerResult));
     }
 
@@ -439,6 +447,50 @@ public static class AnalyzerResultExtensions
                loader: TextLoader.From(
                    TextAndVersion.Create(ReadSourceText(x, checksumAlgorithm), VersionStamp.Create())),
                filePath: x));
+
+    /// <summary>
+    /// When MSBuild aborts before the compiler task runs, <c>CompilerCommand</c> is never captured, so the
+    /// compiler-backed accessors (<c>SourceFiles</c>, <c>References</c>, ...) are empty even though the project
+    /// evaluated its <c>Compile</c> items. In that case the workspace is reconstructed from evaluation-time
+    /// items and the resolved <c>ReferencePath</c> captured from ResolveAssemblyReference. See issue #341.
+    /// </summary>
+    private static bool ShouldFallBackToItems(IAnalyzerResult analyzerResult) =>
+        (analyzerResult.SourceFiles is null || analyzerResult.SourceFiles.Length == 0)
+        && analyzerResult.Items.TryGetValue("Compile", out IProjectItem[] compileItems)
+        && compileItems.Length > 0;
+
+    // Preprocessor symbols come from the compiler command line; when it never ran, recover them from the
+    // evaluated DefineConstants property (issue #341).
+    private static IEnumerable<string> GetPreprocessorSymbols(IAnalyzerResult analyzerResult)
+    {
+        if (analyzerResult.PreprocessorSymbols is { Length: > 0 } symbols)
+        {
+            return symbols;
+        }
+
+        if (ShouldFallBackToItems(analyzerResult)
+            && analyzerResult.GetProperty("DefineConstants") is { } defineConstants
+            && !string.IsNullOrWhiteSpace(defineConstants))
+        {
+            return defineConstants.Split([';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        }
+
+        return analyzerResult.PreprocessorSymbols ?? [];
+    }
+
+    /// <summary>Resolves the <c>ItemSpec</c> of each item of the given type to a full path.</summary>
+    private static string[] GetItemPaths(IAnalyzerResult analyzerResult, string itemType)
+    {
+        if (!analyzerResult.Items.TryGetValue(itemType, out IProjectItem[] items) || items.Length == 0)
+        {
+            return [];
+        }
+
+        string projectDirectory = Path.GetDirectoryName(analyzerResult.ProjectFilePath);
+        return [.. items
+            .Select(x => Path.GetFullPath(x.ItemSpec, projectDirectory!))
+            .Distinct(StringComparer.OrdinalIgnoreCase)];
+    }
 
     // Preserve the file's own encoding (detecting a BOM, defaulting to UTF-8) rather than forcing a
     // fixed encoding, so Document text encoding matches MSBuildWorkspace and the compiler.
@@ -477,25 +529,49 @@ public static class AnalyzerResultExtensions
     {
         string projectDirectory = Path.GetDirectoryName(analyzerResult.ProjectFilePath);
         string[] additionalFiles = analyzerResult.AdditionalFiles ?? [];
+
+        // Fall back to the evaluation-time AdditionalFiles items when the compiler never ran (issue #341).
+        if (additionalFiles.Length == 0 && ShouldFallBackToItems(analyzerResult))
+        {
+            return GetDocuments(GetItemPaths(analyzerResult, "AdditionalFiles"), projectId, projectDirectory, GetChecksumAlgorithm(analyzerResult));
+        }
+
         return GetDocuments(additionalFiles.Select(x => Path.Combine(projectDirectory!, x)), projectId, projectDirectory, GetChecksumAlgorithm(analyzerResult));
     }
 
-    private static IEnumerable<MetadataReference> GetMetadataReferences(IAnalyzerResult analyzerResult) =>
-        analyzerResult
-            .References?.Where(File.Exists)
+    private static IEnumerable<MetadataReference> GetMetadataReferences(IAnalyzerResult analyzerResult)
+    {
+        string[] references = analyzerResult.References ?? [];
+
+        // Fall back to the resolved ReferencePath items (captured from ResolveAssemblyReference) when the
+        // compiler never ran, so the recovered workspace can still bind types (issue #341).
+        if (references.Length == 0 && ShouldFallBackToItems(analyzerResult))
+        {
+            references = GetItemPaths(analyzerResult, "ReferencePath");
+        }
+
+        return references
+            .Where(File.Exists)
             .Select(x => MetadataReference.CreateFromFile(x, new MetadataReferenceProperties(
                 aliases: analyzerResult.ReferenceAliases.GetValueOrDefault(x),
-                embedInteropTypes: analyzerResult.ReferencesEmbeddingInteropTypes.Contains(x))))
-            ?? [];
+                embedInteropTypes: analyzerResult.ReferencesEmbeddingInteropTypes.Contains(x))));
+    }
 
     private static IEnumerable<AnalyzerReference> GetAnalyzerReferences(IAnalyzerResult analyzerResult, Workspace workspace)
     {
         IAnalyzerAssemblyLoader loader = workspace.Services.GetRequiredService<IAnalyzerService>().GetLoader();
 
         string projectDirectory = Path.GetDirectoryName(analyzerResult.ProjectFilePath);
-        return analyzerResult.AnalyzerReferences?.Where(x => File.Exists(Path.GetFullPath(x, projectDirectory!)))
-            .Select(x => new AnalyzerFileReference(Path.GetFullPath(x, projectDirectory!), loader))
-            ?? [];
+        string[] analyzerReferences = analyzerResult.AnalyzerReferences ?? [];
+
+        // Fall back to the evaluation-time Analyzer items when the compiler never ran (issue #341).
+        if (analyzerReferences.Length == 0 && ShouldFallBackToItems(analyzerResult))
+        {
+            analyzerReferences = GetItemPaths(analyzerResult, "Analyzer");
+        }
+
+        return analyzerReferences.Where(x => File.Exists(Path.GetFullPath(x, projectDirectory!)))
+            .Select(x => new AnalyzerFileReference(Path.GetFullPath(x, projectDirectory!), loader));
     }
 
     private static bool TryGetSupportedLanguageName(string projectPath, out string languageName)

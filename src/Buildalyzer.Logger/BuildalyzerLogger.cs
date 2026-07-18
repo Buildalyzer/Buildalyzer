@@ -73,9 +73,21 @@ public class BuildalyzerLogger : PipeLogger
         // the compiler's resolved inputs and not, say, the References fed to other tasks. Keeps the pipe lean.
         eventSource.AnyEventRaised += (_, e) =>
         {
-            if (_inCoreCompile
-                && e is TaskParameterEventArgs { Kind: TaskParameterMessageKind.TaskInput } parameter
-                && IsCompilerInput(parameter.ItemType))
+            if (e is not TaskParameterEventArgs parameter)
+            {
+                return;
+            }
+
+            // Forward the compiler task's resolved inputs (captured inside CoreCompile) and the references
+            // that ResolveAssemblyReference resolved before it - the latter so the workspace can still be
+            // reconstructed when the build fails before CoreCompile runs (issue #341).
+            bool compilerInput = _inCoreCompile
+                && parameter.Kind == TaskParameterMessageKind.TaskInput
+                && IsCompilerInput(parameter.ItemType);
+            bool resolvedReferences = parameter.Kind == TaskParameterMessageKind.TaskOutput
+                && string.Equals(parameter.ItemType, "ReferencePath", StringComparison.OrdinalIgnoreCase);
+
+            if (compilerInput || resolvedReferences)
             {
                 Pipe!.Write(e);
             }
