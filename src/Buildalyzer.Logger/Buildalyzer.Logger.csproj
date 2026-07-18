@@ -22,7 +22,7 @@ ToBeReleased
     <PackageReference Include="Microsoft.Build.Utilities.Core" Version="17.10.46" PrivateAssets="all" />
     <!-- XenoAtom.MsBuildPipeLogger ships the logger as copy-to-output content (not a lib reference),
          so restore it for the path/content, but reference the logger assembly directly below. -->
-    <PackageReference Include="XenoAtom.MsBuildPipeLogger" Version="1.0.4-local" PrivateAssets="all" GeneratePathProperty="true" ExcludeAssets="compile;runtime;contentFiles" />
+    <PackageReference Include="XenoAtom.MsBuildPipeLogger" Version="1.1.0" PrivateAssets="all" GeneratePathProperty="true" ExcludeAssets="compile;runtime;contentFiles" />
   </ItemGroup>
 
   <ItemGroup>
