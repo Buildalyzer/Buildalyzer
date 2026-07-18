@@ -663,6 +663,48 @@ public class Differential_specs
     }
 
     [Test]
+    public async Task Solution_projects_match_reference()
+    {
+        using ProjectFixture fixture = new();
+        string libraryPath = fixture.AddProject(
+            "Lib",
+            p => p.Property("TargetFramework", TargetFramework),
+            Source("Widget.cs", "namespace Lib;\npublic class Widget { }\n"));
+        string appPath = fixture.AddProject(
+            "App",
+            p => p.Property("TargetFramework", TargetFramework),
+            Source("Program.cs", "namespace App;\npublic class Program { Lib.Widget W = new(); }\n"));
+        ProjectFixture.AddProjectReference(appPath, libraryPath);
+
+        string solutionPath = Path.Combine(fixture.Root.FullName, "Solution.slnx");
+        File.WriteAllText(solutionPath, "<Solution>\n  <Project Path=\"Lib/Lib.csproj\" />\n  <Project Path=\"App/App.csproj\" />\n</Solution>\n");
+        fixture.Restore(appPath);
+
+        // Buildalyzer loads the whole solution (parsed via SolutionPersistence).
+        SafeStringWriter log = new();
+        AnalyzerManager manager = new(solutionPath, new AnalyzerManagerOptions { LogWriter = log });
+        using AdhocWorkspace buildalyzer = manager.GetWorkspace();
+        string[] ba = SolutionProjectFileNames(buildalyzer.CurrentSolution);
+
+        // MSBuildWorkspace loads the same solution as the reference.
+        using Microsoft.CodeAnalysis.MSBuild.MSBuildWorkspace msbuild = Microsoft.CodeAnalysis.MSBuild.MSBuildWorkspace.Create();
+        Solution msSolution = await msbuild.OpenSolutionAsync(solutionPath);
+        string[] ms = SolutionProjectFileNames(msSolution);
+
+        log.ToString().Should().NotContain("Workspace failed");
+        ms.Should().BeEquivalentTo("App.csproj", "Lib.csproj");
+        ba.Should().BeEquivalentTo(ms);
+    }
+
+    private static string[] SolutionProjectFileNames(Solution solution) =>
+    [
+        .. solution.Projects
+            .Where(p => p.FilePath is not null)
+            .Select(p => Path.GetFileName(p.FilePath!))
+            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+    ];
+
+    [Test]
     public async Task Project_reference_resolves_cross_project_symbols()
     {
         using ProjectFixture fixture = new();
