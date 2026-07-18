@@ -130,24 +130,90 @@ public static class AnalyzerResultExtensions
 
     private static Microsoft.CodeAnalysis.ProjectInfo? GetProjectInfo(IAnalyzerResult analyzerResult, Workspace workspace, ProjectId projectId)
     {
+        if (!TryGetSupportedLanguageName(analyzerResult.ProjectFilePath, out string languageName))
+        {
+            return null;
+        }
+
         string projectName = Path.GetFileNameWithoutExtension(analyzerResult.ProjectFilePath);
-        return TryGetSupportedLanguageName(analyzerResult.ProjectFilePath, out string languageName)
-            ? Microsoft.CodeAnalysis.ProjectInfo.Create(
-                projectId,
-                VersionStamp.Create(),
-                projectName,
-                projectName,
-                languageName,
-                filePath: analyzerResult.ProjectFilePath,
-                outputFilePath: analyzerResult.GetProperty("TargetPath"),
-                compilationOptions: CreateCompilationOptions(analyzerResult, languageName),
-                parseOptions: CreateParseOptions(analyzerResult, languageName),
-                documents: GetDocuments(analyzerResult, projectId),
-                projectReferences: GetExistingProjectReferences(analyzerResult, workspace),
-                metadataReferences: GetMetadataReferences(analyzerResult),
-                analyzerReferences: GetAnalyzerReferences(analyzerResult, workspace),
-                additionalDocuments: GetAdditionalDocuments(analyzerResult, projectId))
-            : null;
+        string assemblyName = analyzerResult.GetProperty("AssemblyName") is { Length: > 0 } name ? name : projectName;
+        (CompilationOptions? compilationOptions, ParseOptions? parseOptions) = CreateOptions(analyzerResult, languageName);
+
+        return Microsoft.CodeAnalysis.ProjectInfo.Create(
+            projectId,
+            VersionStamp.Create(),
+            projectName,
+            assemblyName,
+            languageName,
+            filePath: analyzerResult.ProjectFilePath,
+            outputFilePath: analyzerResult.GetProperty("TargetPath"),
+            compilationOptions: compilationOptions,
+            parseOptions: parseOptions,
+            documents: GetDocuments(analyzerResult, projectId),
+            projectReferences: GetExistingProjectReferences(analyzerResult, workspace),
+            metadataReferences: GetMetadataReferences(analyzerResult),
+            analyzerReferences: GetAnalyzerReferences(analyzerResult, workspace),
+            additionalDocuments: GetAdditionalDocuments(analyzerResult, projectId))
+            .WithDefaultNamespace(analyzerResult.GetProperty("RootNamespace"))
+            .WithAnalyzerConfigDocuments(GetAnalyzerConfigDocuments(analyzerResult, projectId));
+    }
+
+    /// <summary>
+    /// Produces the compilation and parse options. The primary source is the compiler command line
+    /// that the design-time build produced: parsing it with Roslyn's own command-line parser yields
+    /// exactly the options the compiler used (and that MSBuildWorkspace reports), covering defines,
+    /// language version, unsafe/checked/nullable, optimization, platform, warning level, documentation
+    /// mode and the full diagnostic configuration in one shot. When no command line was captured
+    /// (e.g. the build failed before the compiler task ran) it falls back to reconstructing the options
+    /// from evaluated MSBuild properties - a best effort that is necessarily less complete.
+    /// </summary>
+    private static (CompilationOptions? CompilationOptions, ParseOptions? ParseOptions) CreateOptions(IAnalyzerResult analyzerResult, string languageName)
+    {
+        if (analyzerResult.CompilerArguments is { Length: > 0 } arguments)
+        {
+            string? projectDirectory = Path.GetDirectoryName(analyzerResult.ProjectFilePath);
+
+            // Language-specific parsing stays in local functions so the parser assembly for the other
+            // language is never loaded for a project that does not use it.
+            if (languageName == LanguageNames.CSharp)
+            {
+                (CompilationOptions, ParseOptions) FromCSharpCommandLine()
+                {
+                    CSharpCommandLineArguments parsed = CSharpCommandLineParser.Default.Parse(arguments, projectDirectory, sdkDirectory: null);
+                    return (parsed.CompilationOptions, parsed.ParseOptions);
+                }
+
+                return FromCSharpCommandLine();
+            }
+
+            if (languageName == LanguageNames.VisualBasic)
+            {
+                (CompilationOptions, ParseOptions) FromVisualBasicCommandLine()
+                {
+                    VisualBasicCommandLineArguments parsed = VisualBasicCommandLineParser.Default.Parse(arguments, projectDirectory, sdkDirectory: null);
+                    return (parsed.CompilationOptions, parsed.ParseOptions);
+                }
+
+                return FromVisualBasicCommandLine();
+            }
+        }
+
+        return (CreateCompilationOptions(analyzerResult, languageName), CreateParseOptions(analyzerResult, languageName));
+    }
+
+    // A documentation file (DocumentationFile / GenerateDocumentationFile) causes MSBuild to pass
+    // /doc to the compiler, which switches the parser into diagnosing doc comments.
+    private static bool GeneratesDocumentationFile(IAnalyzerResult analyzerResult) =>
+        !string.IsNullOrWhiteSpace(analyzerResult.GetProperty("DocumentationFile"))
+        || (bool.TryParse(analyzerResult.GetProperty("GenerateDocumentationFile"), out bool generate) && generate);
+
+    private static IEnumerable<DocumentInfo> GetAnalyzerConfigDocuments(IAnalyzerResult analyzerResult, ProjectId projectId)
+    {
+        // The compiler receives these as absolute paths via /analyzerconfig:, including the
+        // SDK-generated <Project>.GeneratedMSBuildEditorConfig.editorconfig that surfaces
+        // build_property.* values many source generators depend on.
+        string[] analyzerConfigFiles = analyzerResult.AnalyzerConfigFiles ?? [];
+        return GetDocuments(analyzerConfigFiles, projectId);
     }
 
     private static ParseOptions CreateParseOptions(IAnalyzerResult analyzerResult, string languageName)
@@ -170,6 +236,12 @@ public static class AnalyzerResultExtensions
                     parseOptions = parseOptions.WithLanguageVersion(languageVersion);
                 }
 
+                // A documentation file (/doc) makes the compiler diagnose doc comments.
+                if (GeneratesDocumentationFile(analyzerResult))
+                {
+                    parseOptions = parseOptions.WithDocumentationMode(DocumentationMode.Diagnose);
+                }
+
                 return parseOptions;
             }
 
@@ -189,6 +261,11 @@ public static class AnalyzerResultExtensions
                     && Microsoft.CodeAnalysis.VisualBasic.LanguageVersionFacts.TryParse(langVersion, ref languageVersion))
                 {
                     parseOptions = parseOptions.WithLanguageVersion(languageVersion);
+                }
+
+                if (GeneratesDocumentationFile(analyzerResult))
+                {
+                    parseOptions = parseOptions.WithDocumentationMode(DocumentationMode.Diagnose);
                 }
 
                 return parseOptions;
@@ -261,6 +338,16 @@ public static class AnalyzerResultExtensions
                         opts = opts.WithWarningLevel(warningLevel);
                     }
 
+                    if (bool.TryParse(analyzerResult.GetProperty("Optimize"), out bool optimize))
+                    {
+                        opts = opts.WithOptimizationLevel(optimize ? OptimizationLevel.Release : OptimizationLevel.Debug);
+                    }
+
+                    if (bool.TryParse(analyzerResult.GetProperty("TreatWarningsAsErrors"), out bool warningsAsErrors))
+                    {
+                        opts = opts.WithGeneralDiagnosticOption(warningsAsErrors ? ReportDiagnostic.Error : ReportDiagnostic.Default);
+                    }
+
                     return opts;
                 }
 
@@ -269,7 +356,22 @@ public static class AnalyzerResultExtensions
 
             if (languageName == LanguageNames.VisualBasic)
             {
-                CompilationOptions CreateVBCompilationOptions() => new VisualBasicCompilationOptions(kind.Value);
+                CompilationOptions CreateVBCompilationOptions()
+                {
+                    VisualBasicCompilationOptions opts = new VisualBasicCompilationOptions(kind.Value);
+
+                    if (bool.TryParse(analyzerResult.GetProperty("Optimize"), out bool optimize))
+                    {
+                        opts = opts.WithOptimizationLevel(optimize ? OptimizationLevel.Release : OptimizationLevel.Debug);
+                    }
+
+                    if (bool.TryParse(analyzerResult.GetProperty("TreatWarningsAsErrors"), out bool warningsAsErrors))
+                    {
+                        opts = opts.WithGeneralDiagnosticOption(warningsAsErrors ? ReportDiagnostic.Error : ReportDiagnostic.Default);
+                    }
+
+                    return opts;
+                }
 
                 return CreateVBCompilationOptions();
             }

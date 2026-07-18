@@ -17,6 +17,9 @@ ToBeReleased
 - Target .NET 10.0. #252
 - Drop .NET 6.0.
 - Upgrade Microsoft.CodeAnalysis.Workspaces (Roslyn) to 5.6.0.
+- The workspace now includes analyzer config documents (.editorconfig/.globalconfig, including the SDK-generated ones), matching MSBuildWorkspace.
+- The workspace project now honours AssemblyName and RootNamespace (Project.AssemblyName/DefaultNamespace) instead of always using the project file name.
+- Compilation and parse options are now derived by parsing the compiler command line with Roslyn's own parser - the same approach as MSBuildWorkspace - so defines, language version, unsafe/checked/nullable, optimization, platform, warning level, documentation mode and the full diagnostic configuration (including SDK-injected warnaserror/nowarn defaults) all match the compiler. Reconstruction from MSBuild properties remains as a fallback when no command line was captured.
 - Publish SBOM.
 ]]>
     </PackageReleaseNotes>
