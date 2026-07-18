@@ -132,6 +132,16 @@ public class EnvironmentFactory
         // This is required to trigger NuGet package resolution and regeneration of project.assets.json
         additionalGlobalProperties.Add(MsBuildProperties.ResolveNuGetPackages, "true");
 
+        // Clone the options environment variables dictionary so we can add to it
+        Dictionary<string, string> additionalEnvironmentVariables = new Dictionary<string, string>(options.EnvironmentVariables);
+
+        // Have MSBuild generate task-input parameter events so the compiler task's resolved Sources/References
+        // are available as structured items. The BuildalyzerLogger opts into their delivery via
+        // IEventSource4.IncludeTaskInputs() (no diagnostic verbosity needed) and forwards only the compiler's
+        // input item groups. MSBuild reads this variable through Traits at node startup, so node reuse is off.
+        additionalEnvironmentVariables.TryAdd("MSBUILDLOGTASKINPUTS", "1");
+        additionalEnvironmentVariables.TryAdd(EnvironmentVariables.MSBUILDDISABLENODEREUSE, "1");
+
         return new BuildEnvironment(
             options.DesignTime,
             options.Restore,
@@ -140,7 +150,7 @@ public class EnvironmentFactory
             options.DotnetExePath,
             options.Arguments,
             additionalGlobalProperties,
-            options.EnvironmentVariables,
+            additionalEnvironmentVariables,
             options.WorkingDirectory);
     }
 
