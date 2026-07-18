@@ -28,7 +28,7 @@ ToBeReleased
          (which does reference Microsoft.Build.Framework) runs inside the out-of-process MSBuild. -->
     <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
     <PackageReference Include="Microsoft.VisualStudio.SolutionPersistence" Version="1.0.52" />
-    <PackageReference Include="XenoAtom.MsBuildPipeLogger" Version="1.0.3-local" ExcludeAssets="contentFiles" />
+    <PackageReference Include="XenoAtom.MsBuildPipeLogger" Version="1.0.4-local" ExcludeAssets="contentFiles" />
   </ItemGroup>
 
   <ItemGroup Label="Build dependencies">
