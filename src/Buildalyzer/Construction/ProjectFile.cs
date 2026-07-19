@@ -71,6 +71,22 @@ public class ProjectFile : IProjectFile
     public IReadOnlyList<IPackageReference> PackageReferences => _projectElement.GetDescendants(ProjectFileNames.PackageReference).Select(s => new PackageReference(s)).ToList();
 
     /// <inheritdoc />
+    public IReadOnlyList<string> ProjectReferences => field ??=
+    [
+        .. _projectElement.GetDescendants(ProjectFileNames.ProjectReference)
+            .Select(x => x.GetAttributeValue(ProjectFileNames.Include))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+
+            // ProjectReference Include paths are project-relative and typically use Windows separators
+            // (e.g. "..\Library\Library.csproj"); normalize and resolve against the project directory.
+            .Select(x => System.IO.Path.GetFullPath(
+                x!.Replace('\\', System.IO.Path.DirectorySeparatorChar),
+                System.IO.Path.GetDirectoryName(Path)!))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray()
+    ];
+
+    /// <inheritdoc />
     public string ToolsVersion => _projectElement.GetAttributeValue(ProjectFileNames.ToolsVersion);
 
     internal static string[] GetTargetFrameworks(

@@ -52,7 +52,11 @@ public static class AnalyzerResultExtensions
         HashSet<string> visited = new(StringComparer.OrdinalIgnoreCase) { NormalizePath(analyzerResult.ProjectFilePath) };
         if (addProjectReferences)
         {
-            AddReferencedAnalyzers(analyzerResult.Manager, analyzerResult.ProjectReferences, workspace, visited, prebuilt: null);
+            // Build the referenced-project closure up front in parallel (this project's own result is
+            // already in hand), then populate the workspace sequentially from that cache below.
+            IReadOnlyList<IProjectAnalyzer> referencedRoots = ResolveReferencedRoots(analyzerResult.Manager, analyzerResult.ProjectReferences);
+            IReadOnlyDictionary<string, IAnalyzerResult[]> prebuilt = PrebuildReferenceClosure(analyzerResult.Manager, referencedRoots);
+            AddReferencedAnalyzers(analyzerResult.Manager, analyzerResult.ProjectReferences, workspace, visited, prebuilt);
         }
 
         // A single result adds as a bare-named project (no target-framework discriminator).
@@ -113,15 +117,83 @@ public static class AnalyzerResultExtensions
     {
         foreach (string referencePath in projectReferences.Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            IProjectAnalyzer referenced = manager.Projects.TryGetValue(referencePath, out IProjectAnalyzer existing)
-                ? existing
-                : manager.GetProject(referencePath);
+            IProjectAnalyzer referenced = ResolveReferenced(manager, referencePath);
             if (referenced is not null)
             {
                 AddAnalyzer(referenced, workspace, addProjectReferences: true, visited, prebuilt);
             }
         }
     }
+
+    /// <summary>
+    /// Builds every project reachable through project references from <paramref name="roots"/> and returns
+    /// their succeeded results keyed by normalized project path, for reuse when populating the workspace.
+    /// </summary>
+    /// <remarks>
+    /// The transitive closure is discovered by parsing project files only (see
+    /// <see cref="Buildalyzer.Construction.IProjectFile.ProjectReferences"/>), so no build is needed to find
+    /// it. Every project in the closure is then built in a single parallel wave - this keeps even a linear
+    /// A→B→C reference chain concurrent, which a level-by-level build would serialize. <c>Build()</c> is safe
+    /// to run concurrently across projects; the workspace itself is populated sequentially afterwards. A
+    /// reference the static parse misses simply isn't cached here and is built on demand by
+    /// <see cref="AddAnalyzer"/>, so correctness never depends on the discovery being complete.
+    /// </remarks>
+    internal static IReadOnlyDictionary<string, IAnalyzerResult[]> PrebuildReferenceClosure(
+        IAnalyzerManager manager, IEnumerable<IProjectAnalyzer> roots)
+    {
+        // Discover the closure (cheap XML parse per project); dedupe by canonical project path.
+        Dictionary<string, IProjectAnalyzer> closure = new(StringComparer.OrdinalIgnoreCase);
+        Queue<IProjectAnalyzer> pending = new();
+        foreach (IProjectAnalyzer root in roots)
+        {
+            if (closure.TryAdd(NormalizePath(root.ProjectFile.Path), root))
+            {
+                pending.Enqueue(root);
+            }
+        }
+
+        while (pending.Count > 0)
+        {
+            IProjectAnalyzer analyzer = pending.Dequeue();
+            foreach (string reference in analyzer.ProjectFile.ProjectReferences)
+            {
+                if (ResolveReferenced(manager, reference) is { } referenced
+                    && closure.TryAdd(NormalizePath(referenced.ProjectFile.Path), referenced))
+                {
+                    pending.Enqueue(referenced);
+                }
+            }
+        }
+
+        // Build the whole closure concurrently, then index the results by project path. Each build restores
+        // itself (via the -restore switch, folded into the same invocation); a separate up-front graph
+        // restore was measured to be slower, since the per-project restores already overlap in this parallel
+        // wave while an up-front restore only adds a serial process.
+        return closure.Values
+            .AsParallel()
+            .Select(a => (Path: NormalizePath(a.ProjectFile.Path), Results: a.Build().Where(r => r.Succeeded).ToArray()))
+            .ToList()
+            .ToDictionary(x => x.Path, x => x.Results, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static IReadOnlyList<IProjectAnalyzer> ResolveReferencedRoots(IAnalyzerManager manager, IEnumerable<string> projectReferences)
+    {
+        List<IProjectAnalyzer> roots = [];
+        foreach (string reference in projectReferences.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (ResolveReferenced(manager, reference) is { } referenced)
+            {
+                roots.Add(referenced);
+            }
+        }
+
+        return roots;
+    }
+
+    private static IProjectAnalyzer ResolveReferenced(IAnalyzerManager manager, string referencePath) =>
+        manager.Projects.TryGetValue(referencePath, out IProjectAnalyzer existing)
+            ? existing
+            : manager.GetProject(referencePath);
 
     // Adds a single target-framework result as its own Roslyn project and wires its project references by
     // resolved output-assembly path. Returns null when the language is unsupported, or the id of the

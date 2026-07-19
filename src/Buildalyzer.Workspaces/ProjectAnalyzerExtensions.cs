@@ -43,7 +43,13 @@ public static class ProjectAnalyzerExtensions
         Guard.NotNull(workspace);
 
         HashSet<string> visited = new(System.StringComparer.OrdinalIgnoreCase);
-        IReadOnlyList<ProjectId> ids = AnalyzerResultExtensions.AddAnalyzer(analyzer, workspace, addProjectReferences, visited);
+
+        // When pulling in project references, build the whole reference closure (this project included)
+        // up front in parallel, then populate the workspace sequentially reusing those results.
+        IReadOnlyDictionary<string, IAnalyzerResult[]> prebuilt = addProjectReferences
+            ? AnalyzerResultExtensions.PrebuildReferenceClosure(analyzer.Manager, [analyzer])
+            : null;
+        IReadOnlyList<ProjectId> ids = AnalyzerResultExtensions.AddAnalyzer(analyzer, workspace, addProjectReferences, visited, prebuilt);
         return ids.Count > 0 ? workspace.CurrentSolution.GetProject(ids[0]) : null;
     }
 }

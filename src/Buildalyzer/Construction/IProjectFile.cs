@@ -21,6 +21,16 @@ public interface IProjectFile
     IReadOnlyList<IPackageReference> PackageReferences { get; }
 
     /// <summary>
+    /// The absolute paths of the <c>ProjectReference</c> items declared in the project file.
+    /// </summary>
+    /// <remarks>
+    /// This only parses the project XML; it does not evaluate the project, so references added by
+    /// MSBuild logic or hidden behind conditions are not included. It is a fast, best-effort way to
+    /// discover the project-reference graph without building.
+    /// </remarks>
+    IReadOnlyList<string> ProjectReferences { get; }
+
+    /// <summary>
     /// The full path to the project file.
     /// </summary>
     string Path { get; }
