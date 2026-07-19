@@ -85,7 +85,6 @@ public class ProjectAnalyzer : IProjectAnalyzer
         }
 
         AnalyzerResults results = [];
-        bool perTfmBinlog = targetFrameworks.Length > 1;
 
         // Builds that pin a target framework can't restore themselves (see Restore), so run
         // a single up-front restore with the project's own (outer) build environment. It
@@ -96,20 +95,15 @@ public class ProjectAnalyzer : IProjectAnalyzer
             return results;
         }
 
-        // Create a new build environment for each target
-        foreach (string targetFramework in targetFrameworks)
-        {
-            BuildEnvironment buildEnvironment = EnvironmentFactory.GetBuildEnvironment(targetFramework, environmentOptions);
-            if (restore)
+        // Create a new build environment for each target; multiple targets build in parallel.
+        BuildTargetsPerFramework(
+            targetFrameworks,
+            targetFramework =>
             {
-                buildEnvironment = buildEnvironment.WithRestore(false);
-            }
-
-            using (WithSuffixedBinaryLogPaths(targetFramework, perTfmBinlog))
-            {
-                BuildTargets(buildEnvironment, targetFramework, buildEnvironment.TargetsToBuild, results);
-            }
-        }
+                BuildEnvironment buildEnvironment = EnvironmentFactory.GetBuildEnvironment(targetFramework, environmentOptions);
+                return restore ? buildEnvironment.WithRestore(false) : buildEnvironment;
+            },
+            results);
 
         return results;
     }
@@ -126,7 +120,6 @@ public class ProjectAnalyzer : IProjectAnalyzer
         }
 
         AnalyzerResults results = [];
-        bool perTfmBinlog = targetFrameworks.Length > 1;
 
         // Builds that pin a target framework can't restore themselves (see Restore), so run
         // a single up-front restore covering every framework.
@@ -139,13 +132,7 @@ public class ProjectAnalyzer : IProjectAnalyzer
             buildEnvironment = buildEnvironment.WithRestore(false);
         }
 
-        foreach (string targetFramework in targetFrameworks)
-        {
-            using (WithSuffixedBinaryLogPaths(targetFramework, perTfmBinlog))
-            {
-                BuildTargets(buildEnvironment, targetFramework, buildEnvironment.TargetsToBuild, results);
-            }
-        }
+        BuildTargetsPerFramework(targetFrameworks, _ => buildEnvironment, results);
 
         return results;
     }
@@ -218,18 +205,21 @@ public class ProjectAnalyzer : IProjectAnalyzer
         return $"{withoutExtension}.{suffix}{extension}";
     }
 
-    // Builds the /bl arguments (with the current suffix applied) for the requested binary logs.
-    private IReadOnlyCollection<string> BinaryLogArguments()
+    // Builds the /bl arguments for the requested binary logs. The suffix is taken from the explicit
+    // override when given (parallel per-framework builds pass their own so they don't race on the shared
+    // _binaryLogSuffix field), otherwise from the ambient suffix set by WithSuffixedBinaryLogPaths.
+    private IReadOnlyCollection<string> BinaryLogArguments(string? suffixOverride = null)
     {
         if (_binaryLogPaths.Count == 0)
         {
             return [];
         }
 
+        string? suffix = suffixOverride ?? _binaryLogSuffix;
         return _binaryLogPaths
             .Select(bl =>
             {
-                var path = _binaryLogSuffix is { } suffix ? AddSuffixToBinaryLogPath(bl.Path, suffix) : bl.Path;
+                var path = suffix is { } s ? AddSuffixToBinaryLogPath(bl.Path, s) : bl.Path;
                 return $"/bl:LogFile=\"{path}\";ProjectImports={bl.ImportsMode}";
             })
             .ToList();
@@ -342,15 +332,7 @@ public class ProjectAnalyzer : IProjectAnalyzer
             targetFrameworks = ProjectFile.TargetFrameworks;
         }
 
-        bool perTfmBinlog = targetFrameworks.Length > 1;
-        foreach (string targetFramework in targetFrameworks)
-        {
-            BuildEnvironment buildEnvironment = environmentFor(targetFramework).WithRestore(false);
-            using (WithSuffixedBinaryLogPaths(targetFramework, perTfmBinlog))
-            {
-                BuildTargets(buildEnvironment, targetFramework, buildEnvironment.TargetsToBuild, results);
-            }
-        }
+        BuildTargetsPerFramework(targetFrameworks, targetFramework => environmentFor(targetFramework).WithRestore(false), results);
 
         return results;
     }
@@ -376,9 +358,56 @@ public class ProjectAnalyzer : IProjectAnalyzer
         return [];
     }
 
+    // Builds each target framework and merges the results into a single AnalyzerResults. A single framework
+    // builds in-line; multiple frameworks build concurrently, each as an isolated out-of-process build with
+    // its own pinned TargetFramework and binlog suffix, and their results are merged afterwards. Each build
+    // runs in its own process with its own pipe/EventProcessor, and the only shared ProjectAnalyzer state it
+    // reads (global properties, binlog paths) is not mutated during the build, so the builds are independent.
+    private void BuildTargetsPerFramework(
+        string[] targetFrameworks, Func<string?, BuildEnvironment> environmentFor, AnalyzerResults results)
+    {
+        if (targetFrameworks.Length <= 1)
+        {
+            foreach (string targetFramework in targetFrameworks)
+            {
+                BuildEnvironment buildEnvironment = environmentFor(targetFramework);
+                BuildTargets(buildEnvironment, targetFramework, buildEnvironment.TargetsToBuild, results);
+            }
+
+            return;
+        }
+
+        AnalyzerResults[] perFramework = targetFrameworks
+            .AsParallel()
+            .Select(targetFramework =>
+            {
+                BuildEnvironment buildEnvironment = environmentFor(targetFramework);
+                AnalyzerResults isolated = [];
+
+                // Pass the binlog suffix explicitly rather than via the shared _binaryLogSuffix field, which
+                // these concurrent builds would otherwise race on.
+                BuildTargets(buildEnvironment, targetFramework, buildEnvironment.TargetsToBuild, isolated, binaryLogSuffix: targetFramework);
+                return isolated;
+            })
+            .ToArray();
+
+        foreach (AnalyzerResults framework in perFramework)
+        {
+            results.Add(framework.Results, framework.OverallSuccess);
+
+            // The single BuildEventArguments slot can't hold every framework's events; keep the first
+            // non-empty set so failure diagnostics remain available.
+            if (results.BuildEventArguments.IsDefaultOrEmpty && !framework.BuildEventArguments.IsDefaultOrEmpty)
+            {
+                results.BuildEventArguments = framework.BuildEventArguments;
+            }
+        }
+    }
+
     // This is where the magic happens - returns one result per result target framework
     private IAnalyzerResults BuildTargets(
-        BuildEnvironment buildEnvironment, string targetFramework, string[] targetsToBuild, AnalyzerResults results)
+        BuildEnvironment buildEnvironment, string targetFramework, string[] targetsToBuild, AnalyzerResults results,
+        string? binaryLogSuffix = null)
     {
         using var cancellation = new CancellationTokenSource();
 
@@ -409,7 +438,7 @@ public class ProjectAnalyzer : IProjectAnalyzer
                 ClientHandle = pipeLogger.GetClientHandle(),
                 LogEverything = _binaryLogPaths.Count > 0,
             },
-            BinaryLogArguments());
+            BinaryLogArguments(binaryLogSuffix));
 
         using var processRunner = new ProcessRunner(
             cmd.Command,
