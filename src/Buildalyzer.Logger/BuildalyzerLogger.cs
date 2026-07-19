@@ -51,14 +51,6 @@ public class BuildalyzerLogger : PipeLogger
             return;
         }
 
-        // Ask MSBuild to log task input parameters, so the compiler task's resolved Sources/References/etc.
-        // are available as structured TaskParameter events. This is the same opt-in the binary logger uses;
-        // it does not require diagnostic verbosity, and we only forward the compiler task's parameters below.
-        if (eventSource is IEventSource4 eventSource4)
-        {
-            eventSource4.IncludeTaskInputs();
-        }
-
         // Only log what we need for Buildalyzer
         eventSource.ProjectStarted += (_, e) => Pipe!.Write(e);
         eventSource.ProjectFinished += (_, e) => Pipe!.Write(e);
@@ -68,30 +60,47 @@ public class BuildalyzerLogger : PipeLogger
         eventSource.TargetFinished += TargetFinished;
         eventSource.MessageRaised += MessageRaised;
 
-        // TaskParameterEventArgs are dispatched via AnyEventRaised (TaskStarted isn't delivered at normal
-        // verbosity). Scope forwarding to the CoreCompile target - where the compiler task runs - so we get
-        // the compiler's resolved inputs and not, say, the References fed to other tasks. Keeps the pipe lean.
-        eventSource.AnyEventRaised += (_, e) =>
+        // Ask MSBuild to log task input parameters, so the compiler task's resolved Sources/References/etc.
+        // are available as structured TaskParameter events. This is the same opt-in the binary logger uses;
+        // it does not require diagnostic verbosity, and we only forward the compiler task's parameters below.
+        // IEventSource4 is deliberately a version sentinel, not the minimal interface: IncludeTaskInputs is
+        // declared on IEventSource3 (MSBuild 15.3), but on 15.3-16.3 it only logs task inputs as plain text
+        // messages - the structured TaskParameterEventArgs consumed below shipped in 16.4, the same release
+        // as IEventSource4. Gating on IEventSource4 both avoids a useless opt-in on 15.3-16.3 and keeps the
+        // AnyEventRaised handler (whose body would fail to JIT where TaskParameterEventArgs is missing) off
+        // older MSBuilds. Without it Buildalyzer falls back to the evaluation-time items.
+        if (eventSource is IEventSource4 eventSource4)
         {
-            if (e is not TaskParameterEventArgs parameter)
-            {
-                return;
-            }
+            eventSource4.IncludeTaskInputs();
 
-            // Forward the compiler task's resolved inputs (captured inside CoreCompile) and the references
-            // that ResolveAssemblyReference resolved before it - the latter so the workspace can still be
-            // reconstructed when the build fails before CoreCompile runs (issue #341).
-            bool compilerInput = _inCoreCompile
-                && parameter.Kind == TaskParameterMessageKind.TaskInput
-                && IsCompilerInput(parameter.ItemType);
-            bool resolvedReferences = parameter.Kind == TaskParameterMessageKind.TaskOutput
-                && string.Equals(parameter.ItemType, "ReferencePath", StringComparison.OrdinalIgnoreCase);
+            // TaskParameterEventArgs are dispatched via AnyEventRaised (TaskStarted isn't delivered at normal
+            // verbosity). Scope forwarding to the CoreCompile target - where the compiler task runs - so we
+            // get the compiler's resolved inputs and not, say, the References fed to other tasks. Keeps the
+            // pipe lean.
+            eventSource.AnyEventRaised += OnAnyEventRaised;
+        }
+    }
 
-            if (compilerInput || resolvedReferences)
-            {
-                Pipe!.Write(e);
-            }
-        };
+    private void OnAnyEventRaised(object sender, BuildEventArgs e)
+    {
+        if (e is not TaskParameterEventArgs parameter)
+        {
+            return;
+        }
+
+        // Forward the compiler task's resolved inputs (captured inside CoreCompile) and the references
+        // that ResolveAssemblyReference resolved before it - the latter so the workspace can still be
+        // reconstructed when the build fails before CoreCompile runs (issue #341).
+        bool compilerInput = _inCoreCompile
+            && parameter.Kind == TaskParameterMessageKind.TaskInput
+            && IsCompilerInput(parameter.ItemType);
+        bool resolvedReferences = parameter.Kind == TaskParameterMessageKind.TaskOutput
+            && string.Equals(parameter.ItemType, "ReferencePath", StringComparison.OrdinalIgnoreCase);
+
+        if (compilerInput || resolvedReferences)
+        {
+            Pipe!.Write(e);
+        }
     }
 
     private bool _inCoreCompile;

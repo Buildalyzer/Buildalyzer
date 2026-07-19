@@ -120,14 +120,22 @@ internal sealed class EventProcessor : IDisposable
     }
 
     // WPF markup compilation compiles the primary project under a generated "<name>_<hash>_wpftmp" project
-    // (GenerateTemporaryTargetAssembly). "_wpftmp" is a PresentationBuildTasks-reserved suffix that a real
-    // referenced project never carries, so it cleanly tells the primary's own markup compile apart from a
-    // referenced project that we must keep out of the result. Legacy WPF drops the temp project beside the
-    // original and the SDK drops it under obj/, so match on the suffix rather than the location.
-    private static bool IsPrimaryMarkupCompilation(IOPath projectPath)
-        => projectPath.File() is { } file
-        && Path.GetFileNameWithoutExtension(file.Name)
-            .EndsWith("_wpftmp", IOPath.IsCaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase);
+    // (GenerateTemporaryTargetAssembly), where <name> is the originating project's file name. "_wpftmp" is a
+    // PresentationBuildTasks-reserved suffix that a real referenced project never carries, but a referenced
+    // WPF project's full Build spins up its own "<referenced>_<hash>_wpftmp" too - so the name must also
+    // start with the primary project's name to keep referenced projects' markup compiles out of the result.
+    // Legacy WPF drops the temp project beside the original and the SDK drops it under obj/, so match on the
+    // name rather than the location.
+    private bool IsPrimaryMarkupCompilation(IOPath projectPath)
+    {
+        StringComparison comparison = IOPath.IsCaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+
+        return projectPath.File() is { } file
+            && _projectFilePath.File() is { } primary
+            && Path.GetFileNameWithoutExtension(file.Name) is { } name
+            && name.EndsWith("_wpftmp", comparison)
+            && name.StartsWith(Path.GetFileNameWithoutExtension(primary.Name) + "_", comparison);
+    }
 
     private void OnProjectFinished(string? projectFile, bool succeeded)
     {
