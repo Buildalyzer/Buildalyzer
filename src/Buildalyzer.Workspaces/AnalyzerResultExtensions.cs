@@ -52,7 +52,7 @@ public static class AnalyzerResultExtensions
         HashSet<string> visited = new(StringComparer.OrdinalIgnoreCase) { NormalizePath(analyzerResult.ProjectFilePath) };
         if (addProjectReferences)
         {
-            AddReferencedAnalyzers(analyzerResult.Manager, analyzerResult.ProjectReferences, workspace, visited);
+            AddReferencedAnalyzers(analyzerResult.Manager, analyzerResult.ProjectReferences, workspace, visited, prebuilt: null);
         }
 
         // A single result adds as a bare-named project (no target-framework discriminator).
@@ -67,22 +67,26 @@ public static class AnalyzerResultExtensions
     /// binds the exact framework flavour of a multi-targeted dependency that MSBuild resolved. Returns the
     /// ProjectIds of this analyzer's own per-framework projects, in framework order.
     /// </summary>
-    internal static IReadOnlyList<ProjectId> AddAnalyzer(IProjectAnalyzer analyzer, Workspace workspace, bool addProjectReferences, HashSet<string> visited)
+    internal static IReadOnlyList<ProjectId> AddAnalyzer(IProjectAnalyzer analyzer, Workspace workspace, bool addProjectReferences, HashSet<string> visited, IReadOnlyDictionary<string, IAnalyzerResult[]> prebuilt = null)
     {
-        if (!visited.Add(NormalizePath(analyzer.ProjectFile.Path)))
+        string projectPath = NormalizePath(analyzer.ProjectFile.Path);
+        if (!visited.Add(projectPath))
         {
             return [];
         }
 
         // One Roslyn project per succeeded target framework. The empty-framework outer aggregate a
-        // multi-targeted build produces is never succeeded, so it is filtered out here.
-        IAnalyzerResult[] results = [.. analyzer.Build().Where(r => r.Succeeded)];
+        // multi-targeted build produces is never succeeded, so it is filtered out here. Results are
+        // reused from the pre-built cache when the caller built projects in parallel up front.
+        IAnalyzerResult[] results = prebuilt is not null && prebuilt.TryGetValue(projectPath, out IAnalyzerResult[] cached)
+            ? cached
+            : [.. analyzer.Build().Where(r => r.Succeeded)];
 
         // Post-order: add the projects this one references before it, so their outputs are present to
         // wire against and every project reference resolves in a single forward pass.
         if (addProjectReferences)
         {
-            AddReferencedAnalyzers(analyzer.Manager, results.SelectMany(r => r.ProjectReferences), workspace, visited);
+            AddReferencedAnalyzers(analyzer.Manager, results.SelectMany(r => r.ProjectReferences), workspace, visited, prebuilt);
         }
 
         // Match MSBuildWorkspace: only append a "(tfm)" discriminator when the project produced more
@@ -105,7 +109,7 @@ public static class AnalyzerResultExtensions
         return ids;
     }
 
-    private static void AddReferencedAnalyzers(IAnalyzerManager manager, IEnumerable<string> projectReferences, Workspace workspace, HashSet<string> visited)
+    private static void AddReferencedAnalyzers(IAnalyzerManager manager, IEnumerable<string> projectReferences, Workspace workspace, HashSet<string> visited, IReadOnlyDictionary<string, IAnalyzerResult[]> prebuilt)
     {
         foreach (string referencePath in projectReferences.Distinct(StringComparer.OrdinalIgnoreCase))
         {
@@ -114,7 +118,7 @@ public static class AnalyzerResultExtensions
                 : manager.GetProject(referencePath);
             if (referenced is not null)
             {
-                AddAnalyzer(referenced, workspace, addProjectReferences: true, visited);
+                AddAnalyzer(referenced, workspace, addProjectReferences: true, visited, prebuilt);
             }
         }
     }
@@ -241,7 +245,7 @@ public static class AnalyzerResultExtensions
             : name;
     }
 
-    private static string NormalizePath(string path) => Path.GetFullPath(path);
+    internal static string NormalizePath(string path) => Path.GetFullPath(path);
 
     private static Microsoft.CodeAnalysis.ProjectInfo? GetProjectInfo(IAnalyzerResult analyzerResult, Workspace workspace, ProjectId projectId, string projectName)
     {

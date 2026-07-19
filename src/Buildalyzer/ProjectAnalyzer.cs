@@ -159,7 +159,10 @@ public class ProjectAnalyzer : IProjectAnalyzer
     // -restore in the build invocation itself, which already restores the outer build.
     // Returns whether the restore succeeded; callers short-circuit on failure rather than
     // running builds that would only fail with a misleading (e.g. NETSDK1005) error.
-    private bool Restore(BuildEnvironment buildEnvironment, AnalyzerResults results)
+    private bool Restore(BuildEnvironment buildEnvironment, AnalyzerResults results) =>
+        Restore(buildEnvironment, results, out _);
+
+    private bool Restore(BuildEnvironment buildEnvironment, AnalyzerResults results, out string[] targetFrameworks)
     {
         AnalyzerResults restoreResults = [];
         using (WithSuffixedBinaryLogPaths("restore", true))
@@ -176,9 +179,14 @@ public class ProjectAnalyzer : IProjectAnalyzer
         if (!restoreResults.OverallSuccess)
         {
             results.BuildEventArguments = restoreResults.BuildEventArguments;
+            targetFrameworks = [];
+            return false;
         }
 
-        return restoreResults.OverallSuccess;
+        // The restore also evaluates the project, so read the real (condition-honored) target
+        // frameworks from it - discovery for free, no separate evaluation build.
+        targetFrameworks = EvaluatedTargetFrameworks(restoreResults);
+        return true;
     }
 
     // When invoking multiple builds in succession (per-TFM builds, or a restore preceding
@@ -281,7 +289,7 @@ public class ProjectAnalyzer : IProjectAnalyzer
     {
         EnvironmentOptions options = new();
         return ProjectFile.IsMultiTargeted
-            ? Build(DiscoverTargetFrameworks(EnvironmentFactory.GetBuildEnvironment(null, options)), options)
+            ? BuildMultiTargeted(targetFramework => EnvironmentFactory.GetBuildEnvironment(targetFramework, options), options.Restore)
             : Build((string?)null, options);
     }
 
@@ -290,7 +298,7 @@ public class ProjectAnalyzer : IProjectAnalyzer
     {
         Guard.NotNull(environmentOptions);
         return ProjectFile.IsMultiTargeted
-            ? Build(DiscoverTargetFrameworks(EnvironmentFactory.GetBuildEnvironment(null, environmentOptions)), environmentOptions)
+            ? BuildMultiTargeted(targetFramework => EnvironmentFactory.GetBuildEnvironment(targetFramework, environmentOptions), environmentOptions.Restore)
             : Build((string?)null, environmentOptions);
     }
 
@@ -299,24 +307,59 @@ public class ProjectAnalyzer : IProjectAnalyzer
     {
         Guard.NotNull(buildEnvironment);
         return ProjectFile.IsMultiTargeted
-            ? Build(DiscoverTargetFrameworks(buildEnvironment), buildEnvironment)
+            ? BuildMultiTargeted(_ => buildEnvironment, buildEnvironment.Restore)
             : Build((string?)null, buildEnvironment);
     }
 
-    // Discover the target frameworks a multi-targeted project actually builds by asking MSBuild,
-    // not by scanning the project XML. Scanning the raw <TargetFrameworks> text is brittle: a
-    // project that composes the list (e.g. a Windows-only
-    // "<TargetFrameworks Condition="...">$(TargetFrameworks);net472</TargetFrameworks>") yields a
-    // phantom framework literally named "$(TargetFrameworks)" and off-platform frameworks that
-    // MSBuild would never build. Instead run one evaluation (no pinned TargetFramework) and read
-    // the evaluated, semicolon-delimited TargetFrameworks property MSBuild computed - honoring the
-    // conditions. This mirrors how Roslyn's MSBuildWorkspace enumerates frameworks. Restore is
-    // skipped here (evaluation does not need the assets file, and the per-framework builds that
-    // follow run the single up-front restore themselves), so this adds no extra restore. Falls back
-    // to the XML scan only if no evaluated value is available.
-    private string[] DiscoverTargetFrameworks(BuildEnvironment environment)
+    // Builds a multi-targeted project as one result per framework. The frameworks come from MSBuild's
+    // evaluation, not the raw project XML: scanning the <TargetFrameworks> text is brittle (a project
+    // that composes the list, e.g. a Windows-only
+    // "<TargetFrameworks Condition="...">$(TargetFrameworks);net472</TargetFrameworks>", yields a phantom
+    // framework literally named "$(TargetFrameworks)" and off-platform frameworks MSBuild would never
+    // build). When restoring, the single up-front restore also evaluates the project, so the frameworks
+    // are read from it for free; otherwise a lightweight no-restore evaluation is used. The per-framework
+    // builds then run pinned without restore. This mirrors how Roslyn's MSBuildWorkspace enumerates
+    // frameworks. Falls back to the XML scan only if no evaluated value is available.
+    private IAnalyzerResults BuildMultiTargeted(Func<string?, BuildEnvironment> environmentFor, bool restore)
     {
-        foreach (IAnalyzerResult result in Build((string?)null, environment.WithRestore(false)))
+        AnalyzerResults results = [];
+
+        string[] targetFrameworks;
+        if (restore)
+        {
+            if (!Restore(environmentFor(null), results, out targetFrameworks))
+            {
+                return results;
+            }
+        }
+        else
+        {
+            targetFrameworks = EvaluatedTargetFrameworks(Build((string?)null, environmentFor(null).WithRestore(false)));
+        }
+
+        if (targetFrameworks.Length == 0)
+        {
+            targetFrameworks = ProjectFile.TargetFrameworks;
+        }
+
+        bool perTfmBinlog = targetFrameworks.Length > 1;
+        foreach (string targetFramework in targetFrameworks)
+        {
+            BuildEnvironment buildEnvironment = environmentFor(targetFramework).WithRestore(false);
+            using (WithSuffixedBinaryLogPaths(targetFramework, perTfmBinlog))
+            {
+                BuildTargets(buildEnvironment, targetFramework, buildEnvironment.TargetsToBuild, results);
+            }
+        }
+
+        return results;
+    }
+
+    // Reads the evaluated, semicolon-delimited TargetFrameworks MSBuild computed (conditions honored)
+    // from a build's results, so the frameworks we build are exactly the ones MSBuild would.
+    private static string[] EvaluatedTargetFrameworks(IAnalyzerResults results)
+    {
+        foreach (IAnalyzerResult result in results)
         {
             if (result.Properties.TryGetValue("TargetFrameworks", out string value)
                 && !string.IsNullOrWhiteSpace(value))
@@ -330,7 +373,7 @@ public class ProjectAnalyzer : IProjectAnalyzer
             }
         }
 
-        return ProjectFile.TargetFrameworks;
+        return [];
     }
 
     // This is where the magic happens - returns one result per result target framework

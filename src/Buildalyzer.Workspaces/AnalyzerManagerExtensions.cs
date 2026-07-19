@@ -47,13 +47,22 @@ public static class AnalyzerManagerExtensions
                 .OrderBy(p => order.TryGetValue(IOPath.Parse(p.ProjectFile.Path), out int index) ? index : int.MaxValue);
         }
 
+        // Build every project up front in parallel - Build() is safe to run concurrently across
+        // projects - then populate the workspace sequentially below (the workspace itself is not
+        // thread-safe). AddAnalyzer reuses these results instead of rebuilding.
+        IReadOnlyDictionary<string, IAnalyzerResult[]> prebuilt = manager.Projects.Values
+            .AsParallel()
+            .Select(p => (Path: AnalyzerResultExtensions.NormalizePath(p.ProjectFile.Path), Results: p.Build().Where(r => r.Succeeded).ToArray()))
+            .ToList()
+            .ToDictionary(x => x.Path, x => x.Results, System.StringComparer.OrdinalIgnoreCase);
+
         // Add each project - one Roslyn project per target framework - wiring project references by
         // output-assembly path. The shared visited set means each project (and its references) is
-        // built and added exactly once even when several solution projects reference it.
+        // added exactly once even when several solution projects reference it.
         HashSet<string> visited = new(System.StringComparer.OrdinalIgnoreCase);
         foreach (IProjectAnalyzer analyzer in analyzers)
         {
-            AnalyzerResultExtensions.AddAnalyzer(analyzer, workspace, addProjectReferences: true, visited);
+            AnalyzerResultExtensions.AddAnalyzer(analyzer, workspace, addProjectReferences: true, visited, prebuilt);
         }
 
         return workspace;
