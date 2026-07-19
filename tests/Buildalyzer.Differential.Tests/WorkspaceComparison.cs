@@ -50,11 +50,17 @@ public sealed class WorkspaceComparison : IDisposable
     /// </param>
     public static async Task<WorkspaceComparison> LoadAsync(string projectPath, string? targetFramework = null)
     {
+        System.Diagnostics.Stopwatch msbuildTimer = System.Diagnostics.Stopwatch.StartNew();
         (Project msbuild, MSBuildWorkspace msbuildWorkspace, IReadOnlyList<string> msbuildFailures) =
             await LoadWithMSBuildWorkspaceAsync(projectPath, targetFramework);
+        msbuildTimer.Stop();
 
+        System.Diagnostics.Stopwatch buildalyzerTimer = System.Diagnostics.Stopwatch.StartNew();
         (Project buildalyzer, IDisposable buildalyzerWorkspace, string buildalyzerLog) =
             LoadWithBuildalyzer(projectPath, targetFramework);
+        buildalyzerTimer.Stop();
+
+        LoadTimings.Record(TestContext.CurrentContext.Test.Name, buildalyzerTimer.Elapsed, msbuildTimer.Elapsed);
 
         return new WorkspaceComparison(
             buildalyzer,

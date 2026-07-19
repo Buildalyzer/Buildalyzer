@@ -47,99 +47,214 @@ public static class AnalyzerResultExtensions
         Guard.NotNull(analyzerResult);
         Guard.NotNull(workspace);
 
-        // Get or create an ID for this project
-        ProjectId projectId = ProjectId.CreateFromSerialized(analyzerResult.ProjectGuid);
-
-        // Cache the project references
-        analyzerResult.Manager.WorkspaceProjectReferences[projectId.Id] = [.. analyzerResult.ProjectReferences];
-
-        // Create and add the project, but only if it's a support Roslyn project type
-        Microsoft.CodeAnalysis.ProjectInfo projectInfo = GetProjectInfo(analyzerResult, workspace, projectId);
-        if (projectInfo is null)
+        // Add the referenced projects first (post-order) so this result can wire to their outputs.
+        // Seed the visited set with this project so a reference cycle can't re-add it.
+        HashSet<string> visited = new(StringComparer.OrdinalIgnoreCase) { NormalizePath(analyzerResult.ProjectFilePath) };
+        if (addProjectReferences)
         {
-            // Something went wrong (maybe not a support project type), so don't add this project
-            return null;
+            AddReferencedAnalyzers(analyzerResult.Manager, analyzerResult.ProjectReferences, workspace, visited);
         }
-        Solution solution = workspace.CurrentSolution.AddProject(projectInfo);
 
-        // Check if this project is referenced by any other projects in the workspace
-        foreach (Project existingProject in solution.Projects.ToArray())
+        // A single result adds as a bare-named project (no target-framework discriminator).
+        ProjectId? projectId = AddResult(analyzerResult, workspace, addDiscriminator: false);
+        return projectId is null ? null : workspace.CurrentSolution.GetProject(projectId);
+    }
+
+    /// <summary>
+    /// Adds every succeeded target-framework result of an analyzer - and, post-order, the analyzers it
+    /// references - to the workspace, modelling each (project, framework) as its own Roslyn project just
+    /// like MSBuildWorkspace. Project references are wired by resolved output-assembly path, so a consumer
+    /// binds the exact framework flavour of a multi-targeted dependency that MSBuild resolved. Returns the
+    /// ProjectIds of this analyzer's own per-framework projects, in framework order.
+    /// </summary>
+    internal static IReadOnlyList<ProjectId> AddAnalyzer(IProjectAnalyzer analyzer, Workspace workspace, bool addProjectReferences, HashSet<string> visited)
+    {
+        if (!visited.Add(NormalizePath(analyzer.ProjectFile.Path)))
         {
-            if (!existingProject.Id.Equals(projectId)
-                && analyzerResult.Manager.WorkspaceProjectReferences.TryGetValue(existingProject.Id.Id, out string[] existingReferences)
-                && existingReferences.Contains(analyzerResult.ProjectFilePath))
+            return [];
+        }
+
+        // One Roslyn project per succeeded target framework. The empty-framework outer aggregate a
+        // multi-targeted build produces is never succeeded, so it is filtered out here.
+        IAnalyzerResult[] results = [.. analyzer.Build().Where(r => r.Succeeded)];
+
+        // Post-order: add the projects this one references before it, so their outputs are present to
+        // wire against and every project reference resolves in a single forward pass.
+        if (addProjectReferences)
+        {
+            AddReferencedAnalyzers(analyzer.Manager, results.SelectMany(r => r.ProjectReferences), workspace, visited);
+        }
+
+        // Match MSBuildWorkspace: only append a "(tfm)" discriminator when the project produced more
+        // than one framework; a single-framework project keeps its bare name.
+        bool addDiscriminator = results
+            .Select(r => r.TargetFramework)
+            .Where(tfm => !string.IsNullOrEmpty(tfm))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count() > 1;
+
+        List<ProjectId> ids = [];
+        foreach (IAnalyzerResult result in results)
+        {
+            if (AddResult(result, workspace, addDiscriminator) is { } id)
             {
-                // Add the reference to the existing project
-                ProjectReference projectReference = new ProjectReference(projectId);
-                solution = solution.AddProjectReference(existingProject.Id, projectReference);
+                ids.Add(id);
             }
         }
 
-        // Apply solution changes
+        return ids;
+    }
+
+    private static void AddReferencedAnalyzers(IAnalyzerManager manager, IEnumerable<string> projectReferences, Workspace workspace, HashSet<string> visited)
+    {
+        foreach (string referencePath in projectReferences.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            IProjectAnalyzer referenced = manager.Projects.TryGetValue(referencePath, out IProjectAnalyzer existing)
+                ? existing
+                : manager.GetProject(referencePath);
+            if (referenced is not null)
+            {
+                AddAnalyzer(referenced, workspace, addProjectReferences: true, visited);
+            }
+        }
+    }
+
+    // Adds a single target-framework result as its own Roslyn project and wires its project references by
+    // resolved output-assembly path. Returns null when the language is unsupported, or the id of the
+    // existing project when the same output has already been added (idempotent).
+    private static ProjectId? AddResult(IAnalyzerResult analyzerResult, Workspace workspace, bool addDiscriminator)
+    {
+        if (!TryGetSupportedLanguageName(analyzerResult.ProjectFilePath, out _))
+        {
+            return null;
+        }
+
+        // Idempotent: two results with the same output assembly are the same (project, framework).
+        if (FindProjectByOutput(workspace.CurrentSolution, analyzerResult.GetProperty("TargetPath")) is { } existingId)
+        {
+            return existingId;
+        }
+
+        ProjectId projectId = ProjectId.CreateNewId();
+        Microsoft.CodeAnalysis.ProjectInfo projectInfo = GetProjectInfo(analyzerResult, workspace, projectId, ProjectName(analyzerResult, addDiscriminator));
+        if (projectInfo is null)
+        {
+            return null;
+        }
+
+        Solution solution = workspace.CurrentSolution.AddProject(projectInfo);
+        solution = WireProjectReferences(solution, projectId, analyzerResult);
+
         if (!workspace.TryApplyChanges(solution))
         {
             throw new InvalidOperationException("Could not apply workspace solution changes");
         }
 
-        // Add any project references not already added
-        if (addProjectReferences)
-        {
-            foreach (var referencedAnalyzer in GetReferencedAnalyzerProjects(analyzerResult))
-            {
-                // Check if the workspace contains the project inside the loop since adding one might also add this one due to transitive references
-                if (!workspace.CurrentSolution.Projects.Any(x => x.FilePath == referencedAnalyzer.ProjectFile.Path))
-                {
-                    referencedAnalyzer.AddToWorkspace(workspace, addProjectReferences);
-                }
-            }
-        }
-
-        // By now all the references of this project have been recursively added, so resolve any remaining transitive project references
-        Project project = workspace.CurrentSolution.GetProject(projectId);
-        HashSet<ProjectReference> referencedProjects = [.. project.ProjectReferences];
-        HashSet<ProjectId> visitedProjectIds = [];
-        Stack<ProjectReference> projectReferenceStack = new Stack<ProjectReference>(project.ProjectReferences);
-        while (projectReferenceStack.Count > 0)
-        {
-            ProjectReference projectReference = projectReferenceStack.Pop();
-            Project nestedProject = workspace.CurrentSolution.GetProject(projectReference.ProjectId);
-            if (nestedProject is not null && visitedProjectIds.Add(nestedProject.Id))
-            {
-                foreach (ProjectReference nestedProjectReference in nestedProject.ProjectReferences)
-                {
-                    projectReferenceStack.Push(nestedProjectReference);
-                    referencedProjects.Add(nestedProjectReference);
-                }
-            }
-        }
-        foreach (ProjectReference referencedProject in referencedProjects)
-        {
-            if (!project.ProjectReferences.Contains(referencedProject))
-            {
-                ProjectReference projectReference = new ProjectReference(referencedProject.ProjectId);
-                solution = workspace.CurrentSolution.AddProjectReference(project.Id, projectReference);
-                if (!workspace.TryApplyChanges(solution))
-                {
-                    throw new InvalidOperationException("Could not apply workspace solution changes");
-                }
-            }
-        }
-
-        // Find and return this project
-        return workspace.CurrentSolution.GetProject(projectId);
+        return projectId;
     }
 
-    private static Microsoft.CodeAnalysis.ProjectInfo? GetProjectInfo(IAnalyzerResult analyzerResult, Workspace workspace, ProjectId projectId)
+    // Correlates this project's resolved references against the output-assembly paths (TargetPath and the
+    // reference assembly TargetRefPath) of the projects already in the workspace: any match becomes a
+    // project reference. The reference is not also a metadata reference because a design-time build never
+    // produces the output on disk (GetMetadataReferences filters by File.Exists). This is how
+    // MSBuildWorkspace resolves the exact framework flavour of a multi-targeted dependency.
+    private static Solution WireProjectReferences(Solution solution, ProjectId projectId, IAnalyzerResult analyzerResult)
+    {
+        Dictionary<string, ProjectId> outputToProject = BuildOutputIndex(solution, projectId);
+        if (outputToProject.Count == 0)
+        {
+            return solution;
+        }
+
+        HashSet<ProjectId> referenced = [];
+        foreach (string reference in GetReferencePaths(analyzerResult))
+        {
+            if (outputToProject.TryGetValue(NormalizePath(reference), out ProjectId targetId) && referenced.Add(targetId))
+            {
+                solution = solution.AddProjectReference(projectId, new ProjectReference(targetId));
+            }
+        }
+
+        return solution;
+    }
+
+    private static Dictionary<string, ProjectId> BuildOutputIndex(Solution solution, ProjectId exclude)
+    {
+        Dictionary<string, ProjectId> index = new(StringComparer.OrdinalIgnoreCase);
+        foreach (Project project in solution.Projects)
+        {
+            if (project.Id.Equals(exclude))
+            {
+                continue;
+            }
+
+            foreach (string? output in new[] { project.OutputFilePath, project.OutputRefFilePath })
+            {
+                if (!string.IsNullOrEmpty(output))
+                {
+                    index[NormalizePath(output)] = project.Id;
+                }
+            }
+        }
+
+        return index;
+    }
+
+    private static ProjectId? FindProjectByOutput(Solution solution, string? outputPath)
+    {
+        if (string.IsNullOrEmpty(outputPath))
+        {
+            return null;
+        }
+
+        string normalized = NormalizePath(outputPath);
+        foreach (Project project in solution.Projects)
+        {
+            if (project.OutputFilePath is { } path && NormalizePath(path).Equals(normalized, StringComparison.OrdinalIgnoreCase))
+            {
+                return project.Id;
+            }
+        }
+
+        return null;
+    }
+
+    // The resolved reference paths used for output-path correlation. Unlike GetMetadataReferences these
+    // are NOT filtered by File.Exists: a project reference resolves to a dependency's output that a
+    // design-time build never writes to disk, and that (nonexistent) path is exactly what we match on.
+    private static IEnumerable<string> GetReferencePaths(IAnalyzerResult analyzerResult)
+    {
+        string[] references = analyzerResult.References ?? [];
+        if (references.Length == 0 && ShouldFallBackToItems(analyzerResult))
+        {
+            references = GetItemPaths(analyzerResult, "ReferencePath");
+        }
+
+        return references;
+    }
+
+    private static string ProjectName(IAnalyzerResult analyzerResult, bool addDiscriminator)
+    {
+        string name = Path.GetFileNameWithoutExtension(analyzerResult.ProjectFilePath);
+        return addDiscriminator && !string.IsNullOrWhiteSpace(analyzerResult.TargetFramework)
+            ? $"{name}({analyzerResult.TargetFramework})"
+            : name;
+    }
+
+    private static string NormalizePath(string path) => Path.GetFullPath(path);
+
+    private static Microsoft.CodeAnalysis.ProjectInfo? GetProjectInfo(IAnalyzerResult analyzerResult, Workspace workspace, ProjectId projectId, string projectName)
     {
         if (!TryGetSupportedLanguageName(analyzerResult.ProjectFilePath, out string languageName))
         {
             return null;
         }
 
-        string projectName = Path.GetFileNameWithoutExtension(analyzerResult.ProjectFilePath);
         string assemblyName = analyzerResult.GetProperty("AssemblyName") is { Length: > 0 } name ? name : projectName;
         (CompilationOptions? compilationOptions, ParseOptions? parseOptions) = CreateOptions(analyzerResult, languageName);
 
+        // Project references are wired after the project is added, by output-assembly path, so that a
+        // multi-targeted dependency resolves to the exact framework flavour MSBuild chose (see WireProjectReferences).
         return Microsoft.CodeAnalysis.ProjectInfo.Create(
             projectId,
             VersionStamp.Create(),
@@ -152,7 +267,7 @@ public static class AnalyzerResultExtensions
             compilationOptions: compilationOptions,
             parseOptions: parseOptions,
             documents: GetDocuments(analyzerResult, projectId),
-            projectReferences: GetExistingProjectReferences(analyzerResult, workspace),
+            projectReferences: [],
             metadataReferences: GetMetadataReferences(analyzerResult),
             analyzerReferences: GetAnalyzerReferences(analyzerResult, workspace),
             additionalDocuments: GetAdditionalDocuments(analyzerResult, projectId))
@@ -410,19 +525,6 @@ public static class AnalyzerResultExtensions
 
         return null;
     }
-
-    private static IEnumerable<ProjectReference> GetExistingProjectReferences(IAnalyzerResult analyzerResult, Workspace workspace) =>
-        analyzerResult.ProjectReferences
-            .Select(x => workspace.CurrentSolution.Projects.FirstOrDefault(y => y.FilePath.Equals(x, StringComparison.OrdinalIgnoreCase)))
-            .Where(x => x != null)
-            .Select(x => new ProjectReference(x.Id))
-            ?? [];
-
-    private static IEnumerable<IProjectAnalyzer> GetReferencedAnalyzerProjects(IAnalyzerResult analyzerResult) =>
-        analyzerResult.ProjectReferences
-            .Select(x => analyzerResult.Manager.Projects.TryGetValue(x, out IProjectAnalyzer a) ? a : analyzerResult.Manager.GetProject(x))
-            .Where(x => x != null)
-            ?? [];
 
     private static IEnumerable<DocumentInfo> GetDocuments(IAnalyzerResult analyzerResult, ProjectId projectId)
     {

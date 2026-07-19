@@ -7,7 +7,7 @@ namespace Buildalyzer.Logging;
 internal sealed record LoggerConfiguration
 {
     /// <summary>The type of pipe logger (default is <see cref="BuildalyzerLogger"/>).</summary>
-    public string LoggerType { get; init; } = nameof(BuildalyzerLogger);
+    public string LoggerType { get; init; } = "BuildalyzerLogger";
 
     /// <summary>The path to the logger assembly.</summary>
     public IOPath LoggerPath { get; init; } = DefaultLoggerPath();
@@ -41,6 +41,6 @@ internal sealed record LoggerConfiguration
             return IOPath.Parse(System.IO.Path.Combine(directory, "Buildalyzer.Logger.dll"));
         }
 
-        throw new ArgumentException($"The dll of {nameof(BuildalyzerLogger)} is required");
+        throw new ArgumentException("The dll of BuildalyzerLogger is required");
     }
 }

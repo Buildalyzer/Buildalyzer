@@ -21,15 +21,13 @@ public static class AnalyzerManagerExtensions
 
     public static AdhocWorkspace GetWorkspace(this IAnalyzerManager manager)
     {
-        // Run builds in parallel
-        var results = Guard.NotNull(manager).Projects.Values
-            .AsParallel()
-            .Select(p => p.Build().FirstOrDefault())
-            .OfType<IAnalyzerResult>()
-            .ToList();
+        Guard.NotNull(manager);
 
         // Create a new workspace and add the solution (if there was one)
         AdhocWorkspace workspace = manager.CreateWorkspace();
+
+        // Add the projects in solution order when we have a solution, otherwise in discovery order.
+        IEnumerable<IProjectAnalyzer> analyzers = manager.Projects.Values;
         if (manager.Solution is { } solution)
         {
             string solutionPath = solution.Path;
@@ -45,18 +43,19 @@ public static class AnalyzerManagerExtensions
                 order[solution.Projects[i].Location] = i;
             }
 
-            results = [.. results.OrderBy(p => order.TryGetValue(IOPath.Parse(p.ProjectFilePath), out int index) ? index : int.MaxValue)];
+            analyzers = manager.Projects.Values
+                .OrderBy(p => order.TryGetValue(IOPath.Parse(p.ProjectFile.Path), out int index) ? index : int.MaxValue);
         }
 
-        // Add each result to the new workspace (sorted in solution order above, if we have a solution)
-        foreach (IAnalyzerResult result in results)
+        // Add each project - one Roslyn project per target framework - wiring project references by
+        // output-assembly path. The shared visited set means each project (and its references) is
+        // built and added exactly once even when several solution projects reference it.
+        HashSet<string> visited = new(System.StringComparer.OrdinalIgnoreCase);
+        foreach (IProjectAnalyzer analyzer in analyzers)
         {
-            // Check for duplicate project files and don't add them
-            if (workspace.CurrentSolution.Projects.All(p => p.FilePath != result.ProjectFilePath))
-            {
-                result.AddToWorkspace(workspace, true);
-            }
+            AnalyzerResultExtensions.AddAnalyzer(analyzer, workspace, addProjectReferences: true, visited);
         }
+
         return workspace;
     }
 }
