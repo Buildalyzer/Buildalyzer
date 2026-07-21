@@ -59,3 +59,29 @@ comparison.Buildalyzer.MetadataReferenceNames()
 
 These tests perform two design-time builds each, so they are slower than unit tests; the
 fixture is `[NonParallelizable]`.
+
+## Real-world scenarios
+
+`RealWorld_specs.cs` runs the same Buildalyzer-vs-MSBuildWorkspace comparison against actual
+open-source projects cloned from GitHub (`OssRepositoryFixture`), rather than projects authored
+in a temp directory. It answers "does Buildalyzer agree with Roslyn on the messy project files
+people really ship?".
+
+Each case shallow-clones a repository pinned to a release tag (so runs are reproducible),
+replaces the repo's `global.json` with the SDK the test run selected (so both loaders build on
+identical MSBuild), restores one project, and compares a single target framework — chosen to be
+one that restores on any OS under a current SDK (`net8.0`, `netstandard2.0`), never a
+Windows-only flavour. Source documents, metadata references, analyzer references and project
+references must all match the reference; each case also dumps a set-difference report to the
+test output for triage.
+
+These are `[Explicit]` and tagged `[Category("RealWorld")]` because they need the network and
+are slow. Run them on demand:
+
+```bash
+dotnet test --filter "TestCategory=RealWorld"          # all of them
+dotnet test --filter "FullyQualifiedName~Serilog"      # a single repository
+```
+
+To add a repository, append a `Repo` record to `RealWorld_specs.Repositories` with its clone
+URL, a tag, the project to load and the framework to compare.
