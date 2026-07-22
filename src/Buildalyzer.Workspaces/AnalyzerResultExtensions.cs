@@ -10,6 +10,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Host;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.CodeAnalysis.VisualBasic;
+using Buildalyzer.Construction;
 
 namespace Buildalyzer.Workspaces;
 
@@ -131,7 +132,7 @@ public static class AnalyzerResultExtensions
     /// </summary>
     /// <remarks>
     /// The transitive closure is discovered by parsing project files only (see
-    /// <see cref="Buildalyzer.Construction.IProjectFile.ProjectReferences"/>), so no build is needed to find
+    /// <see cref="Buildalyzer.Construction.ProjectFile.ProjectReferences"/>), so no build is needed to find
     /// it. Every project in the closure is then built in a single parallel wave - this keeps even a linear
     /// A→B→C reference chain concurrent, which a level-by-level build would serialize. <c>Build()</c> is safe
     /// to run concurrently across projects; the workspace itself is populated sequentially afterwards. A
@@ -155,7 +156,7 @@ public static class AnalyzerResultExtensions
         while (pending.Count > 0)
         {
             IProjectAnalyzer analyzer = pending.Dequeue();
-            foreach (string reference in analyzer.ProjectFile.ProjectReferences)
+            foreach (string reference in ((ProjectFile)analyzer.ProjectFile).ProjectReferences)
             {
                 if (ResolveReferenced(manager, reference) is { } referenced
                     && closure.TryAdd(NormalizePath(referenced.ProjectFile.Path), referenced))
