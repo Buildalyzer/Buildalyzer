@@ -12,22 +12,34 @@
     <PackageReleaseNotes>
       <![CDATA[
 ToBeReleased
+- Replaced MsBuildPipeLogger with XenoAtom.MsBuildPipeLogger.
 - Publish SBOM.
       ]]>
     </PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Build.Utilities.Core" Version="14.3.0" PrivateAssets="all" />
-    <PackageReference Include="MsBuildPipeLogger.Logger" Version="1.1.6" PrivateAssets="all" IsLogger="true" />
+    <PackageReference Include="Microsoft.Build.Utilities.Core" Version="17.10.46" PrivateAssets="all" />
+    <!-- XenoAtom.MsBuildPipeLogger ships the logger as copy-to-output content (not a lib reference),
+         so restore it for the path/content, but reference the logger assembly directly below. -->
+    <PackageReference Include="XenoAtom.MsBuildPipeLogger" Version="1.1.1" PrivateAssets="all" GeneratePathProperty="true" ExcludeAssets="compile;runtime;contentFiles" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Compile against the bundled logger assembly (BuildalyzerLogger derives from PipeLogger).
+         Private=true copies it next to Buildalyzer.Logger.dll so MSBuild can load it at runtime. -->
+    <Reference Include="XenoAtom.MsBuildPipeLogger.Logger">
+      <HintPath>$(PkgXenoAtom_MsBuildPipeLogger)\contentFiles\any\any\XenoAtom.MsBuildPipeLogger\XenoAtom.MsBuildPipeLogger.Logger.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
   </ItemGroup>
 
   <!-- Get the logger files for later use -->
   <Target Name="GetLoggerFiles" DependsOnTargets="ResolveReferences">
     <ItemGroup>
-      <LoggerFiles Include="$([MSBuild]::EnsureTrailingSlash($(NuGetPackageRoot)))msbuildpipelogger.logger/%(PackageReference.Version)/**/*.dll" />
+      <LoggerFiles Include="$(PkgXenoAtom_MsBuildPipeLogger)\contentFiles\any\any\XenoAtom.MsBuildPipeLogger\*.dll" />
     </ItemGroup>
-    <Error Condition="'@(LoggerFiles)' == ''" Text="Could not find MsBuildPipeLogger.Logger files" />
+    <Error Condition="'@(LoggerFiles)' == ''" Text="Could not find XenoAtom.MsBuildPipeLogger logger files" />
   </Target>
 
   <!-- Workaround to pack package reference directly

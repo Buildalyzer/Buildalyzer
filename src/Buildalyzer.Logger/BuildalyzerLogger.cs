@@ -1,13 +1,13 @@
 using System;
 using System.Linq;
 using Microsoft.Build.Framework;
-using MsBuildPipeLogger;
+using XenoAtom.MsBuildPipeLogger;
 
 namespace Buildalyzer.Logger;
 
 public class BuildalyzerLogger : PipeLogger
 {
-    private string _pipeHandleAsString;
+    private string _pipeHandleAsString = string.Empty;
     private bool _logEverything;
 
     public override void Initialize(IEventSource eventSource)
@@ -52,21 +52,72 @@ public class BuildalyzerLogger : PipeLogger
         }
 
         // Only log what we need for Buildalyzer
-        eventSource.ProjectStarted += (_, e) => Pipe.Write(e);
-        eventSource.ProjectFinished += (_, e) => Pipe.Write(e);
-        eventSource.BuildFinished += (_, e) => Pipe.Write(e);
-        eventSource.ErrorRaised += (_, e) => Pipe.Write(e);
+        eventSource.ProjectStarted += (_, e) => Pipe!.Write(e);
+        eventSource.ProjectFinished += (_, e) => Pipe!.Write(e);
+        eventSource.BuildFinished += (_, e) => Pipe!.Write(e);
+        eventSource.ErrorRaised += (_, e) => Pipe!.Write(e);
         eventSource.TargetStarted += TargetStarted;
         eventSource.TargetFinished += TargetFinished;
         eventSource.MessageRaised += MessageRaised;
+
+        // Ask MSBuild to log task input parameters, so the compiler task's resolved Sources/References/etc.
+        // are available as structured TaskParameter events. This is the same opt-in the binary logger uses;
+        // it does not require diagnostic verbosity, and we only forward the compiler task's parameters below.
+        // IEventSource4 is deliberately a version sentinel, not the minimal interface: IncludeTaskInputs is
+        // declared on IEventSource3 (MSBuild 15.3), but on 15.3-16.3 it only logs task inputs as plain text
+        // messages - the structured TaskParameterEventArgs consumed below shipped in 16.4, the same release
+        // as IEventSource4. Gating on IEventSource4 both avoids a useless opt-in on 15.3-16.3 and keeps the
+        // AnyEventRaised handler (whose body would fail to JIT where TaskParameterEventArgs is missing) off
+        // older MSBuilds. Without it Buildalyzer falls back to the evaluation-time items.
+        if (eventSource is IEventSource4 eventSource4)
+        {
+            eventSource4.IncludeTaskInputs();
+
+            // TaskParameterEventArgs are dispatched via AnyEventRaised (TaskStarted isn't delivered at normal
+            // verbosity). Scope forwarding to the CoreCompile target - where the compiler task runs - so we
+            // get the compiler's resolved inputs and not, say, the References fed to other tasks. Keeps the
+            // pipe lean.
+            eventSource.AnyEventRaised += OnAnyEventRaised;
+        }
     }
+
+    private void OnAnyEventRaised(object sender, BuildEventArgs e)
+    {
+        if (e is not TaskParameterEventArgs parameter)
+        {
+            return;
+        }
+
+        // Forward the compiler task's resolved inputs (captured inside CoreCompile) and the references
+        // that ResolveAssemblyReference resolved before it - the latter so the workspace can still be
+        // reconstructed when the build fails before CoreCompile runs (issue #341).
+        bool compilerInput = _inCoreCompile
+            && parameter.Kind == TaskParameterMessageKind.TaskInput
+            && IsCompilerInput(parameter.ItemType);
+        bool resolvedReferences = parameter.Kind == TaskParameterMessageKind.TaskOutput
+            && string.Equals(parameter.ItemType, "ReferencePath", StringComparison.OrdinalIgnoreCase);
+
+        if (compilerInput || resolvedReferences)
+        {
+            Pipe!.Write(e);
+        }
+    }
+
+    private bool _inCoreCompile;
+
+    // MSBuild only forwards ITaskItem[] task inputs at normal verbosity (not scalar string parameters such
+    // as DefineConstants), so only the compiler's item-group inputs are listed here. Preprocessor symbols are
+    // recovered from the compiler command line instead.
+    private static bool IsCompilerInput(string? itemType) => itemType is
+        "Sources" or "References" or "Analyzers" or "AdditionalFiles" or "AnalyzerConfigFiles" or "EmbeddedFiles";
 
     private void TargetStarted(object sender, TargetStartedEventArgs e)
     {
         // Only send the CoreCompile target
         if (e.TargetName == "CoreCompile")
         {
-            Pipe.Write(e);
+            _inCoreCompile = true;
+            Pipe!.Write(e);
         }
     }
 
@@ -75,7 +126,8 @@ public class BuildalyzerLogger : PipeLogger
         // Only send the CoreCompile target
         if (e.TargetName == "CoreCompile")
         {
-            Pipe.Write(e);
+            _inCoreCompile = false;
+            Pipe!.Write(e);
         }
     }
 
@@ -87,7 +139,7 @@ public class BuildalyzerLogger : PipeLogger
             string.Equals(e.SenderName, "Fsc", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(e.SenderName, "Vbc", StringComparison.OrdinalIgnoreCase))
         {
-            Pipe.Write(e);
+            Pipe!.Write(e);
         }
     }
 }

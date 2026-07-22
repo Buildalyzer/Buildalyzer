@@ -1,194 +1,136 @@
-using System.Collections.Immutable;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using Buildalyzer.IO;
-using FSharp.Compiler.CodeAnalysis;
-using Microsoft.CodeAnalysis;
-using Microsoft.FSharp.Collections;
 
 namespace Buildalyzer.Tests.Compiler;
 
 [TestFixture]
 public class CompilerCommandFixture
 {
+    // The compiler command is now built from the compiler task's resolved input parameters (structured
+    // items) plus the raw command line - Buildalyzer no longer performs semantic command-line parsing.
+
     [Test]
-    public void Parse_CS()
+    public void Tokenizes_csharp_command_line_and_locates_compiler()
     {
-        string commandline = string.Empty
-            + "C:\\Program Files\\dotnet\\dotnet.exe exec \"C:\\Program Files\\dotnet\\sdk\\8.0.101\\Roslyn\\bincore\\csc.dll\" "
-            + "/noconfig "
-            + "/unsafe- "
-            + "/checked- "
-            + "/nowarn:1701,1702,1701,1702 "
-            + "/fullpaths "
-            + "/nostdlib+ "
-            + "/errorreport:prompt "
-            + "/warn:3 "
-            + "/define:TRACE;DEBUG;NETCOREAPP;NETCOREAPP3_1;NETCOREAPP1_0_OR_GREATER;NETCOREAPP1_1_OR_GREATER;NETCOREAPP2_0_OR_GREATER;NETCOREAPP2_1_OR_GREATER;NETCOREAPP2_2_OR_GREATER;NETCOREAPP3_0_OR_GREATER;NETCOREAPP3_1_OR_GREATER "
-            + "/preferreduilang:en-US "
-            + "/highentropyva+ "
-            + "/debug:portable "
-            + "/filealign:512 "
-            + "/optimize- "
-            + "/warnaserror- "
-            + "/utf8output "
-            + "/deterministic+ "
-            + "/langversion:8.0 "
-            + "/analyzerconfig:code\\buildalyzer\\.editorconfig "
-            + "/analyzerconfig:code\\buildalyzer\\tests\\.editorconfig "
-            + "Program.cs "
-            + "Startup.cs "
-            + "/warnaserror+:NU1605";
+        const string commandLine =
+            "/usr/local/share/dotnet/dotnet exec \"/usr/local/share/dotnet/sdk/8.0.101/Roslyn/bincore/csc.dll\" "
+            + "/noconfig /nostdlib+ Program.cs Startup.cs";
 
-        var command = Buildalyzer.Compiler.CommandLine.Parse(new("."), commandline, CompilerLanguage.CSharp);
+        string[]? tokens = Buildalyzer.Compiler.CommandLine.SplitCommandLineIntoArguments(commandLine, CompilerLanguage.CSharp);
 
-        command.Should().BeEquivalentTo(new
-        {
-            Text = commandline,
-            Language = CompilerLanguage.CSharp,
-            PreprocessorSymbolNames = new[] { "TRACE", "DEBUG", "NETCOREAPP", "NETCOREAPP3_1", "NETCOREAPP1_0_OR_GREATER", "NETCOREAPP1_1_OR_GREATER", "NETCOREAPP2_0_OR_GREATER", "NETCOREAPP2_1_OR_GREATER", "NETCOREAPP2_2_OR_GREATER", "NETCOREAPP3_0_OR_GREATER", "NETCOREAPP3_1_OR_GREATER" },
-            SourceFiles = Files(".\\Program.cs", ".\\Startup.cs"),
-            AnalyzerConfigPaths = Files(".\\code\\buildalyzer\\.editorconfig", ".\\code\\buildalyzer\\tests\\.editorconfig"),
-        });
+        tokens.Should().NotBeNull();
+        // Quotes are stripped and tokenization starts at the compiler executable.
+        Path.GetFileName(tokens![0]).Should().Be("csc.dll");
+        tokens.Should().Contain("/noconfig");
+        tokens.Should().Contain("Program.cs");
     }
 
     [Test]
-    public void Parse_CS_DotNet10_Unix()
+    public void Builds_csharp_command_from_task_parameters()
     {
-        string commandline = string.Empty
-                             + "/usr/local/share/dotnet/sdk/10.0.100/Roslyn/bincore/csc "
-                             + "/noconfig "
-                             + "/unsafe- "
-                             + "/checked- "
-                             + "/nowarn:1701,1702,1701,1702 "
-                             + "/fullpaths "
-                             + "/nostdlib+ "
-                             + "/errorreport:prompt "
-                             + "/warn:3 "
-                             + "/define:TRACE;DEBUG;NET;NET8_0;NETCOREAPP;NET5_0_OR_GREATER;NET6_0_OR_GREATER;NET7_0_OR_GREATER;NET8_0_OR_GREATER;NETCOREAPP1_0_OR_GREATER;NETCOREAPP1_1_OR_GREATER;NETCOREAPP2_0_OR_GREATER;NETCOREAPP2_1_OR_GREATER;NETCOREAPP2_2_OR_GREATER;NETCOREAPP3_0_OR_GREATER;NETCOREAPP3_1_OR_GREATER "
-                             + "/preferreduilang:en-US "
-                             + "/highentropyva+ "
-                             + "/debug:portable "
-                             + "/filealign:512 "
-                             + "/optimize- "
-                             + "/warnaserror- "
-                             + "/utf8output "
-                             + "/deterministic+ "
-                             + "/langversion:8.0 "
-                             + "/analyzerconfig:code/buildalyzer/.editorconfig "
-                             + "/analyzerconfig:code/buildalyzer/tests/.editorconfig "
-                             + "Program.cs "
-                             + "Startup.cs "
-                             + "/warnaserror+:NU1605";
+        // Source lists come from the task parameters; preprocessor symbols come from the command line's
+        // /define switch (MSBuild does not forward scalar task inputs at normal verbosity).
+        const string commandLine =
+            "/usr/local/share/dotnet/dotnet exec \"/usr/local/share/dotnet/sdk/8.0.101/Roslyn/bincore/csc.dll\" "
+            + "/noconfig /define:TRACE;DEBUG;NET8_0";
 
-        var command = Buildalyzer.Compiler.CommandLine.Parse(new("."), commandline, CompilerLanguage.CSharp);
+        var taskInputs = Inputs(
+            ("Sources", Items("Program.cs", "Startup.cs")),
+            ("References", Items("/refs/mscorlib.dll", "/refs/System.dll")),
+            ("Analyzers", Items("/analyzers/Some.Analyzer.dll")),
+            ("AnalyzerConfigFiles", Items(".editorconfig")));
 
-        command.Should().BeEquivalentTo(new
-        {
-            Text = commandline,
-            Language = CompilerLanguage.CSharp,
-            PreprocessorSymbolNames = new[] { "TRACE", "DEBUG", "NET", "NET8_0", "NETCOREAPP", "NET5_0_OR_GREATER", "NET6_0_OR_GREATER", "NET7_0_OR_GREATER", "NET8_0_OR_GREATER", "NETCOREAPP1_0_OR_GREATER", "NETCOREAPP1_1_OR_GREATER", "NETCOREAPP2_0_OR_GREATER", "NETCOREAPP2_1_OR_GREATER", "NETCOREAPP2_2_OR_GREATER", "NETCOREAPP3_0_OR_GREATER", "NETCOREAPP3_1_OR_GREATER" },
-            SourceFiles = Files(".\\Program.cs", ".\\Startup.cs"),
-            AnalyzerConfigPaths = Files(".\\code\\buildalyzer\\.editorconfig", ".\\code\\buildalyzer\\tests\\.editorconfig"),
-        });
+        CompilerCommand? command = CompilerCommandBuilder.Build(CompilerLanguage.CSharp, "/proj", commandLine, taskInputs);
+
+        command.Should().NotBeNull();
+        command!.Language.Should().Be(CompilerLanguage.CSharp);
+        command.Text.Should().Be(commandLine);
+        command.CompilerLocation!.Name.Should().Be("csc.dll");
+        command.Arguments.Should().Contain("/noconfig");
+
+        FileNames(command.SourceFiles).Should().BeEquivalentTo("Program.cs", "Startup.cs");
+        command.MetadataReferences.Select(Path.GetFileName).Should().BeEquivalentTo("mscorlib.dll", "System.dll");
+        FileNames(command.AnalyzerReferences).Should().ContainSingle().Which.Should().Be("Some.Analyzer.dll");
+        FileNames(command.AnalyzerConfigPaths).Should().ContainSingle().Which.Should().Be(".editorconfig");
+        command.PreprocessorSymbolNames.Should().BeEquivalentTo("TRACE", "DEBUG", "NET8_0");
     }
 
     [Test]
-    public void Parse_VB()
+    public void Embeds_all_sources_when_requested()
     {
-        string commandline = string.Empty
-            + "C:\\Program Files\\dotnet\\dotnet.exe exec \"C:\\Program Files\\dotnet\\sdk\\8.0.200\\Roslyn\\bincore\\vbc.dll\" "
-            + "/noconfig "
-            + @"/imports:Microsoft.VisualBasic,System,System.Collections,System.Collections.Generic,System.Diagnostics,System.Linq,System.Xml.Linq,System.Threading.Tasks /optioncompare:Binary /optionexplicit+ /optionstrict:custom /nowarn:41999,42016,42017,42018,42019,42020,42021,42022,42032,42036 /nosdkpath /optioninfer+ /nostdlib /errorreport:prompt /rootnamespace:VisualBasicNetConsoleApp /preferreduilang:en-US /highentropyva+ /vbruntime:""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\Microsoft.VisualBasic.dll"" /define:""CONFIG=\""Debug\"",DEBUG=-1,TRACE=-1,PLATFORM=\""AnyCPU\"",NET=-1,NET6_0=-1,NETCOREAPP=-1,_MyType=\""Empty\"",NET5_0_OR_GREATER=-1,NET6_0_OR_GREATER=-1,NETCOREAPP1_0_OR_GREATER=-1,NETCOREAPP1_1_OR_GREATER=-1,NETCOREAPP2_0_OR_GREATER=-1,NETCOREAPP2_1_OR_GREATER=-1,NETCOREAPP2_2_OR_GREATER=-1,NETCOREAPP3_0_OR_GREATER=-1,NETCOREAPP3_1_OR_GREATER=-1"" /reference:C:\Users\c.nobel\.nuget\packages\bouncycastle.netcore\1.8.10\lib\netstandard2.0\BouncyCastle.Crypto.dll,""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Antiforgery.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Authentication.Abstractions.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Authentication.Cookies.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Authentication.Core.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Authentication.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Authentication.OAuth.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Authorization.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Authorization.Policy.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Components.Authorization.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Components.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Components.Forms.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Components.Server.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Components.Web.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Connections.Abstractions.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.CookiePolicy.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Cors.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Cryptography.Internal.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Cryptography.KeyDerivation.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.DataProtection.Abstractions.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.DataProtection.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.DataProtection.Extensions.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Diagnostics.Abstractions.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Diagnostics.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Diagnostics.HealthChecks.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.HostFiltering.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Hosting.Abstractions.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Hosting.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Hosting.Server.Abstractions.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Html.Abstractions.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Http.Abstractions.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Http.Connections.Common.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Http.Connections.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Http.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Http.Extensions.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Http.Features.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Http.Results.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.HttpLogging.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.HttpOverrides.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.HttpsPolicy.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Identity.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Localization.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Localization.Routing.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Metadata.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Mvc.Abstractions.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Mvc.ApiExplorer.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Mvc.Core.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Mvc.Cors.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Mvc.DataAnnotations.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Mvc.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Mvc.Formatters.Json.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Mvc.Formatters.Xml.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Mvc.Localization.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Mvc.Razor.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Mvc.RazorPages.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Mvc.TagHelpers.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Mvc.ViewFeatures.dll"",C:\Users\c.nobel\.nuget\packages\microsoft.aspnetcore.owin\6.0.4\lib\net6.0\Microsoft.AspNetCore.Owin.dll,""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Razor.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Razor.Runtime.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.ResponseCaching.Abstractions.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.ResponseCaching.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.ResponseCompression.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Rewrite.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Routing.Abstractions.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Routing.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Server.HttpSys.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Server.IIS.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Server.IISIntegration.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Server.Kestrel.Core.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Server.Kestrel.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Server.Kestrel.Transport.Quic.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.Session.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.SignalR.Common.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.SignalR.Core.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.SignalR.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.SignalR.Protocols.Json.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.StaticFiles.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.WebSockets.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.AspNetCore.WebUtilities.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\Microsoft.CSharp.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Caching.Abstractions.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Caching.Memory.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Configuration.Abstractions.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Configuration.Binder.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Configuration.CommandLine.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Configuration.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Configuration.EnvironmentVariables.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Configuration.FileExtensions.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Configuration.Ini.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Configuration.Json.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Configuration.KeyPerFile.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Configuration.UserSecrets.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Configuration.Xml.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.DependencyInjection.Abstractions.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.DependencyInjection.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Diagnostics.HealthChecks.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Features.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.FileProviders.Abstractions.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.FileProviders.Composite.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.FileProviders.Embedded.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.FileProviders.Physical.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.FileSystemGlobbing.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Hosting.Abstractions.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Hosting.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Http.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Identity.Core.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Identity.Stores.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Localization.Abstractions.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Localization.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Logging.Abstractions.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Logging.Configuration.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Logging.Console.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Logging.Debug.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Logging.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Logging.EventLog.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Logging.EventSource.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Logging.TraceSource.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.ObjectPool.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Options.ConfigurationExtensions.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Options.DataAnnotations.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Options.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.Primitives.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Extensions.WebEncoders.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.JSInterop.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Net.Http.Headers.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\Microsoft.VisualBasic.Core.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\Microsoft.VisualBasic.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Win32.Primitives.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\Microsoft.Win32.Registry.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\mscorlib.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\netstandard.dll"",C:\Users\c.nobel\.nuget\packages\newtonsoft.json\13.0.1\lib\netstandard2.0\Newtonsoft.Json.dll,""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.AppContext.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Buffers.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Collections.Concurrent.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Collections.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Collections.Immutable.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Collections.NonGeneric.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Collections.Specialized.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.ComponentModel.Annotations.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.ComponentModel.DataAnnotations.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.ComponentModel.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.ComponentModel.EventBasedAsync.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.ComponentModel.Primitives.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.ComponentModel.TypeConverter.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Configuration.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Console.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Core.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Data.Common.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Data.DataSetExtensions.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Data.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Diagnostics.Contracts.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Diagnostics.Debug.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Diagnostics.DiagnosticSource.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\System.Diagnostics.EventLog.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Diagnostics.FileVersionInfo.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Diagnostics.Process.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Diagnostics.StackTrace.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Diagnostics.TextWriterTraceListener.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Diagnostics.Tools.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Diagnostics.TraceSource.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Diagnostics.Tracing.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Drawing.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Drawing.Primitives.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Dynamic.Runtime.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Formats.Asn1.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Globalization.Calendars.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Globalization.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Globalization.Extensions.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.IO.Compression.Brotli.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.IO.Compression.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.IO.Compression.FileSystem.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.IO.Compression.ZipFile.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.IO.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.IO.FileSystem.AccessControl.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.IO.FileSystem.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.IO.FileSystem.DriveInfo.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.IO.FileSystem.Primitives.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.IO.FileSystem.Watcher.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.IO.IsolatedStorage.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.IO.MemoryMappedFiles.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\System.IO.Pipelines.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.IO.Pipes.AccessControl.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.IO.Pipes.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.IO.UnmanagedMemoryStream.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Linq.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Linq.Expressions.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Linq.Parallel.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Linq.Queryable.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Memory.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Net.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Net.Http.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Net.Http.Json.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Net.HttpListener.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Net.Mail.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Net.NameResolution.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Net.NetworkInformation.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Net.Ping.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Net.Primitives.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Net.Requests.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Net.Security.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Net.ServicePoint.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Net.Sockets.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Net.WebClient.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Net.WebHeaderCollection.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Net.WebProxy.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Net.WebSockets.Client.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Net.WebSockets.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Numerics.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Numerics.Vectors.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.ObjectModel.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Reflection.DispatchProxy.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Reflection.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Reflection.Emit.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Reflection.Emit.ILGeneration.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Reflection.Emit.Lightweight.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Reflection.Extensions.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Reflection.Metadata.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Reflection.Primitives.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Reflection.TypeExtensions.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Resources.Reader.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Resources.ResourceManager.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Resources.Writer.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Runtime.CompilerServices.Unsafe.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Runtime.CompilerServices.VisualC.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Runtime.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Runtime.Extensions.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Runtime.Handles.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Runtime.InteropServices.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Runtime.InteropServices.RuntimeInformation.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Runtime.Intrinsics.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Runtime.Loader.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Runtime.Numerics.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Runtime.Serialization.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Runtime.Serialization.Formatters.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Runtime.Serialization.Json.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Runtime.Serialization.Primitives.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Runtime.Serialization.Xml.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Security.AccessControl.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Security.Claims.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Security.Cryptography.Algorithms.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Security.Cryptography.Cng.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Security.Cryptography.Csp.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Security.Cryptography.Encoding.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Security.Cryptography.OpenSsl.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Security.Cryptography.Primitives.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Security.Cryptography.X509Certificates.dll"",""C:\Program Files\dotnet\packs\Microsoft.AspNetCore.App.Ref\6.0.27\ref\net6.0\System.Security.Cryptography.Xml.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Security.dll"",C:\Users\c.nobel\.nuget\packages\system.security.permissions\4.5.0\ref\netstandard2.0\System.Security.Permissions.dll,""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Security.Principal.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Security.Principal.Windows.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Security.SecureString.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.ServiceModel.Web.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.ServiceProcess.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Text.Encoding.CodePages.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Text.Encoding.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Text.Encoding.Extensions.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Text.Encodings.Web.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Text.Json.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Text.RegularExpressions.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Threading.Channels.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Threading.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Threading.Overlapped.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Threading.Tasks.Dataflow.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Threading.Tasks.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Threading.Tasks.Extensions.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Threading.Tasks.Parallel.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Threading.Thread.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Threading.ThreadPool.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Threading.Timer.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Transactions.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Transactions.Local.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.ValueTuple.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Web.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Web.HttpUtility.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Windows.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Xml.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Xml.Linq.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Xml.ReaderWriter.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Xml.Serialization.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Xml.XDocument.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Xml.XmlDocument.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Xml.XmlSerializer.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Xml.XPath.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\System.Xml.XPath.XDocument.dll"",""C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.27\ref\net6.0\WindowsBase.dll"" /debug+ /debug:portable /filealign:512 /optimize- /out:obj\Debug\net6.0\VisualBasicNetConsoleApp.dll /refout:obj\Debug\net6.0\refint\VisualBasicNetConsoleApp.dll /target:exe /warnaserror- /utf8output /deterministic+ "
-            + @"/analyzerconfig:code\buildalyzer\.editorconfig /analyzerconfig:code\buildalyzer\tests\.editorconfig "
-            + @"/analyzer:""C:\Program Files\dotnet\sdk\8.0.200\Sdks\Microsoft.NET.Sdk\targets\..\analyzers\Microsoft.CodeAnalysis.VisualBasic.NetAnalyzers.dll"" "
-            + @"/analyzer:""C:\Program Files\dotnet\sdk\8.0.200\Sdks\Microsoft.NET.Sdk\targets\..\analyzers\Microsoft.CodeAnalysis.NetAnalyzers.dll"" "
-            + "Configuration.vb "
-            + "Program.vb "
-            + "\"obj\\Debug\\net6.0\\.NETCoreApp,Version=v6.0.AssemblyAttributes.vb\" "
-            + "\"obj\\Debug\\net6.0\\VisualBasicNetConsoleApp.AssemblyInfo.vb\" "
-            + "/warnaserror+:NU1605";
+        const string commandLine =
+            "/usr/local/share/dotnet/dotnet exec \"/usr/local/share/dotnet/sdk/8.0.101/Roslyn/bincore/csc.dll\" /embed";
 
-        var command = Buildalyzer.Compiler.CommandLine.Parse(new("."), commandline, CompilerLanguage.VisualBasic);
+        var taskInputs = Inputs(
+            ("Sources", Items("Program.cs")),
+            ("EmbeddedFiles", Items("extra.cs")));
 
-        command.Should().BeEquivalentTo(new
-        {
-            Text = commandline,
-            Language = CompilerLanguage.VisualBasic,
-            PreprocessorSymbolNames = new[] { "TRACE", "NETCOREAPP2_2_OR_GREATER", "NETCOREAPP1_0_OR_GREATER", "NET6_0", "NETCOREAPP2_0_OR_GREATER", "NETCOREAPP3_0_OR_GREATER", "_MyType", "NETCOREAPP", "NETCOREAPP2_1_OR_GREATER", "NET6_0_OR_GREATER", "NETCOREAPP1_1_OR_GREATER", "CONFIG", "NET", "PLATFORM", "NETCOREAPP3_1_OR_GREATER", "DEBUG", "NET5_0_OR_GREATER", "VBC_VER", "TARGET" },
-            SourceFiles = Files(".\\Configuration.vb", ".\\Program.vb", ".\\obj\\Debug\\net6.0\\.NETCoreApp,Version=v6.0.AssemblyAttributes.vb", ".\\obj\\Debug\\net6.0\\VisualBasicNetConsoleApp.AssemblyInfo.vb"),
-            AnalyzerReferences = Files("C:\\Program Files\\dotnet\\sdk\\8.0.200\\Sdks\\Microsoft.NET.Sdk\\targets\\..\\analyzers\\Microsoft.CodeAnalysis.VisualBasic.NetAnalyzers.dll", "C:\\Program Files\\dotnet\\sdk\\8.0.200\\Sdks\\Microsoft.NET.Sdk\\targets\\..\\analyzers\\Microsoft.CodeAnalysis.NetAnalyzers.dll"),
-            AnalyzerConfigPaths = Files(".\\code\\buildalyzer\\.editorconfig", ".\\code\\buildalyzer\\tests\\.editorconfig"),
-        });
+        CompilerCommand? command = CompilerCommandBuilder.Build(CompilerLanguage.CSharp, "/proj", commandLine, taskInputs);
+
+        FileNames(command!.EmbeddedFiles).Should().BeEquivalentTo("extra.cs", "Program.cs");
     }
 
     [Test]
-    public void Parse_FSharp()
+    public void Builds_reference_aliases_from_metadata_and_filters_global()
+    {
+        var references = new List<CompilerInputItem>
+        {
+            new("/refs/Aliased.dll", [("Aliases", "global,Foo,Bar")]),
+            new("/refs/Plain.dll", CompilerInputItem.NoMetadata),
+        };
+        var taskInputs = Inputs(("References", references));
+
+        CompilerCommand? command = CompilerCommandBuilder.Build(CompilerLanguage.CSharp, "/proj", null, taskInputs);
+
+        command!.Aliases.Should().ContainKey("/refs/Aliased.dll");
+        command.Aliases["/refs/Aliased.dll"].Should().BeEquivalentTo("Foo", "Bar");
+        command.Aliases.Should().NotContainKey("/refs/Plain.dll");
+    }
+
+    [Test]
+    public void Builds_visual_basic_symbols_from_define_switch_with_synthesized_symbols()
+    {
+        const string commandLine =
+            "/usr/local/share/dotnet/dotnet exec \"/usr/local/share/dotnet/sdk/8.0.200/Roslyn/bincore/vbc.dll\" "
+            + "/noconfig /define:\"CONFIG=\\\"Debug\\\",DEBUG=-1,TRACE=-1,NET6_0=-1,_MyType=\\\"Empty\\\"\"";
+
+        CompilerCommand? command = CompilerCommandBuilder.Build(CompilerLanguage.VisualBasic, "/proj", commandLine, Inputs());
+
+        command!.Language.Should().Be(CompilerLanguage.VisualBasic);
+        command.PreprocessorSymbolNames.Should().BeEquivalentTo(
+            "CONFIG", "DEBUG", "TRACE", "NET6_0", "_MyType", "VBC_VER", "TARGET");
+    }
+
+    [Test]
+    public void Builds_fsharp_symbols_from_individual_define_switches()
     {
         const string commandLine = """
-            C:\Program Files\dotnet\dotnet.exe "C:\Program Files\dotnet\sdk\8.0.200\FSharp\fsc.dll" -o:obj\Debug\netcoreapp3.1\FSharpProject.dll
-            -g
-            --debug:portable
-            --noframework
+            /usr/local/share/dotnet/dotnet "/usr/local/share/dotnet/sdk/8.0.200/FSharp/fsc.dll"
             --define:TRACE
             --define:DEBUG
             --define:NETCOREAPP
-            --define:NETCOREAPP3_1
-            --define:NETCOREAPP1_0_OR_GREATER
-            --define:NETCOREAPP1_1_OR_GREATER
-            --define:NETCOREAPP2_0_OR_GREATER
-            --define:NETCOREAPP2_1_OR_GREATER
-            --define:NETCOREAPP2_2_OR_GREATER
-            --define:NETCOREAPP3_0_OR_GREATER
-            --define:NETCOREAPP3_1_OR_GREATER
-            --optimize-
-            --tailcalls-
-            -r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\3.1.0\ref\netcoreapp3.1\Microsoft.CSharp.dll
-            -r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\3.1.0\ref\netcoreapp3.1\Microsoft.VisualBasic.Core.dll
-            -r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\3.1.0\ref\netcoreapp3.1\Microsoft.VisualBasic.dll
-            -r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\3.1.0\ref\netcoreapp3.1\Microsoft.Win32.Primitives.dll
-            -r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\3.1.0\ref\netcoreapp3.1\mscorlib.dll
-            -r:C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\3.1.0\ref\netcoreapp3.1\netstandard.dll
-            --target:exe
-            --warn:3
-            --warnaserror:3239
-            --preferreduilang:en-US
-            --fullpaths
-            --flaterrors
-            --highentropyva+
-            --targetprofile:netcore
-            --nocopyfsharpcore
-            --deterministic+
-            --simpleresolution
-            obj\Debug\netcoreapp3.1\.NETCoreApp,Version=v3.1.AssemblyAttributes.fs
-            obj\Debug\netcoreapp3.1\FSharpProject.AssemblyInfo.fs
-            Program.fs
             """;
 
-        var command = Buildalyzer.Compiler.CommandLine.Parse(new("."), commandLine, CompilerLanguage.FSharp);
-        var options = GetFSharpParsingOptions(commandLine);
+        var taskInputs = Inputs(
+            ("Sources", Items("Program.fs")),
+            ("References", Items("/refs/FSharp.Core.dll")));
 
-        command.Should().BeEquivalentTo(new
-        {
-            Text = commandLine,
-            Language = CompilerLanguage.FSharp,
-            PreprocessorSymbolNames = new[] { "NETCOREAPP3_1_OR_GREATER", "NETCOREAPP3_0_OR_GREATER", "NETCOREAPP2_2_OR_GREATER", "NETCOREAPP2_1_OR_GREATER", "NETCOREAPP2_0_OR_GREATER", "NETCOREAPP1_1_OR_GREATER", "NETCOREAPP1_0_OR_GREATER", "NETCOREAPP3_1", "NETCOREAPP", "DEBUG", "TRACE" },
-            SourceFiles = Files("obj\\Debug\\netcoreapp3.1\\.NETCoreApp,Version=v3.1.AssemblyAttributes.fs", "obj\\Debug\\netcoreapp3.1\\FSharpProject.AssemblyInfo.fs", "Program.fs"),
-            MetadataReferences = Array("C:\\Program Files\\dotnet\\packs\\Microsoft.NETCore.App.Ref\\3.1.0\\ref\\netcoreapp3.1\\Microsoft.CSharp.dll", "C:\\Program Files\\dotnet\\packs\\Microsoft.NETCore.App.Ref\\3.1.0\\ref\\netcoreapp3.1\\Microsoft.VisualBasic.Core.dll", "C:\\Program Files\\dotnet\\packs\\Microsoft.NETCore.App.Ref\\3.1.0\\ref\\netcoreapp3.1\\Microsoft.VisualBasic.dll", "C:\\Program Files\\dotnet\\packs\\Microsoft.NETCore.App.Ref\\3.1.0\\ref\\netcoreapp3.1\\Microsoft.Win32.Primitives.dll", "C:\\Program Files\\dotnet\\packs\\Microsoft.NETCore.App.Ref\\3.1.0\\ref\\netcoreapp3.1\\mscorlib.dll", "C:\\Program Files\\dotnet\\packs\\Microsoft.NETCore.App.Ref\\3.1.0\\ref\\netcoreapp3.1\\netstandard.dll"),
-        });
+        CompilerCommand? command = CompilerCommandBuilder.Build(CompilerLanguage.FSharp, "/proj", commandLine, taskInputs);
 
-        command.SourceFiles.Should().BeEquivalentTo(Files(options.SourceFiles));
-
-        // INTERACTIVE is added by the F# checker. TODO: based on being interactive or not, INTERACTIVE or COMPILED should be added by the parser.
-        command.PreprocessorSymbolNames.Concat(["INTERACTIVE"]).Should().BeEquivalentTo(options.ConditionalDefines);
-
-        static FSharpParsingOptions GetFSharpParsingOptions(string commandLine)
-        {
-            var checker = FSharpChecker.Instance;
-            var result = checker.GetParsingOptionsFromCommandLineArgs(ListModule.OfArray(FSharpCommandLineParser.SplitCommandLineIntoArguments(commandLine)), isInteractive: true, isEditing: false);
-            return result.Item1;
-        }
+        command!.Language.Should().Be(CompilerLanguage.FSharp);
+        FileNames(command.SourceFiles).Should().ContainSingle().Which.Should().Be("Program.fs");
+        command.MetadataReferences.Select(Path.GetFileName).Should().ContainSingle().Which.Should().Be("FSharp.Core.dll");
+        command.PreprocessorSymbolNames.Should().BeEquivalentTo("TRACE", "DEBUG", "NETCOREAPP");
     }
 
-    private static ImmutableArray<IOPath> Files(params string[] files) => [.. files.Select(IOPath.Parse)];
+    private static IEnumerable<string> FileNames(IEnumerable<string> paths)
+        => paths.Select(Path.GetFileName);
 
-    private static ImmutableArray<string> Array(params string[] references) => [.. references];
+    private static List<CompilerInputItem> Items(params string[] specs)
+        => [.. specs.Select(s => new CompilerInputItem(s, CompilerInputItem.NoMetadata))];
+
+    private static Dictionary<string, List<CompilerInputItem>> Inputs(params (string Key, List<CompilerInputItem> Items)[] groups)
+        => groups.ToDictionary(g => g.Key, g => g.Items, StringComparer.OrdinalIgnoreCase);
 }

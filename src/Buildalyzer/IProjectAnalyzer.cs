@@ -1,15 +1,11 @@
 using Buildalyzer.Construction;
 using Buildalyzer.Environment;
-using Microsoft.Build.Construction;
-using Microsoft.Build.Logging;
 using Microsoft.Extensions.Logging;
 
 namespace Buildalyzer;
 
 public interface IProjectAnalyzer
 {
-    IEnumerable<Microsoft.Build.Framework.ILogger> BuildLoggers { get; }
-
     EnvironmentFactory EnvironmentFactory { get; }
 
     /// <summary>
@@ -45,8 +41,6 @@ public interface IProjectAnalyzer
     /// will generate a UUID GUID by hashing the project path relative to the solution path (so it's repeatable).
     /// </summary>
     Guid ProjectGuid { get; }
-
-    ProjectInSolution? ProjectInSolution { get; }
 
     string SolutionDirectory { get; }
 
@@ -124,23 +118,7 @@ public interface IProjectAnalyzer
 
     void AddBinaryLogger(
         string? binaryLogFilePath = null,
-        BinaryLogger.ProjectImportsCollectionMode collectProjectImports = BinaryLogger.ProjectImportsCollectionMode.Embed);
-
-    /// <summary>
-    /// Adds an MSBuild logger to the build. Note that this may have a large penalty on build performance.
-    /// </summary>
-    /// <remarks>
-    /// Normally, the minimum required amount of log events are forwarded from the MSBuild process to Buildalyzer.
-    /// By attaching arbitrary loggers, MSBuild must forward every log event so the logger has a chance to handle it.
-    /// </remarks>
-    /// <param name="logger">The logger to add.</param>
-    void AddBuildLogger(Microsoft.Build.Framework.ILogger logger);
-
-    /// <summary>
-    /// Removes an MSBuild logger from the build.
-    /// </summary>
-    /// <param name="logger">The logger to remove.</param>
-    void RemoveBuildLogger(Microsoft.Build.Framework.ILogger logger);
+        BinaryLogImports collectProjectImports = BinaryLogImports.Embed);
 
     void RemoveGlobalProperty(string key);
 

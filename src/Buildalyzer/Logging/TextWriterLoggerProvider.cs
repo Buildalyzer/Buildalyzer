@@ -5,7 +5,11 @@ namespace Buildalyzer.Logging;
 
 public class TextWriterLoggerProvider(TextWriter textWriter) : ILoggerProvider
 {
-    private readonly TextWriter _textWriter = Guard.NotNull(textWriter);
+    // Buildalyzer logs from several threads at once (most notably the process stdout and
+    // stderr readers), and every logger created here shares this single writer. Wrap it once
+    // in a synchronized writer so callers can safely pass a non-thread-safe TextWriter such as
+    // a StringWriter without risking corrupted output or an ArgumentOutOfRangeException.
+    private readonly TextWriter _textWriter = TextWriter.Synchronized(Guard.NotNull(textWriter));
 
     public void Dispose()
     {

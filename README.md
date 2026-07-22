@@ -39,6 +39,15 @@ These blog posts might also help explain the motivation behind the project and h
 * [Running A Design-Time Build With MSBuild APIs](https://daveaglick.com/posts/running-a-design-time-build-with-msbuild-apis)
 * [MSBuild Loggers And Logging Events](https://daveaglick.com/posts/msbuild-loggers-and-logging-events)
 
+## Architecture
+
+Buildalyzer runs the build in a **separate process** and streams the results back over a pipe. Your code drives an `AnalyzerManager`; `ProjectAnalyzer` shells out to `dotnet msbuild` for a design-time build, passing an MSBuild logger (`BuildalyzerLogger`, built on [XenoAtom.MsBuildPipeLogger](https://www.nuget.org/packages/XenoAtom.MsBuildPipeLogger)) whose events are written back over an anonymous pipe. Buildalyzer's `EventProcessor` turns those events into an `AnalyzerResult` per target framework, and `Buildalyzer.Workspaces` maps each result into a Roslyn `AdhocWorkspace`.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/architecture-roundtrip-dark.svg">
+  <img alt="Buildalyzer architecture: an out-of-process design-time build streamed back over a pipe and turned into a Roslyn workspace" src="docs/architecture-roundtrip-light.svg">
+</picture>
+
 
 ## Installation
 
@@ -123,7 +132,7 @@ Be careful though, you may break the ability to load, compile, or interpret the 
 ## Publish SingleFile
 If your application's output is a single file, you will need to provide the path to the following DLLs:
 
--MsBuildPipeLogger.Logger.dll
+-XenoAtom.MsBuildPipeLogger.Logger.dll
 -Buildalyzer.logger.dll
 
 Variable name: LoggerPathDll

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 
@@ -31,10 +32,24 @@ public static class ProjectAnalyzerExtensions
     /// <c>true</c> to add projects to the workspace for project references that exist in the same <see cref="AnalyzerManager"/>.
     /// If <c>true</c> this will trigger (re)building all referenced projects. Directly add <see cref="AnalyzerResult"/> instances instead if you already have them available.
     /// </param>
-    /// <returns>The newly added Roslyn project.</returns>
+    /// <returns>
+    /// The newly added Roslyn project. A multi-targeted project is added as one project per target
+    /// framework (named <c>Name(tfm)</c>, matching MSBuildWorkspace); the first target framework's
+    /// project is returned, and every framework is present in <c>workspace.CurrentSolution</c>.
+    /// </returns>
     public static Project AddToWorkspace(this IProjectAnalyzer analyzer, Workspace workspace, bool addProjectReferences = false)
-        => Guard.NotNull(analyzer)
-        .Build()
-        .First()
-        .AddToWorkspace(Guard.NotNull(workspace), addProjectReferences);
+    {
+        Guard.NotNull(analyzer);
+        Guard.NotNull(workspace);
+
+        HashSet<string> visited = new(System.StringComparer.OrdinalIgnoreCase);
+
+        // When pulling in project references, build the whole reference closure (this project included)
+        // up front in parallel, then populate the workspace sequentially reusing those results.
+        IReadOnlyDictionary<string, IAnalyzerResult[]> prebuilt = addProjectReferences
+            ? AnalyzerResultExtensions.PrebuildReferenceClosure(analyzer.Manager, [analyzer])
+            : null;
+        IReadOnlyList<ProjectId> ids = AnalyzerResultExtensions.AddAnalyzer(analyzer, workspace, addProjectReferences, visited, prebuilt);
+        return ids.Count > 0 ? workspace.CurrentSolution.GetProject(ids[0]) : null;
+    }
 }

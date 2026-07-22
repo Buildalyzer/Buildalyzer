@@ -3,31 +3,38 @@
   <Import Project="../../package.props" />
 
   <PropertyGroup>
-    <TargetFrameworks>net6.0;net8.0</TargetFrameworks>
+    <TargetFramework>net8.0</TargetFramework>
     <PackageId>Buildalyzer</PackageId>
     <PackageValidationBaselineVersion>8.0.0</PackageValidationBaselineVersion>
     <PackageReleaseNotes>
       <![CDATA[
 ToBeReleased
+- Replaced MsBuildPipeLogger with XenoAtom.MsBuildPipeLogger.
 - Drop Buildalyzer.EmptyDisposable. (BREAKING)
+- Removed IAnalyzerManager.SolutionFilePath; use Solution.Path instead. (BREAKING)
+- IOPath is now an internal implementation detail; the entire public path surface is string. Inputs (AnalyzerManager, IAnalyzerManager.GetProject, SolutionInfo.Load) accept string, and outputs (SolutionInfo.Path, ProjectInfo.Path, CompilerCommand.SourceFiles/AdditionalFiles/EmbeddedFiles/AnalyzerReferences/AnalyzerConfigPaths) return string.
+- Project and build-event paths are now compared using file-system-aware equality, so paths differing only in case are matched correctly on case-insensitive file systems (Windows/macOS).
 - Publish SBOM.
 - Introduction of SolutionInfo and ProjectInfo.
-- Marked IAnalyzerManger.SolutionFile and IAnalyzer.SolutionFilePath as obsolete.
 - Support SLNX.
+- The log writer (AnalyzerManagerOptions.LogWriter) is now written to under a lock, so a non-thread-safe TextWriter such as a StringWriter can be passed safely.
+- IAnalyzerResult now exposes AnalyzerConfigFiles (the .editorconfig/.globalconfig paths passed to the compiler). (BREAKING for implementers)
+- IAnalyzerResult now exposes ReferencesEmbeddingInteropTypes (the references whose EmbedInteropTypes metadata is true). (BREAKING for implementers)
+- IAnalyzerResults.BuildEventArguments has been removed from the public API; the raw pipe events are an implementation detail (XenoAtom.MsBuildPipeLogger types are no longer exposed). (BREAKING)
 ]]>
     </PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Build" Version="17.10.46" />
-    <PackageReference Include="Microsoft.Build.Tasks.Core" Version="17.10.46" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="[4,)" />
-    <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic" Version="[4,)" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
+    <!-- Buildalyzer runs builds out-of-process and reads their events over the pipe (as XenoAtom's
+         version-independent PipeBuildEventArgs), so the core library has NO Microsoft.Build.* dependency at
+         all - no engine, no MSBuildLocator, no Framework. Solutions (.sln and .slnx) are parsed with
+         Microsoft.VisualStudio.SolutionPersistence; compiler inputs arrive as the compiler task's parameters
+         over the pipe and surface through Buildalyzer's own IProjectItem model. The Buildalyzer.Logger dll
+         (which does reference Microsoft.Build.Framework) runs inside the out-of-process MSBuild. -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.0" />
     <PackageReference Include="Microsoft.VisualStudio.SolutionPersistence" Version="1.0.52" />
-    <PackageReference Include="MSBuild.StructuredLogger" Version="2.2.158" Aliases="StructuredLogger" />
-    <PackageReference Include="MsBuildPipeLogger.Server" Version="1.1.6" />
-    <PackageReference Include="NuGet.Frameworks" Version="6.9.1" />
+    <PackageReference Include="XenoAtom.MsBuildPipeLogger" Version="1.1.1" ExcludeAssets="contentFiles" />
   </ItemGroup>
 
   <ItemGroup Label="Build dependencies">

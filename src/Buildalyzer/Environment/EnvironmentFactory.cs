@@ -1,10 +1,8 @@
 using System.IO;
 using System.Runtime.InteropServices;
 using Buildalyzer.Construction;
-using Microsoft.Build.Utilities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using NuGet.Frameworks;
 
 namespace Buildalyzer.Environment;
 
@@ -89,6 +87,14 @@ public class EnvironmentFactory
         additionalEnvironmentVariables.TryAdd(EnvironmentVariables.MSBuildExtensionsPath, dotnetPath);
         additionalEnvironmentVariables.TryAdd(EnvironmentVariables.MSBuildSDKsPath, Path.Combine(dotnetPath, "Sdks"));
         additionalEnvironmentVariables.TryAdd(EnvironmentVariables.COREHOST_TRACE, "0");
+
+        // Have MSBuild generate task-input parameter events so the compiler task's resolved Sources/References
+        // are available as structured items. The BuildalyzerLogger opts into their delivery via
+        // IEventSource4.IncludeTaskInputs() (no diagnostic verbosity needed) and forwards only the compiler's
+        // input item groups. MSBuild reads this variable through Traits at node startup, so node reuse is off.
+        additionalEnvironmentVariables.TryAdd("MSBUILDLOGTASKINPUTS", "1");
+        additionalEnvironmentVariables.TryAdd(EnvironmentVariables.MSBUILDDISABLENODEREUSE, "1");
+
         additionalEnvironmentVariables.TryAdd(
             EnvironmentVariables.DOTNET_HOST_PATH,
             Path.GetFullPath(Path.Combine(dotnetPath, "..", "..", RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "dotnet.exe" : "dotnet")));
@@ -126,6 +132,16 @@ public class EnvironmentFactory
         // This is required to trigger NuGet package resolution and regeneration of project.assets.json
         additionalGlobalProperties.Add(MsBuildProperties.ResolveNuGetPackages, "true");
 
+        // Clone the options environment variables dictionary so we can add to it
+        Dictionary<string, string> additionalEnvironmentVariables = new Dictionary<string, string>(options.EnvironmentVariables);
+
+        // Have MSBuild generate task-input parameter events so the compiler task's resolved Sources/References
+        // are available as structured items. The BuildalyzerLogger opts into their delivery via
+        // IEventSource4.IncludeTaskInputs() (no diagnostic verbosity needed) and forwards only the compiler's
+        // input item groups. MSBuild reads this variable through Traits at node startup, so node reuse is off.
+        additionalEnvironmentVariables.TryAdd("MSBUILDLOGTASKINPUTS", "1");
+        additionalEnvironmentVariables.TryAdd(EnvironmentVariables.MSBUILDDISABLENODEREUSE, "1");
+
         return new BuildEnvironment(
             options.DesignTime,
             options.Restore,
@@ -134,41 +150,41 @@ public class EnvironmentFactory
             options.DotnetExePath,
             options.Arguments,
             additionalGlobalProperties,
-            options.EnvironmentVariables,
+            additionalEnvironmentVariables,
             options.WorkingDirectory);
     }
 
+    // Locate .NET Framework MSBuild by polling the Visual Studio install directories. This previously started
+    // from ToolLocationHelper.GetPathToBuildToolsFile, but that pulled in Microsoft.Build.Utilities.Core just for
+    // one Windows-only lookup; the poll (adapted from MSBuildStructuredLog's locator) covers VS 2017+ full and
+    // Build Tools installs, which is what GetPathToBuildToolsFile resolves to on modern machines anyway.
+    // https://github.com/KirillOsenkov/MSBuildStructuredLog/blob/4649f55f900a324421bad5a714a2584926a02138/src/StructuredLogViewer/MSBuildLocator.cs
     private static bool GetFrameworkMsBuildExePath(out string msBuildExePath)
     {
-        msBuildExePath = ToolLocationHelper.GetPathToBuildToolsFile("msbuild.exe", ToolLocationHelper.CurrentToolsVersion);
-        if (string.IsNullOrEmpty(msBuildExePath))
+        List<DirectoryInfo> msBuildDirectories = [];
+
+        // Search in the x86 program files
+        string programFilesX86 = System.Environment.GetFolderPath(System.Environment.SpecialFolder.ProgramFilesX86);
+        DirectoryInfo vsX86Directory = new DirectoryInfo(Path.Combine(programFilesX86, "Microsoft Visual Studio"));
+        if (vsX86Directory.Exists)
         {
-            // Could not find the tools path, possibly due to https://github.com/Microsoft/msbuild/issues/2369
-            // Try to poll for it. From https://github.com/KirillOsenkov/MSBuildStructuredLog/blob/4649f55f900a324421bad5a714a2584926a02138/src/StructuredLogViewer/MSBuildLocator.cs
-            List<DirectoryInfo> msBuildDirectories = [];
-
-            // Search in the x86 program files
-            string programFilesX86 = System.Environment.GetFolderPath(System.Environment.SpecialFolder.ProgramFilesX86);
-            DirectoryInfo vsX86Directory = new DirectoryInfo(Path.Combine(programFilesX86, "Microsoft Visual Studio"));
-            if (vsX86Directory.Exists)
-            {
-                msBuildDirectories.AddRange(vsX86Directory.GetDirectories("MSBuild", SearchOption.AllDirectories));
-            }
-
-            // Also search in x64 since VS 2022 and on is now 64-bit
-            string programFiles = System.Environment.GetFolderPath(System.Environment.SpecialFolder.ProgramFiles);
-            DirectoryInfo vsDirectory = new DirectoryInfo(Path.Combine(programFiles, "Microsoft Visual Studio"));
-            if (vsDirectory.Exists)
-            {
-                msBuildDirectories.AddRange(vsDirectory.GetDirectories("MSBuild", SearchOption.AllDirectories));
-            }
-
-            // Now order by write time to get the latest MSBuild
-            msBuildExePath = msBuildDirectories
-                .SelectMany(msBuildDir => msBuildDir.GetFiles("MSBuild.exe", SearchOption.AllDirectories))
-                .OrderByDescending(msBuild => msBuild.LastWriteTimeUtc)
-                .FirstOrDefault()?.FullName;
+            msBuildDirectories.AddRange(vsX86Directory.GetDirectories("MSBuild", SearchOption.AllDirectories));
         }
+
+        // Also search in x64 since VS 2022 and on is now 64-bit
+        string programFiles = System.Environment.GetFolderPath(System.Environment.SpecialFolder.ProgramFiles);
+        DirectoryInfo vsDirectory = new DirectoryInfo(Path.Combine(programFiles, "Microsoft Visual Studio"));
+        if (vsDirectory.Exists)
+        {
+            msBuildDirectories.AddRange(vsDirectory.GetDirectories("MSBuild", SearchOption.AllDirectories));
+        }
+
+        // Now order by write time to get the latest MSBuild
+        msBuildExePath = msBuildDirectories
+            .SelectMany(msBuildDir => msBuildDir.GetFiles("MSBuild.exe", SearchOption.AllDirectories))
+            .OrderByDescending(msBuild => msBuild.LastWriteTimeUtc)
+            .FirstOrDefault()?.FullName;
+
         return !string.IsNullOrEmpty(msBuildExePath);
     }
 
@@ -178,7 +194,40 @@ public class EnvironmentFactory
             : IsFrameworkTargetFramework(targetFramework);
 
     // Internal for testing
-    // Because the .NET Core/.NET 5 TFMs are better defined, we just check if this is one of them and then negate
-    internal static bool IsFrameworkTargetFramework(string targetFramework)
-        => NuGetFramework.Parse(targetFramework).Framework is not ".NETStandard" and not ".NETCoreApp";
+    // Determines whether a TFM requires desktop .NET Framework. .NET Standard (netstandard*), .NET Core
+    // (netcoreapp*) and .NET 5+ (netX[.Y][-platform], major >= 5) are not Framework; everything else -
+    // including desktop Framework monikers (net11..net48) and the more exotic legacy TFMs (netcore*, netmf,
+    // sl*, wp*, uap*) - is treated as .NET Framework, matching the previous NuGet.Frameworks-based behaviour.
+    internal static bool IsFrameworkTargetFramework(string? targetFramework)
+    {
+        if (string.IsNullOrWhiteSpace(targetFramework))
+        {
+            return false;
+        }
+
+        string tfm = targetFramework.Trim();
+
+        if (tfm.IsMatchStart("netstandard") || tfm.IsMatchStart("netcoreapp"))
+        {
+            return false;
+        }
+
+        // A plain versioned "net" TFM: "net" immediately followed by a version digit.
+        if (tfm.IsMatchStart("net") && tfm.Length > 3 && char.IsDigit(tfm[3]))
+        {
+            string version = tfm[3..];
+            int dot = version.IndexOf('.');
+
+            // Dotted versions carry the full major before the dot (net5.0, net10.0); packed versions encode
+            // the major as the first digit (net45 -> 4.5, net472 -> 4.7.2, net5 -> 5).
+            int major = dot > 0 && int.TryParse(version[..dot], out int dotted)
+                ? dotted
+                : version[0] - '0';
+
+            // .NET 5 and later are not desktop .NET Framework.
+            return major < 5;
+        }
+
+        return true;
+    }
 }

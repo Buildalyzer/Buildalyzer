@@ -135,7 +135,7 @@ public sealed class BuildEnvironment
     /// <param name="targets">
     /// The targets that should be used to build the project.
     /// Specifying an empty array indicates that the <see cref="ProjectAnalyzer"/> should
-    /// return a <see cref="Microsoft.Build.Execution.ProjectInstance"/> without building the project.
+    /// return a project instance without building the project.
     /// </param>
     /// <returns>A new build environment with the specified targets.</returns>
     public BuildEnvironment WithTargetsToBuild(params string[] targets) => new(

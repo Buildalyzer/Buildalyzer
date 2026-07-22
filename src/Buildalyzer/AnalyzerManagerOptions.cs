@@ -1,6 +1,5 @@
 using System.IO;
 using Buildalyzer.Logging;
-using Microsoft.Build.Construction;
 using Microsoft.Extensions.Logging;
 
 namespace Buildalyzer;
@@ -13,7 +12,7 @@ public class AnalyzerManagerOptions
     /// A filter that indicates whether a give project should be loaded.
     /// Return <c>true</c> to load the project, <c>false</c> to filter it out.
     /// </summary>
-    public Func<ProjectInSolution, bool>? ProjectFilter { get; set; }
+    public Func<ProjectInfo, bool>? ProjectFilter { get; set; }
 
     public TextWriter? LogWriter
     {
@@ -25,7 +24,7 @@ public class AnalyzerManagerOptions
                 return;
             }
 
-            LoggerFactory ??= new LoggerFactory();
+            LoggerFactory ??= new SimpleLoggerFactory();
             LoggerFactory.AddProvider(new TextWriterLoggerProvider(value));
         }
     }

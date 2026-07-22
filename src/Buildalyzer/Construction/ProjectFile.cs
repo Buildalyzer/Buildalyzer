@@ -70,6 +70,45 @@ public class ProjectFile : IProjectFile
     /// <inheritdoc />
     public IReadOnlyList<IPackageReference> PackageReferences => _projectElement.GetDescendants(ProjectFileNames.PackageReference).Select(s => new PackageReference(s)).ToList();
 
+    /// <summary>
+    /// The absolute paths of the <c>ProjectReference</c> items declared directly in the project XML.
+    /// </summary>
+    /// <remarks>
+    /// Internal, best-effort scheduling hint - deliberately not part of <see cref="IProjectFile"/>. It
+    /// parses the project XML only, so references added by MSBuild logic, injected by SDKs, hidden behind
+    /// conditions, or expanded from globs/properties are not seen. It exists solely to discover the
+    /// reference closure cheaply, up front, so the workspace can build it in one parallel wave; anything
+    /// missed is built on demand, so correctness never depends on this being complete.
+    /// </remarks>
+    internal IReadOnlyList<string> ProjectReferences => field ??=
+    [
+        .. _projectElement.GetDescendants(ProjectFileNames.ProjectReference)
+            .Select(x => x.GetAttributeValue(ProjectFileNames.Include))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(TryResolveReferencePath)
+            .Where(x => x is not null)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray()
+    ];
+
+    // ProjectReference Include paths are project-relative and typically use Windows separators
+    // (e.g. "..\Library\Library.csproj"); normalize and resolve against the project directory. A
+    // malformed Include (invalid path characters, an unexpanded $(property)) must not take down the
+    // parse - this is only a best-effort hint - so an unresolvable entry is dropped rather than thrown.
+    private string TryResolveReferencePath(string include)
+    {
+        try
+        {
+            return System.IO.Path.GetFullPath(
+                include.Replace('\\', System.IO.Path.DirectorySeparatorChar),
+                System.IO.Path.GetDirectoryName(Path)!);
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+    }
+
     /// <inheritdoc />
     public string ToolsVersion => _projectElement.GetAttributeValue(ProjectFileNames.ToolsVersion);
 

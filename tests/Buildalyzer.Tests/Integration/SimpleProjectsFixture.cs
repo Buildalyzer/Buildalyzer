@@ -622,8 +622,9 @@ public class SimpleProjectsFixture
         result.References.Should().Contain(x => x.Contains("BouncyCastle.Crypto.dll"));
     }
 
-    // To produce different versions, create a global.json and then run `dotnet clean` and `dotnet build -bl:SdkNetCore31Project-vX.binlog` from the source project folder
-    [TestCase("SdkNetCore31Project-v9.binlog", 9)]
+    // To produce different versions, create a global.json and then run `dotnet clean` and `dotnet build -bl:SdkNetCore31Project-vX.binlog` from the source project folder.
+    // Only binary logs that recorded task inputs (produced by a reasonably modern MSBuild) are supported now,
+    // since compiler inputs are read from the compiler task's parameters rather than the command line.
     [TestCase("SdkNetCore31Project-v14.binlog", 14)]
     public void GetsSourceFilesFromBinLogFile(string path, int expectedVersion)
     {

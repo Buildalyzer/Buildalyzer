@@ -4,8 +4,13 @@ using System.IO;
 namespace Buildalyzer.IO;
 
 /// <summary>Represents an (IO) path.</summary>
+/// <remarks>
+/// Internal path-normalization helper: paths are accepted from and handed back to consumers
+/// as <see cref="string"/>; <see cref="IOPath"/> only exists to give the internals a canonical
+/// form with file-system-aware equality.
+/// </remarks>
 [TypeConverter(typeof(Conversion.IOPathTypeConverter))]
-public readonly struct IOPath : IEquatable<IOPath>, IFormattable
+internal readonly struct IOPath : IEquatable<IOPath>, IFormattable
 {
     /// <summary>Represents none/an empty path.</summary>
     public static readonly IOPath Empty;
@@ -31,6 +36,14 @@ public readonly struct IOPath : IEquatable<IOPath>, IFormattable
     /// <summary>Creates a <see cref="FileInfo"/> based on the path.</summary>
     [Pure]
     public FileInfo? File() => HasValue ? new(ToString()) : null;
+
+    /// <summary>
+    /// Resolves the path to its rooted, canonical form (see <see cref="Path.GetFullPath(string)"/>):
+    /// relative paths are made absolute against the current directory and <c>.</c>/<c>..</c> segments
+    /// are collapsed. An empty path stays empty.
+    /// </summary>
+    [Pure]
+    public IOPath Root() => HasValue ? Parse(Path.GetFullPath(ToString())) : Empty;
 
     /// <summary>Creates a new path.</summary>
     [Pure]
