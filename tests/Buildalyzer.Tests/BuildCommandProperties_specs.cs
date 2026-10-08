@@ -1,5 +1,4 @@
 using Buildalyzer;
-using Buildalyzer.IO;
 
 namespace BuildCommandProperties_specs;
 
@@ -9,7 +8,6 @@ public class Removes
     public void null_values()
     {
         var props = BuildCommandProperties.Create(
-            IOPath.Empty,
             null,
             [
                 KeyValuePair.Create("add", "value"),
@@ -23,17 +21,28 @@ public class Removes
             new BuildCommandProperty("add", "value"),
         ]);
     }
+}
 
+public class Keeps
+{
+    /// <remarks>
+    /// F# used to be excluded from <c>SkipCompilerExecution</c> because the full <c>Clean;Build</c>
+    /// closure raised file-copy errors. Building the <c>Compile</c> target on a supported SDK no longer
+    /// does, and skipping the compiler is what makes an F# design-time build both fast and independent
+    /// of whether <c>fsc</c> itself would succeed.
+    /// </remarks>
     [Test]
     public void SkipCompilerExecution_for_FSharp()
     {
         var props = BuildCommandProperties.Create(
-            IOPath.Parse("project.fsproj"),
             null,
             [
                 KeyValuePair.Create("SkipCompilerExecution", "true"),
             ]);
 
-        props.Should().BeEmpty();
+        props.Should().BeEquivalentTo(
+        [
+            new BuildCommandProperty("SkipCompilerExecution", "true"),
+        ]);
     }
 }

@@ -40,6 +40,12 @@ public interface IAnalyzerResult
 
     ImmutableDictionary<string, ImmutableArray<string>> ReferenceAliases { get; }
 
+    /// <summary>
+    /// The metadata references (by path) whose interop types should be embedded
+    /// (the <c>EmbedInteropTypes</c> metadata is <c>true</c>).
+    /// </summary>
+    ImmutableHashSet<string> ReferencesEmbeddingInteropTypes { get; }
+
     string[] AnalyzerReferences { get; }
 
     string[] SourceFiles { get; }
@@ -51,6 +57,12 @@ public interface IAnalyzerResult
     string[] PreprocessorSymbols { get; }
 
     string[] AdditionalFiles { get; }
+
+    /// <summary>
+    /// Gets the analyzer config files (<c>.editorconfig</c> and <c>.globalconfig</c>, including
+    /// the SDK-generated ones) passed to the compiler via <c>/analyzerconfig:</c>.
+    /// </summary>
+    string[] AnalyzerConfigFiles { get; }
 
     /// <summary>
     /// Gets the compiler command produced by the CoreCompile task.

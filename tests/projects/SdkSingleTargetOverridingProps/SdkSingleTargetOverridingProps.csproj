@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Overrides the <TargetFrameworks> from this directory's Directory.Build.props. -->
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+
+  <!-- Fails the build before the compiler runs. A failed single-targeted build must not be retried per
+       framework just because the evaluation still carries the imported TargetFrameworks list. -->
+  <Target Name="FailForTest" BeforeTargets="CoreCompile">
+    <Error Text="Deliberate failure for the test." />
+  </Target>
+
+</Project>

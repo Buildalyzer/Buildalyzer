@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="../../package.props" />
+
+  <PropertyGroup>
+    <!-- Basic.CompilerLog.Util's modern assets are net9.0/net10.0; a net8.0 target would silently
+         bind to its netstandard2.0 fallback asset, so this package starts at net9.0. -->
+    <TargetFrameworks>net9.0;net10.0</TargetFrameworks>
+    <Description>
+      A little utility to perform design-time builds of .NET projects without
+      having to think too hard about it. This extension library creates compiler
+      log (.complog) files from Buildalyzer build results.
+    </Description>
+    <PackageId>Buildalyzer.CompilerLogs</PackageId>
+    <PackageReleaseNotes>
+      <![CDATA[
+ToBeReleased
+- Initial release.
+]]>
+    </PackageReleaseNotes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Pinned exactly: this package binds to publicized internals (see below), which carry no
+         compatibility promise, so a newer version unified into a consumer's graph would fail at runtime
+         with a MissingMethodException rather than at restore. -->
+    <PackageReference Include="Basic.CompilerLog.Util" Version="[0.9.60]" />
+    <PackageReference Include="Krafs.Publicizer" Version="2.3.2" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup Label="Internals access">
+    <!-- CompilerLogBuilder and the CompilerCall constructor are internal to Basic.CompilerLog.Util.
+         Publicizing lets us compile against them; the generated IgnoresAccessChecksTo attribute
+         makes the runtime skip the visibility checks. To be replaced by a public producer API
+         upstream (jaredpar/complog). -->
+    <Publicize Include="Basic.CompilerLog.Util" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Buildalyzer/Buildalyzer.csproj" />
+  </ItemGroup>
+
+</Project>

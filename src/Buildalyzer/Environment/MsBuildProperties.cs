@@ -32,6 +32,7 @@ public static class MsBuildProperties
     public const string AddModules = nameof(AddModules);
     public const string UseCommonOutputDirectory = nameof(UseCommonOutputDirectory);
     public const string GeneratePackageOnBuild = nameof(GeneratePackageOnBuild);
+    public const string ContinueOnError = nameof(ContinueOnError);
 
     // .NET Framework code analysis rulesets
     public const string CodeAnalysisRuleDirectories = nameof(CodeAnalysisRuleDirectories);
@@ -82,6 +83,14 @@ public static class MsBuildProperties
 
         // Prevent NuGet.Build.Tasks.Pack.targets from running the pack targets (since we didn't build anything)
         [GeneratePackageOnBuild] = "false",
+
+        // Keep going past a failing task so the build still reaches CoreCompile and the compiler's inputs and
+        // command line are captured; the error is still logged and the build still reports failure. Only tasks
+        // whose ContinueOnError is bound to this property honour it - in the SDK that is ResolvePackageAssets
+        // (an unrestored project), CheckForDuplicateItems, and the MSBuild calls into project references - but
+        // those are precisely the pre-compile failures a design-time build hits. MSBuildWorkspace sets the same
+        // value, so a workspace built from a failing project matches what it would load.
+        [ContinueOnError] = "ErrorAndContinue",
     }
     .ToFrozenDictionary();
 }

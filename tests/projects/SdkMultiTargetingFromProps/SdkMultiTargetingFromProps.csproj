@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- No <TargetFrameworks> here: it lives in this directory's Directory.Build.props. -->
+
+</Project>

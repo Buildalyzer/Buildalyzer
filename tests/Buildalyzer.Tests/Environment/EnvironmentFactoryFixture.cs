@@ -1,3 +1,4 @@
+using System.IO;
 using Buildalyzer.Environment;
 using Buildalyzer.TestTools;
 
@@ -26,6 +27,31 @@ public class EnvironmentFactoryFixture
         env.GlobalProperties.Should().ContainKey(MsBuildProperties.NonExistentFile);
     }
 
+    [Test]
+    public void GetBuildEnvironment_names_the_global_json_that_pins_a_missing_SDK()
+    {
+        // `dotnet --info` reports no SDK base path here, only the runtimes. The first runtime's directory
+        // used to stand in for it, so every build ran a nonexistent shared/Microsoft.AspNetCore.App/MSBuild.dll.
+        DirectoryInfo root = Directory.CreateTempSubdirectory("Buildalyzer.MissingSdk.");
+        try
+        {
+            string globalJson = Path.Combine(root.FullName, "global.json");
+            File.WriteAllText(globalJson, """{ "sdk": { "version": "2.0.999" } }""");
+            string projectPath = Path.Combine(root.FullName, "Project.csproj");
+            File.WriteAllText(projectPath, """<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>""");
+
+            IProjectAnalyzer analyzer = new AnalyzerManager().GetProject(projectPath)!;
+
+            analyzer.Invoking(a => a.EnvironmentFactory.GetBuildEnvironment(new EnvironmentOptions()))
+                .Should().Throw<InvalidOperationException>()
+                .WithMessage($"*{globalJson}*not installed*");
+        }
+        finally
+        {
+            root.Delete(recursive: true);
+        }
+    }
+
     // From https://docs.microsoft.com/en-us/dotnet/standard/frameworks
     // .NET Core/.NET 5 and up
     [TestCase("netcoreapp1.0", false)]
@@ -51,6 +77,13 @@ public class EnvironmentFactoryFixture
     [TestCase("net6.0-tvos", false)]
     [TestCase("net6.0-watchos", false)]
     [TestCase("net6.0-windows", false)]
+
+    // Dotted double-digit majors. Note these collide with the packed .NET Framework monikers
+    // below ("net10" is Framework 1.0, "net10.0" is .NET 10), so the dot matters.
+    [TestCase("net10.0", false)]
+    [TestCase("net10.0-windows", false)]
+    [TestCase("net11.0", false)]
+    [TestCase("net11.0-windows", false)]
     [TestCase("netstandard1.0", false)]
     [TestCase("netstandard1.1", false)]
     [TestCase("netstandard1.2", false)]
@@ -62,6 +95,7 @@ public class EnvironmentFactoryFixture
     [TestCase("netstandard2.1", false)]
 
     // .NET Framework
+    [TestCase("net10", true)]
     [TestCase("net11", true)]
     [TestCase("net20", true)]
     [TestCase("net35", true)]

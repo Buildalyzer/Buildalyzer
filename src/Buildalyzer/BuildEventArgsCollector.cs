@@ -1,14 +1,13 @@
 using System.Collections.Concurrent;
-using Microsoft.Build.Framework;
-using Microsoft.Build.Logging;
+using XenoAtom.MsBuildPipeLogger;
 
 namespace Buildalyzer;
 
 [DebuggerDisplay("Count = {Count}")]
-[DebuggerTypeProxy(typeof(Diagnostics.CollectionDebugView<BuildEventArgs>))]
-internal sealed class BuildEventArgsCollector : IReadOnlyCollection<BuildEventArgs>, IDisposable
+[DebuggerTypeProxy(typeof(Diagnostics.CollectionDebugView<PipeBuildEventArgs>))]
+internal sealed class BuildEventArgsCollector : IReadOnlyCollection<PipeBuildEventArgs>, IDisposable
 {
-    public BuildEventArgsCollector(EventArgsDispatcher server)
+    public BuildEventArgsCollector(PipeEventDispatcher server)
     {
         Server = server;
         Server.AnyEventRaised += EventRaised;
@@ -21,16 +20,16 @@ internal sealed class BuildEventArgsCollector : IReadOnlyCollection<BuildEventAr
     public bool IsEmpty => Count == 0;
 
     /// <inheritdoc />
-    public IEnumerator<BuildEventArgs> GetEnumerator() => Bag.GetEnumerator();
+    public IEnumerator<PipeBuildEventArgs> GetEnumerator() => Bag.GetEnumerator();
 
     /// <inheritdoc />
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    private void EventRaised(object? sender, BuildEventArgs e) => Bag.Add(e);
+    private void EventRaised(PipeBuildEventArgs e) => Bag.Add(e);
 
-    private readonly EventArgsDispatcher Server;
+    private readonly PipeEventDispatcher Server;
 
-    private readonly ConcurrentBag<BuildEventArgs> Bag = [];
+    private readonly ConcurrentBag<PipeBuildEventArgs> Bag = [];
 
     public void Dispose()
     {

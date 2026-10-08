@@ -2,11 +2,20 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
 
+  <!--
+    Declaration order is deliberately not compile order: Microsoft.FSharp.Targets runs
+    FSharpSourceCodeCompileOrder before CoreCompile, re-sorting @(Compile) by the CompileOrder
+    metadata. F# has no forward references, so this ordering is semantic, and Prelude.fs only
+    compiles because it is hoisted to the front.
+  -->
   <ItemGroup>
+    <Compile Include="Constants.fs" />
+    <Compile Include="Greeting.fs" />
     <Compile Include="Program.fs" />
+    <Compile Include="Prelude.fs" CompileOrder="CompileFirst" />
   </ItemGroup>
 
 </Project>

@@ -1,6 +1,6 @@
-using Buildalyzer.Construction;
+using System.IO;
+using System.Xml;
 using Buildalyzer.IO;
-using Microsoft.Build.Construction;
 using Microsoft.VisualStudio.SolutionPersistence.Model;
 
 namespace Buildalyzer;
@@ -12,7 +12,8 @@ public sealed class ProjectInfo
     private ProjectInfo(object reference, IOPath path, Guid guid, IEnumerable<string> tfms)
     {
         Reference = reference;
-        Path = path;
+        Location = path;
+        Path = path.ToString();
         Guid = guid;
         TargetFrameworks = [.. tfms];
     }
@@ -20,8 +21,11 @@ public sealed class ProjectInfo
     /// <summary>The GUID of the project.</summary>
     public Guid Guid { get; }
 
-    /// <summary>The path to the protject.</summary>
-    public IOPath Path { get; }
+    /// <summary>The path to the project.</summary>
+    public string Path { get; }
+
+    /// <summary>The normalized path to the project, used for file-system-aware comparisons.</summary>
+    internal IOPath Location { get; }
 
     /// <summary>Gets the target framework(s) of the project.</summary>
     public ImmutableArray<string> TargetFrameworks { get; }
@@ -30,24 +34,41 @@ public sealed class ProjectInfo
     public object Reference { get; }
 
     [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-    private string DebuggerDisplay => $"{Path.File()?.Name}, TFM = {string.Join(", ", TargetFrameworks)}";
-
-    [Pure]
-    internal static ProjectInfo New(ProjectInSolution proj)
-    {
-        var path = IOPath.Parse(Guard.NotNull(proj).AbsolutePath);
-        var reference = new ProjectFile(path.ToString());
-        var guid = Guid.Parse(proj.ProjectGuid);
-        return new(reference, path, guid, reference.TargetFrameworks);
-    }
+    private string DebuggerDisplay => $"{Location.File()?.Name}, TFM = {string.Join(", ", TargetFrameworks)}";
 
     [Pure]
     internal static ProjectInfo New(SolutionProjectModel reference, IOPath root)
     {
-        var path = root.Combine(Guard.NotNull(reference).FilePath);
+        // Canonicalize: solution files may reference projects with relative segments
+        // (e.g. "../DependentProject/DependentProject.csproj") that MSBuild reports back fully resolved.
+        var path = IOPath.Parse(System.IO.Path.GetFullPath(root.Combine(Guard.NotNull(reference).FilePath).ToString()));
         var prop = reference.FindProperties("TargetFrameworks")
             ?? reference.FindProperties("TargetFramework");
 
-        return new(reference, path, reference.Id, prop?.Values ?? []);
+        return new(reference, path, reference.Id, prop?.Values ?? TargetFrameworksOf(path));
+    }
+
+    /// <remarks>
+    /// The solution only carries target frameworks in a project's property bag when something put them
+    /// there, which an ordinary .sln or .slnx entry does not, so they are read from the project file. A
+    /// project the solution lists but that is missing or unreadable (an unloaded project, say) has none
+    /// rather than failing the whole solution.
+    /// </remarks>
+    [Pure]
+    private static string[] TargetFrameworksOf(IOPath path)
+    {
+        if (path.File() is not { Exists: true } file)
+        {
+            return [];
+        }
+
+        try
+        {
+            return new Construction.ProjectFile(file.FullName).TargetFrameworks;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or XmlException or ArgumentException)
+        {
+            return [];
+        }
     }
 }

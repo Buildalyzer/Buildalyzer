@@ -295,3 +295,6 @@ tests/repos/net6.0
 tests/repos/netcoreapp3.1
 
 cache/
+
+# The project the SDK generates for the file-based app test assets, if a crashed run leaves one behind
+tests/projects/FileBasedApp*/*.csproj

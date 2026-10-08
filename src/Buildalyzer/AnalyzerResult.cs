@@ -1,5 +1,6 @@
 using System.IO;
 using Buildalyzer.Construction;
+using Buildalyzer.IO;
 using Buildalyzer.Logging;
 
 namespace Buildalyzer;
@@ -11,13 +12,34 @@ public class AnalyzerResult : IAnalyzerResult
     private readonly Dictionary<string, IProjectItem[]> _items = new(StringComparer.OrdinalIgnoreCase);
     private readonly Guid _projectGuid;
 
-    public CompilerCommand CompilerCommand { get; private set; }
+    // Compiler inputs collected from the Csc/Vbc/Fsc task's resolved input parameters (structured items,
+    // no command-line parsing), plus the raw compiler command line captured from the build.
+    private readonly Dictionary<string, List<CompilerInputItem>> _taskInputs = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Lazy<CompilerCommand?> _compilerCommand;
+    private string? _commandLineText;
+    private CompilerLanguage _commandLineLanguage;
+
+    /// <summary>
+    /// The compiler command, built lazily from the collected task-input parameters and the raw compiler
+    /// command line once the build has produced them.
+    /// </summary>
+    /// <remarks>
+    /// Built under <see cref="Lazy{T}"/>'s default (execution-and-publication) mode: a result is handed to
+    /// consumers once its build is over and may be read from several threads at once, none of which must
+    /// observe a command that another is still building.
+    /// </remarks>
+    public CompilerCommand? CompilerCommand => _compilerCommand.Value;
 
     internal AnalyzerResult(string projectFilePath, AnalyzerManager manager, ProjectAnalyzer analyzer)
     {
         ProjectFilePath = projectFilePath;
         Manager = manager;
         Analyzer = analyzer;
+        _compilerCommand = new Lazy<CompilerCommand?>(() => CompilerCommandBuilder.Build(
+            _commandLineLanguage,
+            Path.GetDirectoryName(ProjectFilePath) ?? string.Empty,
+            _commandLineText,
+            _taskInputs));
 
         string projectGuid = GetProperty(nameof(ProjectGuid));
         if (string.IsNullOrEmpty(projectGuid) || !Guid.TryParse(projectGuid, out _projectGuid))
@@ -66,7 +88,7 @@ public class AnalyzerResult : IAnalyzerResult
         .FirstOrDefault();
 
     public string[] SourceFiles =>
-      CompilerCommand?.SourceFiles.Select(file => file.ToString()).ToArray() ?? [];
+      CompilerCommand?.SourceFiles.ToArray() ?? [];
 
     public string[] References =>
         CompilerCommand?.MetadataReferences.ToArray() ?? [];
@@ -74,19 +96,27 @@ public class AnalyzerResult : IAnalyzerResult
     public ImmutableDictionary<string, ImmutableArray<string>> ReferenceAliases =>
         CompilerCommand?.Aliases ?? ImmutableDictionary<string, ImmutableArray<string>>.Empty;
 
+    public ImmutableHashSet<string> ReferencesEmbeddingInteropTypes =>
+        CompilerCommand?.EmbedInteropTypes ?? ImmutableHashSet<string>.Empty;
+
     public string[] AnalyzerReferences =>
-          CompilerCommand?.AnalyzerReferences.Select(r => r.ToString()).ToArray() ?? [];
+          CompilerCommand?.AnalyzerReferences.ToArray() ?? [];
 
     public string[] PreprocessorSymbols => CompilerCommand?.PreprocessorSymbolNames.ToArray() ?? [];
 
     public string[] AdditionalFiles =>
-          CompilerCommand?.AdditionalFiles.Select(file => file.ToString()).ToArray() ?? [];
+          CompilerCommand?.AdditionalFiles.ToArray() ?? [];
+
+    public string[] AnalyzerConfigFiles =>
+          CompilerCommand?.AnalyzerConfigPaths.ToArray() ?? [];
 
     public IEnumerable<string> ProjectReferences =>
         Items.TryGetValue("ProjectReference", out IProjectItem[] items)
-            ? items.Distinct(new ProjectItemItemSpecEqualityComparer())
-                   .Select(x => AnalyzerManager.NormalizePath(
-                        Path.Combine(Path.GetDirectoryName(ProjectFilePath), x.ItemSpec)))
+            ? items.Select(x => IOPath.Parse(
+                        Path.Combine(Path.GetDirectoryName(ProjectFilePath), x.ItemSpec)).Root().ToString())
+                   // Case-insensitive even where the file system is not: references written with
+                   // inconsistent casing (common in Windows-authored projects) are one project.
+                   .Distinct(StringComparer.OrdinalIgnoreCase)
             : [];
 
     /// <inheritdoc/>
@@ -145,24 +175,81 @@ public class AnalyzerResult : IAnalyzerResult
         }
     }
 
-    internal void ProcessCscCommandLine(string commandLine, bool coreCompile)
+    /// <summary>True once a compiler command line has been captured for this result.</summary>
+    internal bool HasCommandLine => _commandLineText is { Length: > 0 };
+
+    /// <summary>Records a compiler task's resolved input parameter (a structured item group with metadata).</summary>
+    /// <remarks>
+    /// The latest compiler invocation's parameter replaces an earlier one's rather than adding to it. A result
+    /// can see the compiler run more than once - WPF's full Build compiles the real source set in a temporary
+    /// "*_wpftmp" project, attributed to this result, before the project's own CoreCompile compiles it again -
+    /// and each run passes the complete set, so accumulating them would list every input twice.
+    /// </remarks>
+    internal void AddTaskParameterInput(string itemType, IEnumerable<CompilerInputItem> items)
+        => _taskInputs[itemType] = [.. items];
+
+    /// <summary>
+    /// Records an item group a task produced during the build: the <c>ReferencePath</c> resolved by
+    /// <c>ResolveAssemblyReference</c>, and the <c>Analyzer</c>/<c>ResolvedAnalyzers</c> the SDK's
+    /// targeting-pack and package resolution produce. Used to reconstruct workspace state when the build fails
+    /// before the compiler runs (issue #341); ignored on successful builds, where the compiler task inputs are
+    /// richer.
+    /// </summary>
+    /// <remarks>
+    /// Appended to the evaluated items of the same type, as MSBuild itself appends a task's output items to the
+    /// item group: <c>Analyzer</c> holds the SDK's own analyzers at evaluation and gains the targeting packs'
+    /// when <c>ResolveTargetingPackAssets</c> runs. An item already present by spec is not repeated.
+    /// </remarks>
+    internal void AddItems(string itemType, IEnumerable<IProjectItem> items)
     {
-        // Some projects can have multiple Csc calls (see #92) so if this is the one inside CoreCompile use it, otherwise use the first
-        if (string.IsNullOrWhiteSpace(commandLine) || (CompilerCommand != null && !coreCompile))
+        IProjectItem[] added = [.. items];
+        if (added.Length == 0)
         {
             return;
         }
-        CompilerCommand = Compiler.CommandLine.Parse(new FileInfo(ProjectFilePath).Directory, commandLine, CompilerLanguage.CSharp);
+
+        if (_items.TryGetValue(itemType, out IProjectItem[]? existing) && existing.Length > 0)
+        {
+            HashSet<string> seen = new(existing.Select(item => item.ItemSpec), IOPath.Comparer);
+            added = [.. existing, .. added.Where(item => seen.Add(item.ItemSpec))];
+        }
+
+        _items[itemType] = added;
     }
 
-    internal void ProcessVbcCommandLine(string commandLine)
+    internal void ProcessCscCommandLine(string? commandLine, bool coreCompile)
     {
-        CompilerCommand = Compiler.CommandLine.Parse(new FileInfo(ProjectFilePath).Directory, commandLine, CompilerLanguage.VisualBasic);
+        // Some projects can have multiple Csc calls (see #92) so if this is the one inside CoreCompile use it, otherwise use the first.
+        if (string.IsNullOrWhiteSpace(commandLine) || (_commandLineText is not null && !coreCompile))
+        {
+            return;
+        }
+
+        _commandLineText = commandLine;
+        _commandLineLanguage = CompilerLanguage.CSharp;
     }
 
-    internal void ProcessFscCommandLine(string commandLine)
+    internal void ProcessVbcCommandLine(string? commandLine)
     {
-        CompilerCommand = Compiler.CommandLine.Parse(new FileInfo(ProjectFilePath).Directory, commandLine, CompilerLanguage.FSharp);
+        if (string.IsNullOrWhiteSpace(commandLine))
+        {
+            return;
+        }
+
+        _commandLineText = commandLine;
+        _commandLineLanguage = CompilerLanguage.VisualBasic;
+    }
+
+    internal void ProcessFscCommandLine(string? commandLine)
+    {
+        // F# writes its command line as an Fsc message; keep the first one seen inside CoreCompile.
+        if (string.IsNullOrWhiteSpace(commandLine) || _commandLineText is not null)
+        {
+            return;
+        }
+
+        _commandLineText = commandLine;
+        _commandLineLanguage = CompilerLanguage.FSharp;
     }
 
     private sealed class ProjectItemItemSpecEqualityComparer : IEqualityComparer<IProjectItem>

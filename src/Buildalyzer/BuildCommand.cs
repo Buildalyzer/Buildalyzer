@@ -27,7 +27,8 @@ internal sealed class BuildCommand(
         in IOPath projectFile,
         in ImmutableArray<BuildCommandProperty> properties,
         IReadOnlyCollection<string> targetsToBuild,
-        LoggerConfiguration logging)
+        LoggerConfiguration logging,
+        IReadOnlyCollection<string>? binaryLogArguments = null)
     {
         Guard.NotNull(env);
 
@@ -52,6 +53,11 @@ internal sealed class BuildCommand(
                 BuildArgument.Target(targetsToBuild is { Count: > 0 } ? targetsToBuild : env.TargetsToBuild),
                 BuildArgument.Property(isDotNet, properties),
                 BuildArgument.Logger(isDotNet, logging),
+
+                // MSBuild writes the binary log natively via /bl, so it's a full-fidelity, SDK-version log
+                // with no in-process BinaryLogger needed. It is later read by replaying it through MSBuild
+                // on the command line (see AnalyzerManager.Analyze) with the pipe logger attached.
+                .. (binaryLogArguments ?? []).Select(BuildArgument.Raw),
                 env.NoAutoResponse ? BuildArgument.NoAutoResponse : null,
                 BuildArgument.Path(projectFile),
             ]);

@@ -56,7 +56,10 @@ public class EnvironmentOptions
     /// <remarks>
     /// Set this to something else to customize the .NET Core runtime you want to use (I.e., preview versions).
     /// </remarks>
-    public string DotnetExePath { get; set; } = "dotnet";
+    public string DotnetExePath { get; set; } = DefaultDotnetExePath;
+
+    /// <summary>The <c>dotnet</c> executable used when none is specified.</summary>
+    internal const string DefaultDotnetExePath = "dotnet";
 
     /// <summary>
     /// The global MSBuild properties to set.

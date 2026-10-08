@@ -9,6 +9,7 @@ public static class EnvironmentVariables
     public const string COREHOST_TRACE = nameof(COREHOST_TRACE);
     public const string DOTNET_HOST_PATH = nameof(DOTNET_HOST_PATH);
     public const string DOTNET_INFO_WAIT_TIME = nameof(DOTNET_INFO_WAIT_TIME);
+    public const string DOTNET_NOLOGO = nameof(DOTNET_NOLOGO);
 #pragma warning restore CA1707
 #pragma warning restore SA1310 // Field names should not contain underscore
     public const string MSBUILDDISABLENODEREUSE = nameof(MSBUILDDISABLENODEREUSE);

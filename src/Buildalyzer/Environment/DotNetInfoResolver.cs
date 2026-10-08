@@ -1,24 +1,72 @@
 using System.Collections.Concurrent;
+using System.IO;
 using Buildalyzer.IO;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Buildalyzer.Environment;
 
-internal sealed class DotNetInfoResolver(ILoggerFactory? factory)
+/// <summary>Runs <c>dotnet --info</c> for a project, once per SDK selection.</summary>
+/// <remarks>
+/// One resolver is shared by every project of an <see cref="AnalyzerManager"/>. Each build environment
+/// asks for the info (a multi-targeted project asks once for its restore and again for every framework),
+/// so without a shared cache a solution runs it once per build - and those runs contend with the builds
+/// themselves.
+/// </remarks>
+internal sealed class DotNetInfoResolver
 {
     private static readonly TimeSpan FallbackWaitTime = TimeSpan.FromSeconds(10);
-    private readonly ILoggerFactory Factory = factory ?? NullLoggerFactory.Instance;
-    private readonly ILogger Logger = (factory ?? NullLoggerFactory.Instance).CreateLogger<DotNetInfoResolver>();
+
+    // Keyed by the dotnet executable and the global.json that governs the project, which between them
+    // decide which SDK `dotnet --info` reports: the host picks the SDK from the nearest global.json above
+    // the working directory, or the latest installed SDK when there is none. Projects under the same
+    // global.json (or under none) therefore share one invocation. Lazy so concurrent builds wait on the
+    // one invocation rather than each starting their own.
+    private readonly ConcurrentDictionary<(string DotNetExePath, string GlobalJson), Lazy<DotNetInfo>> Cache = new();
 
     [Pure]
-    public DotNetInfo Resolve(IOPath projectPath, IOPath dotNetExePath)
-        => Cache.TryGetValue(projectPath, out var info)
-            ? info
-            : Execute(projectPath, dotNetExePath);
+    public DotNetInfo Resolve(IOPath projectPath, IOPath dotNetExePath, ILoggerFactory? factory)
+    {
+        var key = (dotNetExePath.ToString(), FindGlobalJson(projectPath) ?? string.Empty);
+        var entry = Cache.GetOrAdd(key, _ => new(() => Execute(projectPath, dotNetExePath, factory ?? NullLoggerFactory.Instance)));
+        DotNetInfo info;
+        try
+        {
+            info = entry.Value;
+        }
+        catch
+        {
+            // Lazy would otherwise hand the same exception to every later caller.
+            Cache.TryRemove(new(key, entry));
+            throw;
+        }
+
+        // Don't hold on to a failed run (it timed out, say): the next project gets to try again.
+        if (info.BasePath is null && info.Runtimes.IsEmpty)
+        {
+            Cache.TryRemove(new(key, entry));
+        }
+
+        return info;
+    }
+
+    /// <summary>Finds the global.json the .NET host would use for a project, if there is one.</summary>
+    private static string? FindGlobalJson(IOPath projectPath)
+    {
+        for (var directory = projectPath.File()?.Directory; directory is not null; directory = directory.Parent)
+        {
+            string candidate = Path.Combine(directory.FullName, "global.json");
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
 
     [Pure]
-    private DotNetInfo Execute(IOPath projectPath, IOPath dotNetExePath)
+    private static DotNetInfo Execute(IOPath projectPath, IOPath dotNetExePath, ILoggerFactory factory)
     {
         // Ensure that we set the DOTNET_CLI_UI_LANGUAGE environment variable to "en-US" before
         // running 'dotnet --info'. Otherwise, we may get localized results
@@ -37,22 +85,27 @@ internal sealed class DotNetInfoResolver(ILoggerFactory? factory)
             "--info",
             projectPath.File().Directory!.FullName,
             environmentVariables,
-            Factory);
+            factory);
 
         processRunner.Start();
-        processRunner.WaitForExit(GetWaitTime());
+        var logger = factory.CreateLogger<DotNetInfoResolver>();
+        if (!processRunner.WaitForExit(GetWaitTime(logger)))
+        {
+            // Partial output is no answer; an empty one isn't cached, so the next project tries again.
+            logger.LogWarning("`{DotNetExePath} --info` did not exit in time", dotNetExePath);
+            processRunner.Kill();
+            return DotNetInfo.Parse((string?)null);
+        }
 
-        var info = DotNetInfo.Parse(processRunner.Data.Output);
-        Cache[projectPath] = info;
-        return info;
+        return DotNetInfo.Parse(processRunner.Data.Output);
     }
 
     [Pure]
-    private int GetWaitTime()
+    private static int GetWaitTime(ILogger logger)
     {
         if (int.TryParse(System.Environment.GetEnvironmentVariable(EnvironmentVariables.DOTNET_INFO_WAIT_TIME), out int waitTime))
         {
-            Logger?.LogInformation("dotnet --info wait time is {WaitTime}ms", waitTime);
+            logger.LogInformation("dotnet --info wait time is {WaitTime}ms", waitTime);
             return waitTime;
         }
         else
@@ -60,6 +113,4 @@ internal sealed class DotNetInfoResolver(ILoggerFactory? factory)
             return (int)FallbackWaitTime.TotalMilliseconds;
         }
     }
-
-    private readonly ConcurrentDictionary<IOPath, DotNetInfo> Cache = new();
 }

@@ -27,8 +27,20 @@ jobs:
             8.0.x
             9.0.x
             10.0.x
-      - name: Build and Test
-        run: dotnet test buildalyzer.slnx --logger "trx;LogFileName=test-results.trx"
+      - name: Build
+        run: dotnet build buildalyzer.slnx
+      # One test project at a time: the suites build the same fixture projects under tests/projects in
+      # place, and two of them building one project at once race on its obj directory (on Windows, a reader
+      # sees "access denied" for a file the other build is rewriting). Not `dotnet test -m:1`, which runs the
+      # test host from the CLI's own MSBuild process and makes the suites several times slower.
+      - name: Test
+        shell: bash
+        run: |
+          status=0
+          for project in tests/*.Tests; do
+            dotnet test "$project" --no-build --logger "trx;LogFileName=test-results.trx" || status=1
+          done
+          exit $status
       - name: Upload Test Results
         uses: actions/upload-artifact@v4
         if: success() || failure()

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../SdkNetStandardProject/SdkNetStandardProject.csproj" />
+    <!-- Neither of these is a real project: the first is conditioned on a file that does not exist and the
+         second names one through a property that is never defined. MSBuild's evaluation drops both; the
+         static XML scan that discovers the reference closure for the workspace does not, and must not fail
+         on them. -->
+    <ProjectReference Include="../Optional/Optional.csproj" Condition="Exists('../Optional/Optional.csproj')" />
+    <ProjectReference Include="$(UndefinedRoot)/Missing/Missing.csproj" Condition="'$(UndefinedRoot)' != ''" />
+  </ItemGroup>
+
+</Project>

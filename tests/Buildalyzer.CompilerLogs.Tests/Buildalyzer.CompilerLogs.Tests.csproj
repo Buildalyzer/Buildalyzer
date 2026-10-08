@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AwesomeAssertions" Version="9.4.0" />
+    <PackageReference Include="NUnit" Version="4.6.1" />
+  </ItemGroup>
+
+  <ItemGroup Label="Build tools">
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="*" PrivateAssets="all" />
+    <PackageReference Include="NUnit3TestAdapter" Version="*" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup Label="Analyzers">
+    <PackageReference Include="AwesomeAssertions.Analyzers" Version="9.0.8" PrivateAssets="all" />
+    <PackageReference Include="NUnit.Analyzers" Version="*" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Buildalyzer.CompilerLogs/Buildalyzer.CompilerLogs.csproj" />
+    <ProjectReference Include="../Buildalyzer.TestTools/Buildalyzer.TestTools.csproj" />
+  </ItemGroup>
+
+</Project>

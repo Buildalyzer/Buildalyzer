@@ -1,0 +1,9 @@
+<!-- Declares the target frameworks for SdkMultiTargetingFromProps: the project file itself
+     deliberately contains no <TargetFrameworks>, so Buildalyzer's XML scan can't see that the
+     project is multi-targeted and must discover the frameworks from MSBuild's evaluation.
+     Also stops the Directory.Build.props upward walk, like the neighbouring test projects'. -->
+<Project>
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;netstandard2.0</TargetFrameworks>
+  </PropertyGroup>
+</Project>

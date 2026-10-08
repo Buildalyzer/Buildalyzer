@@ -10,10 +10,12 @@ public static class ProjectFileNames
     public const string TargetFrameworkVersion = nameof(TargetFrameworkVersion);
     public const string Import = nameof(Import);
     public const string PackageReference = nameof(PackageReference);
+    public const string ProjectReference = nameof(ProjectReference);
     public const string ToolsVersion = nameof(ToolsVersion);
     public const string LanguageTargets = nameof(LanguageTargets);
     public const string OutputType = nameof(OutputType);
 
     // Attributes
     public const string Sdk = nameof(Sdk);
+    public const string Include = nameof(Include);
 }

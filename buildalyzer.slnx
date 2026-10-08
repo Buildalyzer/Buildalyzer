@@ -1,10 +1,13 @@
 <Solution>
   <Folder Name="/tests/">
+    <Project Path="tests/Buildalyzer.Differential.Tests/Buildalyzer.Differential.Tests.csproj" />
     <Project Path="tests/Buildalyzer.Tests/Buildalyzer.Tests.csproj" />
     <Project Path="tests/Buildalyzer.TestTools/Buildalyzer.TestTools.csproj" Id="d438142f-c1a3-49b5-849a-af36776604a8" />
     <Project Path="tests/Buildalyzer.Workspaces.Tests/Buildalyzer.Workspaces.Tests.csproj" />
+    <Project Path="tests/Buildalyzer.CompilerLogs.Tests/Buildalyzer.CompilerLogs.Tests.csproj" />
   </Folder>
   <Project Path=".net.csproj" />
+  <Project Path="src/Buildalyzer.CompilerLogs/Buildalyzer.CompilerLogs.csproj" />
   <Project Path="src/Buildalyzer.Logger/Buildalyzer.Logger.csproj" />
   <Project Path="src/Buildalyzer.Workspaces/Buildalyzer.Workspaces.csproj" />
   <Project Path="src/Buildalyzer/Buildalyzer.csproj" />

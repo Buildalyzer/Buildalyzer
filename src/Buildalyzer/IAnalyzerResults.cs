@@ -1,12 +1,7 @@
-using Microsoft.Build.Framework;
-
 namespace Buildalyzer;
 
 public interface IAnalyzerResults : IReadOnlyCollection<IAnalyzerResult>
 {
-    /// <summary>The collected <see cref="BuildEventArgs"/> during the analysis.</summary>
-    ImmutableArray<BuildEventArgs> BuildEventArguments { get; }
-
     IAnalyzerResult this[string targetFramework] { get; }
 
     bool OverallSuccess { get; }

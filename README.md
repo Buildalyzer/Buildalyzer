@@ -5,6 +5,7 @@ A utility to perform design-time builds of .NET projects without having to think
 **NuGet**
 * [Buildalyzer](https://www.nuget.org/packages/Buildalyzer/)
 * [Buildalyzer.Workspaces](https://www.nuget.org/packages/Buildalyzer.Workspaces/)
+* [Buildalyzer.CompilerLogs](https://www.nuget.org/packages/Buildalyzer.CompilerLogs/)
 
 **GitHub**
 * [Buildalyzer](https://github.com/phmonte/Buildalyzer)
@@ -39,6 +40,15 @@ These blog posts might also help explain the motivation behind the project and h
 * [Running A Design-Time Build With MSBuild APIs](https://daveaglick.com/posts/running-a-design-time-build-with-msbuild-apis)
 * [MSBuild Loggers And Logging Events](https://daveaglick.com/posts/msbuild-loggers-and-logging-events)
 
+## Architecture
+
+Buildalyzer runs the build in a **separate process** and streams the results back over a pipe. Your code drives an `AnalyzerManager`; `ProjectAnalyzer` shells out to `dotnet msbuild` for a design-time build, passing an MSBuild logger (`BuildalyzerLogger`, built on [XenoAtom.MsBuildPipeLogger](https://www.nuget.org/packages/XenoAtom.MsBuildPipeLogger)) whose events are written back over an anonymous pipe. Buildalyzer's `EventProcessor` turns those events into an `AnalyzerResult` per target framework, and `Buildalyzer.Workspaces` maps each result into a Roslyn `AdhocWorkspace`.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/architecture-roundtrip-dark.svg">
+  <img alt="Buildalyzer architecture: an out-of-process design-time build streamed back over a pipe and turned into a Roslyn workspace" src="docs/architecture-roundtrip-light.svg">
+</picture>
+
 
 ## Installation
 
@@ -64,7 +74,7 @@ or via the .NET Core CLI:
 $ dotnet add package Buildalyzer.Workspaces
 ```
 
-Both packages target .NET Standard 2.0.
+Buildalyzer.CompilerLogs (see [Compiler Logs](#compiler-logs)) is installed the same way. Buildalyzer targets .NET 8, Buildalyzer.Workspaces targets .NET 8 and .NET 10, and Buildalyzer.CompilerLogs targets .NET 9 and .NET 10.
 
 ## Usage
 
@@ -86,6 +96,17 @@ You can add all projects in a solution to the `AnalyzerManager` by passing the s
 Calling `GetProject()` again for the same project path will return the existing `ProjectAnalyzer`. You can iterate all the existing project analyzers with the `IReadOnlyDictionary<string, ProjectAnalyzer>` property `AnalyzerManager.Projects`.
 
 To build the project, which triggers evaluation of the specified MSBuild tasks and targets but stops short of invoking the compiler by default in Buildalyzer, call `Build()`. This method has a number of overloads that lets you customize the build process by specifying target frameworks, build targets, and more.
+
+### File-based apps
+
+A [file-based app](https://learn.microsoft.com/dotnet/core/whats-new/dotnet-10/sdk#file-based-apps) - a single `.cs` file you run with `dotnet run app.cs` - has no project file. Pass the file itself and Buildalyzer analyzes the project the .NET SDK generates for it, directives (`#:package`, `#:sdk`, `#:property`) and all:
+
+```csharp
+AnalyzerManager manager = new AnalyzerManager();
+IProjectAnalyzer analyzer = manager.GetProject(@"C:\MyCode\app.cs");
+```
+
+This is the same rule Roslyn's `MSBuildWorkspace` uses: a path that exists, does not carry a project file extension, and either ends in `.cs` or starts with a `#!` shebang is a file-based app. It needs the .NET 10 SDK or later, and the generated project is written next to the entry point file (where the SDK itself would put it) for the duration of each build, then removed.
 
 ## Results
 
@@ -120,18 +141,43 @@ If you want to change the configured properties before loading or compiling the 
 Be careful though, you may break the ability to load, compile, or interpret the project if you change the MSBuild properties.
 
 
-## Publish SingleFile
-If your application's output is a single file, you will need to provide the path to the following DLLs:
+## Single-file and Native AOT publishing
 
--MsBuildPipeLogger.Logger.dll
--Buildalyzer.logger.dll
+Buildalyzer itself is trim- and Native-AOT-compatible: it runs MSBuild out of process and reads the
+results over a pipe, so its own code needs no reflection. Two things need attention when you publish
+your application as a single file or with `PublishAot`.
 
-Variable name: LoggerPathDll
+**The logger assemblies have to be real files.** MSBuild loads them in the build process, so they
+cannot live inside your single-file bundle or native image:
 
-See related issue [224](https://github.com/phmonte/Buildalyzer/issues/224)
-msbuild needs the physical address of the logger, for this reason it is not possible to use single file publish without informing this route.
+* `Buildalyzer.Logger.dll`
+* `XenoAtom.MsBuildPipeLogger.Logger.dll`
 
-Remembering that if the files are in the root where the project is running, it is not necessary to inform the path.
+If they sit next to your executable, Buildalyzer finds them and there is nothing to configure. If you
+deploy them somewhere else, point the `LoggerPathDll` environment variable at
+`Buildalyzer.Logger.dll`. See related issue [224](https://github.com/phmonte/Buildalyzer/issues/224).
+
+**A Native AOT publish does not copy them for you.** Both assemblies are compiled into the native
+image and no longer emitted as files, so ask for them explicitly in your application's project file:
+
+```xml
+<Target Name="PublishBuildalyzerLogger" AfterTargets="ComputeResolvedFilesToPublishList">
+  <ItemGroup>
+    <ResolvedFileToPublish Include="@(ReferenceCopyLocalPaths)"
+                           Condition="'%(Extension)' == '.dll' and ('%(Filename)' == 'Buildalyzer.Logger' or '%(Filename)' == 'XenoAtom.MsBuildPipeLogger.Logger')">
+      <RelativePath>%(Filename)%(Extension)</RelativePath>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </ResolvedFileToPublish>
+  </ItemGroup>
+</Target>
+```
+
+Two further caveats. `Buildalyzer.Workspaces` is **not** AOT-compatible - Roslyn composes its host
+services through MEF, which fails at runtime in a native image - so an AOT application can read
+project structure, source files, references and compiler command lines, but cannot create a Roslyn
+workspace. And an AOT-published application still shells out to `dotnet msbuild`, so the .NET SDK
+must be installed on the machine that runs it.
+
 ## Binary Log Files
 
 Buildalyzer can also read [MSBuild binary log files](http://msbuildlog.com/):
@@ -189,3 +235,18 @@ Project roslynProject = analyzer.AddToWorkspace(workspace);
 ```
 
 In both cases, Buildalyzer will attempt to resolve project references within the Roslyn workspace so the Roslyn projects will correctly reference each other.
+
+## Compiler Logs
+
+The extension library `Buildalyzer.CompilerLogs` writes a [compiler log](https://github.com/jaredpar/complog) (`.complog`) from a set of build results. A compiler log packages every input the compiler saw (sources, references, analyzers, generated files, options) into one portable file that the `complog` tooling can inspect, replay, diff and export, which makes it a convenient way to hand a compilation to someone else or to keep one for later analysis:
+
+```csharp
+using Buildalyzer.CompilerLogs;
+// ...
+
+AnalyzerManager manager = new AnalyzerManager();
+IAnalyzerResults results = manager.GetProject(@"C:\MyCode\MyProject.csproj").Build();
+CompilerLogCreateResult created = results.TryCreateCompilerLog(@"C:\MyCode\MyProject.complog");
+```
+
+One compilation is written per built target framework. `TryCreateCompilerLog` reports the results it could not include (a result that never reached the compiler has no compilation to record); `CreateCompilerLog` throws instead. The package requires .NET 9 or later.

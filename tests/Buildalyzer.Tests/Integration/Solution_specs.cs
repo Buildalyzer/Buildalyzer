@@ -1,3 +1,4 @@
+using System.IO;
 using Buildalyzer.Environment;
 using Buildalyzer.TestTools;
 
@@ -66,9 +67,27 @@ public class Filters
     {
         using var ctx = Context.ForSolution(
             "TestProjects.sln",
-            o => o.ProjectFilter = x => x.AbsolutePath.Contains("Core"));
+            o => o.ProjectFilter = x => x.Path.ToString().Contains("Core"));
 
         ctx.Manager.Projects.Should().HaveCount(6);
+    }
+
+    /// <remarks>
+    /// Neither format records target frameworks against an ordinary project entry, so they come from the
+    /// project file - which is what makes them usable in a <see cref="AnalyzerManagerOptions.ProjectFilter"/>.
+    /// </remarks>
+    [TestCase("TestProjects.sln")]
+    [TestCase("TestProjects.slnx")]
+    public void On_target_frameworks(string solution)
+    {
+        using var ctx = Context.ForSolution(
+            solution,
+            o => o.ProjectFilter = x => x.TargetFrameworks.Contains("net462"));
+
+        ctx.Manager.Projects.Keys.Should().Contain(path => path.EndsWith("SdkMultiTargetingProject.csproj"));
+        ctx.Manager.Solution!
+            .Single(p => Path.GetFileName(p.Path) == "SdkMultiTargetingProject.csproj")
+            .TargetFrameworks.Should().Equal("net462", "netstandard2.0");
     }
 }
 

@@ -2,14 +2,13 @@
 
 using System.Threading.Tasks;
 using Buildalyzer.IO;
-using Microsoft.Build.Construction;
 using Microsoft.VisualStudio.SolutionPersistence.Serializer;
 
 namespace Buildalyzer;
 
 /// <summary>Represents info about the MS Build solution file.</summary>
 [DebuggerTypeProxy(typeof(Diagnostics.CollectionDebugView<ProjectInfo>))]
-[DebuggerDisplay("{Path.File().Name}, Count = {Count}")]
+[DebuggerDisplay("{Location.File().Name}, Count = {Count}")]
 public sealed class SolutionInfo : IReadOnlyCollection<ProjectInfo>
 {
     [DebuggerBrowsable(DebuggerBrowsableState.Never)]
@@ -18,13 +17,17 @@ public sealed class SolutionInfo : IReadOnlyCollection<ProjectInfo>
     private SolutionInfo(object reference, IOPath path, IEnumerable<ProjectInfo> projects)
     {
         Reference = reference;
-        Path = path;
+        Location = path;
+        Path = path.ToString();
         Projects = [.. projects];
         Lookup = Projects.ToDictionary(p => p.Guid, p => p);
     }
 
     /// <summary>The path to the solution.</summary>
-    public IOPath Path { get; }
+    public string Path { get; }
+
+    /// <summary>The normalized path to the solution, used for file-system-aware comparisons.</summary>
+    internal IOPath Location { get; }
 
     /// <summary>The projects in the solution.</summary>
     public ImmutableArray<ProjectInfo> Projects { get; }
@@ -54,32 +57,21 @@ public sealed class SolutionInfo : IReadOnlyCollection<ProjectInfo>
     /// The project to include.
     /// </param>
     [Pure]
-    public static SolutionInfo Load(IOPath path, Predicate<ProjectInSolution>? filter = null)
-        => path.ToString().IsMatchEnd(".slnx")
-        ? LoadSlnx(path)
-        : LoadSln(path, filter);
+    public static SolutionInfo Load(string path, Predicate<ProjectInfo>? filter = null)
+        => Load(IOPath.Parse(path), filter);
 
-    /// <summary>Loads the SLNX.</summary>
     [Pure]
-    private static SolutionInfo LoadSlnx(IOPath path)
+    internal static SolutionInfo Load(IOPath path, Predicate<ProjectInfo>? filter = null)
     {
-        var serilizer = SolutionSerializers.GetSerializerByMoniker(path.ToString())!;
-        var solution = serilizer.OpenAsync(path.ToString(), default).Sync();
+        var serializer = SolutionSerializers.GetSerializerByMoniker(path.ToString())
+            ?? throw new NotSupportedException($"No solution serializer available for {path}.");
+
+        var solution = serializer.OpenAsync(path.ToString(), default).Sync();
         var root = IOPath.Parse(path.File()?.Directory?.FullName);
-        var projects = solution.SolutionProjects.Select(p => ProjectInfo.New(p, root));
+        var projects = solution.SolutionProjects
+            .Select(p => ProjectInfo.New(p, root))
+            .Where(p => (filter?.Invoke(p) ?? true) && p.Location.File() is { Exists: true });
 
         return new(solution, path, projects);
-    }
-
-    /// <summary>Loads the SLN.</summary>
-    [Pure]
-    private static SolutionInfo LoadSln(IOPath path, Predicate<ProjectInSolution>? filter)
-    {
-        var reference = SolutionFile.Parse(path.ToString());
-        var projects = reference.ProjectsInOrder
-           .Where(p => (filter?.Invoke(p) ?? true) && System.IO.File.Exists(p.AbsolutePath))
-           .Select(ProjectInfo.New);
-
-        return new(reference, path, projects);
     }
 }

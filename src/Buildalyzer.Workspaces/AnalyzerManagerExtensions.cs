@@ -14,25 +14,23 @@ public static class AnalyzerManagerExtensions
     {
         ILogger logger = manager.LoggerFactory?.CreateLogger<AdhocWorkspace>();
         AdhocWorkspace workspace = new AdhocWorkspace();
-        workspace.WorkspaceChanged += (sender, args) => logger?.LogDebug("Workspace changed: {Kind}{NewLine}", args.Kind, System.Environment.NewLine);
-        workspace.WorkspaceFailed += (sender, args) => logger?.LogError("Workspace failed: {Diagnostic}{NewLine}", args.Diagnostic, System.Environment.NewLine);
+        workspace.RegisterWorkspaceChangedHandler(args => logger?.LogDebug("Workspace changed: {Kind}{NewLine}", args.Kind, System.Environment.NewLine));
+        workspace.RegisterWorkspaceFailedHandler(args => logger?.LogError("Workspace failed: {Diagnostic}{NewLine}", args.Diagnostic, System.Environment.NewLine));
         return workspace;
     }
 
     public static AdhocWorkspace GetWorkspace(this IAnalyzerManager manager)
     {
-        // Run builds in parallel
-        var results = Guard.NotNull(manager).Projects.Values
-            .AsParallel()
-            .Select(p => p.Build().FirstOrDefault())
-            .OfType<IAnalyzerResult>()
-            .ToList();
+        Guard.NotNull(manager);
 
         // Create a new workspace and add the solution (if there was one)
         AdhocWorkspace workspace = manager.CreateWorkspace();
+
+        // Add the projects in solution order when we have a solution, otherwise in discovery order.
+        IEnumerable<IProjectAnalyzer> analyzers = manager.Projects.Values;
         if (manager.Solution is { } solution)
         {
-            string solutionPath = solution.Path.ToString();
+            string solutionPath = solution.Path;
             Microsoft.CodeAnalysis.SolutionInfo solutionInfo = Microsoft.CodeAnalysis.SolutionInfo.Create(SolutionId.CreateNewId(), VersionStamp.Default, solutionPath);
             workspace.AddSolution(solutionInfo);
 
@@ -42,21 +40,27 @@ public static class AnalyzerManagerExtensions
             Dictionary<IOPath, int> order = [];
             for (int i = 0; i < solution.Projects.Length; i++)
             {
-                order[solution.Projects[i].Path] = i;
+                order[solution.Projects[i].Location] = i;
             }
 
-            results = [.. results.OrderBy(p => order.TryGetValue(IOPath.Parse(p.ProjectFilePath), out int index) ? index : int.MaxValue)];
+            analyzers = manager.Projects.Values
+                .OrderBy(p => order.TryGetValue(IOPath.Parse(p.ProjectFile.Path), out int index) ? index : int.MaxValue);
         }
 
-        // Add each result to the new workspace (sorted in solution order above, if we have a solution)
-        foreach (IAnalyzerResult result in results)
+        // Build every project up front in parallel - Build() is safe to run concurrently across
+        // projects - then populate the workspace sequentially below (the workspace itself is not
+        // thread-safe). AddAnalyzer reuses these results instead of rebuilding.
+        IReadOnlyDictionary<string, IAnalyzerResult[]> prebuilt = AnalyzerResultExtensions.BuildAll(manager.Projects.Values);
+
+        // Add each project - one Roslyn project per target framework - wiring project references by
+        // output-assembly path. The shared visited set means each project (and its references) is
+        // added exactly once even when several solution projects reference it.
+        HashSet<string> visited = new(IOPath.Comparer);
+        foreach (IProjectAnalyzer analyzer in analyzers)
         {
-            // Check for duplicate project files and don't add them
-            if (workspace.CurrentSolution.Projects.All(p => p.FilePath != result.ProjectFilePath))
-            {
-                result.AddToWorkspace(workspace, true);
-            }
+            AnalyzerResultExtensions.AddAnalyzer(analyzer, workspace, addProjectReferences: true, visited, prebuilt);
         }
+
         return workspace;
     }
 }

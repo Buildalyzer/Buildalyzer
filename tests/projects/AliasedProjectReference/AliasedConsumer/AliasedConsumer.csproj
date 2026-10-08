@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The alias is the point of this project: Widget is only reachable through "Lib::", so the
+         compilation fails unless the alias survives into the workspace's project reference. -->
+    <ProjectReference Include="../AliasedLibrary/AliasedLibrary.csproj" Aliases="Lib" />
+  </ItemGroup>
+
+</Project>

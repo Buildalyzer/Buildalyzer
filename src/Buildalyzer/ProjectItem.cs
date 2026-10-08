@@ -1,5 +1,3 @@
-using Microsoft.Build.Framework;
-
 namespace Buildalyzer;
 
 public class ProjectItem : IProjectItem
@@ -7,9 +5,9 @@ public class ProjectItem : IProjectItem
     public string ItemSpec { get; }
     public IReadOnlyDictionary<string, string> Metadata { get; }
 
-    internal ProjectItem(ITaskItem taskItem)
+    internal ProjectItem(IProjectItem item)
     {
-        ItemSpec = taskItem.ItemSpec;
-        Metadata = taskItem.MetadataNames.Cast<string>().ToDictionary(x => x, x => taskItem.GetMetadata(x));
+        ItemSpec = item.ItemSpec;
+        Metadata = item.Metadata;
     }
 }

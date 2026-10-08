@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using Microsoft.Build.Framework;
+using XenoAtom.MsBuildPipeLogger;
 
 namespace Buildalyzer;
 
@@ -20,8 +20,11 @@ public class AnalyzerResults : IAnalyzerResults
         _overallSuccess = _overallSuccess.HasValue ? _overallSuccess.Value && overallSuccess : overallSuccess;
     }
 
-    /// <inheritdoc />
-    public ImmutableArray<BuildEventArgs> BuildEventArguments { get; set; } = [];
+    /// <summary>
+    /// The raw build events collected during the analysis. This is an internal implementation
+    /// detail: the events are XenoAtom.MsBuildPipeLogger types and are not part of the public API.
+    /// </summary>
+    internal ImmutableArray<PipeBuildEventArgs> BuildEventArguments { get; set; } = [];
 
     public IAnalyzerResult this[string targetFramework] => _results[targetFramework];
 

@@ -7,7 +7,6 @@
 
   <ItemGroup>
     <PackageReference Include="AwesomeAssertions" Version="9.4.0" />
-    <PackageReference Include="MsBuildPipeLogger.Logger" Version="1.1.6" GeneratePathProperty="true" />
     <PackageReference Include="NUnit" Version="4.6.1" />
   </ItemGroup>
 

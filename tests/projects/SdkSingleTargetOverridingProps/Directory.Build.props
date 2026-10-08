@@ -1,0 +1,9 @@
+<!-- Declares a multi-targeting default for SdkSingleTargetOverridingProps that the project file itself
+     overrides with a single <TargetFramework>. The project therefore evaluates with BOTH properties set,
+     yet builds as an ordinary single-targeted project: the listed frameworks must not be built.
+     Also stops the Directory.Build.props upward walk, like the neighbouring test projects'. -->
+<Project>
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;netstandard2.0</TargetFrameworks>
+  </PropertyGroup>
+</Project>

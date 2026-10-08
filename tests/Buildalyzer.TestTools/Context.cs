@@ -31,7 +31,9 @@ public abstract class Context : IDisposable
 
     public AnalyzerManager Manager { get; }
 
-    public TextWriter Log { get => IsDisposed ? throw new ObjectDisposedException(GetType().FullName) : field; } = new StringWriter();
+    // Thread-safe, reads included: build output can still be arriving on another thread when the log is
+    // read (or dumped on dispose), and a plain StringWriter throws or corrupts when read mid-write.
+    public TextWriter Log { get => IsDisposed ? throw new ObjectDisposedException(GetType().FullName) : field; } = new SafeStringWriter();
 
     public FileInfo Location { get; }
 

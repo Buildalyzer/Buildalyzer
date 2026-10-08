@@ -1,5 +1,3 @@
-using Buildalyzer.IO;
-using Microsoft.Build.Construction;
 using Microsoft.Extensions.Logging;
 
 namespace Buildalyzer;
@@ -13,24 +11,14 @@ public interface IAnalyzerManager
     /// <inheritdoc cref="SolutionInfo" />
     SolutionInfo? Solution { get; }
 
-    [Obsolete("Use SolutionInfo instead.")]
-    SolutionFile? SolutionFile { get; }
-
-    [Obsolete("Use SolutionInfo.Path instead.")]
-    string? SolutionFilePath { get; }
-
     /// <summary>
     /// Analyzes an MSBuild binary log file.
     /// </summary>
     /// <param name="binLogPath">The path to the binary log file.</param>
-    /// <param name="buildLoggers">MSBuild loggers to replay events from the log to.</param>
     /// <returns>A dictionary of target frameworks to <see cref="AnalyzerResult"/>.</returns>
-    IAnalyzerResults Analyze(string binLogPath, IEnumerable<Microsoft.Build.Framework.ILogger> buildLoggers = null);
+    IAnalyzerResults Analyze(string binLogPath);
 
     IProjectAnalyzer? GetProject(string projectFilePath);
-
-    [Obsolete("Use GetProject(IOPath) instead.")]
-    IProjectAnalyzer? GetProject(IOPath projectFilePath);
 
     void RemoveGlobalProperty(string key);
 

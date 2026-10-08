@@ -1,5 +1,4 @@
 using Buildalyzer.Environment;
-using Buildalyzer.IO;
 
 namespace Buildalyzer;
 
@@ -9,7 +8,6 @@ internal static class BuildCommandProperties
     /// <summary>Creates <see cref="BuildCommandProperty"/>s.</summary>
     [Pure]
     public static ImmutableArray<BuildCommandProperty> Create(
-        in IOPath projectFile,
         string? targetFramework,
         params IEnumerable<KeyValuePair<string, string?>>[] properties)
     {
@@ -32,13 +30,6 @@ internal static class BuildCommandProperties
         if (targetFramework is { Length: > 0 })
         {
             props[MsBuildProperties.TargetFramework] = targetFramework;
-        }
-
-        if (props.ContainsKey(MsBuildProperties.SkipCompilerExecution)
-            && projectFile.File() is { } file && file.Extension.IsMatch(".fsproj"))
-        {
-            // We can't skip the compiler for design-time builds in F# (it causes strange errors regarding file copying)
-            props.Remove(MsBuildProperties.SkipCompilerExecution);
         }
 
         return [.. props.Select(kvp => new BuildCommandProperty(kvp.Key, kvp.Value))];

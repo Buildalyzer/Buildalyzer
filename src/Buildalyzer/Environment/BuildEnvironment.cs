@@ -1,5 +1,3 @@
-using System.IO;
-
 namespace Buildalyzer.Environment;
 
 /// <summary>
@@ -81,10 +79,12 @@ public sealed class BuildEnvironment
         Arguments = Guard.NotNull(arguments);
         WorkingDirectory = workingDirectory;
 
-        // Check if we've already specified a path to MSBuild
-        string? envMsBuildExePath = System.Environment.GetEnvironmentVariable(Environment.EnvironmentVariables.MSBUILD_EXE_PATH);
-        MsBuildExePath = !string.IsNullOrEmpty(envMsBuildExePath) && File.Exists(envMsBuildExePath)
-            ? envMsBuildExePath : msBuildExePath;
+        // The resolved path is authoritative; deliberately do NOT let the process-level MSBUILD_EXE_PATH
+        // override it. A host that has registered MSBuildLocator sets that variable to its own in-process
+        // MSBuild, which would silently redirect every build away from the SDK the analyzed project
+        // resolves to - the exact version coupling building out-of-process is meant to remove. An explicit
+        // override goes through EnvironmentOptions.EnvironmentVariables, which EnvironmentFactory honors.
+        MsBuildExePath = msBuildExePath;
         if (string.IsNullOrWhiteSpace(MsBuildExePath) && string.IsNullOrWhiteSpace(dotnetExePath))
         {
             throw new ArgumentNullException(nameof(msBuildExePath));
@@ -105,7 +105,9 @@ public sealed class BuildEnvironment
         };
         if (DesignTime)
         {
-            _globalProperties = CopyItems(_globalProperties, MsBuildProperties.DesignTime);
+            // Added to the properties above, not in place of them: CopyItems returns a copy of its source
+            // (for cloning), which is not what this wants to keep.
+            CopyItems(_globalProperties, MsBuildProperties.DesignTime);
         }
         _additionalGlobalProperties = CopyItems(_globalProperties, additionalGlobalProperties);
 
@@ -135,7 +137,7 @@ public sealed class BuildEnvironment
     /// <param name="targets">
     /// The targets that should be used to build the project.
     /// Specifying an empty array indicates that the <see cref="ProjectAnalyzer"/> should
-    /// return a <see cref="Microsoft.Build.Execution.ProjectInstance"/> without building the project.
+    /// return a project instance without building the project.
     /// </param>
     /// <returns>A new build environment with the specified targets.</returns>
     public BuildEnvironment WithTargetsToBuild(params string[] targets) => new(

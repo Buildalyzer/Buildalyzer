@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Built with /m so both inner builds run at the same time and their events interleave in the
+       binary log. Each framework compiles a different source file, so a result that ends up with the
+       other framework's sources has been attributed to the wrong inner build. -->
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;netstandard2.0</TargetFrameworks>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net8.0' ">
+    <Compile Include="Net8Only.cs" />
+  </ItemGroup>
+
+  <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
+    <Compile Include="NetStandardOnly.cs" />
+  </ItemGroup>
+
+  <!-- Holds the second inner build open while the first one compiles and finishes, so the log records
+       the two builds finishing in the order they started rather than the reverse. -->
+  <Target Name="DelaySecondInnerBuild" BeforeTargets="CoreCompile" Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
+    <Exec Command="sleep 3" Condition=" '$(OS)' != 'Windows_NT' " />
+    <Exec Command="ping -n 4 127.0.0.1 &gt; nul" Condition=" '$(OS)' == 'Windows_NT' " />
+  </Target>
+
+</Project>

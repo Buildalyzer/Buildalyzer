@@ -1,5 +1,6 @@
 using System.IO;
 using System.Xml.Linq;
+using Buildalyzer.IO;
 
 namespace Buildalyzer.Construction;
 
@@ -23,10 +24,32 @@ public class ProjectFile : IProjectFile
 
     // The project file path should already be normalized
     internal ProjectFile(string path)
+        : this(path, XDocument.Load(path), new FileInfo(path).Name, null)
+    {
+    }
+
+    /// <summary>Creates a project file for the project the SDK generated for a file-based app.</summary>
+    /// <remarks>
+    /// The project is parsed from the XML the SDK handed over rather than read from
+    /// <paramref name="virtualProject"/>: that path only holds a file while a build is running (see
+    /// <see cref="VirtualProject"/>). The name is the entry point file's, so it neither changes with the
+    /// SDK's naming of the generated project nor reads as a project the user wrote.
+    /// </remarks>
+    internal ProjectFile(VirtualProject virtualProject)
+        : this(
+            Guard.NotNull(virtualProject).Path.ToString(),
+            XDocument.Parse(virtualProject.Xml),
+            new FileInfo(virtualProject.EntryPointFilePath.ToString()).Name,
+            virtualProject.EntryPointFilePath.ToString())
+    {
+    }
+
+    private ProjectFile(string path, XDocument document, string name, string? entryPointFilePath)
     {
         Path = path;
-        Name = new FileInfo(path).Name;
-        _document = XDocument.Load(path);
+        Name = name;
+        EntryPointFilePath = entryPointFilePath;
+        _document = document;
 
         // Get the project element
         _projectElement = _document.GetDescendants(ProjectFileNames.Project).FirstOrDefault()
@@ -38,6 +61,19 @@ public class ProjectFile : IProjectFile
 
     /// <inheritdoc />
     public string Name { get; }
+
+    /// <summary>
+    /// The single C# file this project was generated for, or <c>null</c> when the project is one that
+    /// exists on disk.
+    /// </summary>
+    /// <remarks>
+    /// A file-based app (<c>dotnet run app.cs</c>) has no project file; the SDK generates one, and
+    /// <see cref="Path"/> is where Buildalyzer writes it for the duration of a build.
+    /// </remarks>
+    public string? EntryPointFilePath { get; }
+
+    /// <summary>Whether this project was generated for a file-based app rather than read from disk.</summary>
+    public bool IsFileBasedApp => EntryPointFilePath is not null;
 
     /// <inheritdoc />
     public string[] TargetFrameworks => field
@@ -69,6 +105,45 @@ public class ProjectFile : IProjectFile
 
     /// <inheritdoc />
     public IReadOnlyList<IPackageReference> PackageReferences => _projectElement.GetDescendants(ProjectFileNames.PackageReference).Select(s => new PackageReference(s)).ToList();
+
+    /// <summary>
+    /// The absolute paths of the <c>ProjectReference</c> items declared directly in the project XML.
+    /// </summary>
+    /// <remarks>
+    /// Internal, best-effort scheduling hint - deliberately not part of <see cref="IProjectFile"/>. It
+    /// parses the project XML only, so references added by MSBuild logic, injected by SDKs, hidden behind
+    /// conditions, or expanded from globs/properties are not seen. It exists solely to discover the
+    /// reference closure cheaply, up front, so the workspace can build it in one parallel wave; anything
+    /// missed is built on demand, so correctness never depends on this being complete.
+    /// </remarks>
+    internal IReadOnlyList<string> ProjectReferences => field ??=
+    [
+        .. _projectElement.GetDescendants(ProjectFileNames.ProjectReference)
+            .Select(x => x.GetAttributeValue(ProjectFileNames.Include))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(TryResolveReferencePath)
+            .OfType<string>()
+            .Distinct(IOPath.Comparer)
+            .ToArray()
+    ];
+
+    // ProjectReference Include paths are project-relative and typically use Windows separators
+    // (e.g. "..\Library\Library.csproj"); normalize and resolve against the project directory. A
+    // malformed Include (invalid path characters, an unexpanded $(property)) must not take down the
+    // parse - this is only a best-effort hint - so an unresolvable entry is dropped rather than thrown.
+    private string? TryResolveReferencePath(string include)
+    {
+        try
+        {
+            return System.IO.Path.GetFullPath(
+                include.Replace('\\', System.IO.Path.DirectorySeparatorChar),
+                System.IO.Path.GetDirectoryName(Path)!);
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+    }
 
     /// <inheritdoc />
     public string ToolsVersion => _projectElement.GetAttributeValue(ProjectFileNames.ToolsVersion);

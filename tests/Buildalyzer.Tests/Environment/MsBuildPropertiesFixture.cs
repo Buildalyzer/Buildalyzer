@@ -23,6 +23,7 @@ public class MsBuildPropertiesFixture
             ["AddModules"] = "false",
             ["UseCommonOutputDirectory"] = "true",
             ["GeneratePackageOnBuild"] = "false",
+            ["ContinueOnError"] = "ErrorAndContinue",
         });
     }
 }

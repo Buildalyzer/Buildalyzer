@@ -255,7 +255,10 @@ public class SimpleProjectsFixture
                 "Settings.Designer.cs",
                 "GeneratedInternalTypeHelper.g.cs",
             ],
-            because: log.ToString());
+            because: log.ToString())
+            // The real source set is compiled twice under Build - once in WPF's "*_wpftmp" project, attributed to
+            // this result, and once by the project's own CoreCompile - and must not be listed twice.
+            .And.OnlyHaveUniqueItems(because: log.ToString());
     }
 
     [Test]
@@ -360,6 +363,44 @@ public class SimpleProjectsFixture
         string logContent = log.ToString();
         logContent.Split("/target:Restore").Length.Should().Be(2, "restore should run exactly once");
         logContent.Should().NotContain("/restore ");
+    }
+
+    [Test]
+    public void MultiTargetingFromImportedPropsBuildsAllTargetFrameworks()
+    {
+        // <TargetFrameworks> lives in Directory.Build.props, where the XML scan
+        // (IsMultiTargeted) can't see it, so the frameworks must be discovered from
+        // MSBuild's evaluation and the project rebuilt per framework.
+        using var ctx = Context.ForProject("SdkMultiTargetingFromProps/SdkMultiTargetingFromProps.csproj");
+
+        ctx.Analyzer.ProjectFile.IsMultiTargeted.Should().BeFalse();
+
+        IAnalyzerResults results = ctx.Analyzer.Build();
+
+        results.OverallSuccess.Should().BeTrue(ctx.Log.ToString());
+        results.TargetFrameworks.Should().BeEquivalentTo(["net8.0", "netstandard2.0"], ctx.Log.ToString());
+        results.Should().AllSatisfy(
+            r =>
+            {
+                r.Succeeded.Should().BeTrue();
+                r.SourceFiles.Should().Contain(x => Path.GetFileName(x) == "Class1.cs");
+            },
+            ctx.Log.ToString());
+    }
+
+    [Test]
+    public void SingleTargetOverridingImportedPropsIsNotRebuiltPerFramework()
+    {
+        // Directory.Build.props declares <TargetFrameworks>, the project overrides it with a single
+        // <TargetFramework>, and the build fails before the compiler. The evaluation still carries the
+        // imported list, but this is an ordinary single-targeted build: it must not be retried pinned to
+        // frameworks the project never targets.
+        using var ctx = Context.ForProject("SdkSingleTargetOverridingProps/SdkSingleTargetOverridingProps.csproj");
+
+        IAnalyzerResults results = ctx.Analyzer.Build();
+
+        results.OverallSuccess.Should().BeFalse(ctx.Log.ToString());
+        results.TargetFrameworks.Should().BeEquivalentTo(["net8.0"], ctx.Log.ToString());
     }
 
     [Test]
@@ -595,6 +636,71 @@ public class SimpleProjectsFixture
         results.Should().AllSatisfy(x => x.Succeeded.Should().BeTrue(), log.ToString());
     }
 
+    /// <remarks>
+    /// F# has no forward references, so the order of the source files is semantic. It is also not the
+    /// order the project file declares them in: Microsoft.FSharp.Targets runs FSharpSourceCodeCompileOrder
+    /// before CoreCompile, re-sorting @(Compile) by its CompileOrder metadata. The reported source files
+    /// must therefore follow the order the compiler receives, not evaluation order.
+    /// </remarks>
+    [Test]
+    public void BuildsFSharpProjectInCompileOrder()
+    {
+        // Given
+        const string projectFile = @"FSharpProject\FSharpProject.fsproj";
+        StringWriter log = new StringWriter();
+        IProjectAnalyzer analyzer = GetProjectAnalyzer(projectFile, log);
+
+        // When
+        DeleteProjectDirectory(projectFile, "obj");
+        DeleteProjectDirectory(projectFile, "bin");
+        IAnalyzerResults results = analyzer.Build();
+
+        // Then
+        results.OverallSuccess.Should().BeTrue(log.ToString());
+
+        string[] authored = ["Prelude.fs", "Constants.fs", "Greeting.fs", "Program.fs"];
+
+        results.First().SourceFiles
+            .Select(Path.GetFileName)
+            .Where(authored.Contains)
+            .Should().Equal(["Prelude.fs", "Constants.fs", "Greeting.fs", "Program.fs"], log.ToString());
+    }
+
+    /// <remarks>
+    /// A design-time build must not invoke fsc: it is the difference between analysing an F# project in
+    /// milliseconds and compiling it, and it keeps analysis working when the compiler itself would fail.
+    /// </remarks>
+    [Test]
+    public void BuildsFSharpProjectWithoutRunningTheCompiler()
+    {
+        // Given
+        const string projectFile = @"FSharpProject\FSharpProject.fsproj";
+        StringWriter log = new StringWriter();
+        IProjectAnalyzer analyzer = GetProjectAnalyzer(projectFile, log);
+
+        // When
+        DeleteProjectDirectory(projectFile, "obj");
+        DeleteProjectDirectory(projectFile, "bin");
+        IAnalyzerResults results = analyzer.Build();
+
+        // Then
+        results.OverallSuccess.Should().BeTrue(log.ToString());
+
+        // fsc writes to the intermediate assembly under obj/; bin/ would be empty either way, as the
+        // design-time Compile target never copies the output there.
+        IAnalyzerResult result = results.First();
+        string projectDirectory = result.GetProperty("ProjectDir");
+        string intermediateOutputPath = result.GetProperty("IntermediateOutputPath");
+        string targetFileName = result.GetProperty("TargetFileName");
+        projectDirectory.Should().NotBeNullOrEmpty(log.ToString());
+        intermediateOutputPath.Should().NotBeNullOrEmpty(log.ToString());
+        targetFileName.Should().NotBeNullOrEmpty(log.ToString());
+
+        string intermediateAssembly = Path.GetFullPath(Path.Combine(projectDirectory, intermediateOutputPath, targetFileName));
+        File.Exists(intermediateAssembly).Should().BeFalse(
+            "a design-time build skips compiler execution, so no assembly should be produced at {0}", intermediateAssembly);
+    }
+
     [Test]
     public void BuildsVisualBasicProject()
     {
@@ -622,8 +728,9 @@ public class SimpleProjectsFixture
         result.References.Should().Contain(x => x.Contains("BouncyCastle.Crypto.dll"));
     }
 
-    // To produce different versions, create a global.json and then run `dotnet clean` and `dotnet build -bl:SdkNetCore31Project-vX.binlog` from the source project folder
-    [TestCase("SdkNetCore31Project-v9.binlog", 9)]
+    // To produce different versions, create a global.json and then run `dotnet clean` and `dotnet build -bl:SdkNetCore31Project-vX.binlog` from the source project folder.
+    // Only binary logs that recorded task inputs (produced by a reasonably modern MSBuild) are supported now,
+    // since compiler inputs are read from the compiler task's parameters rather than the command line.
     [TestCase("SdkNetCore31Project-v14.binlog", 14)]
     public void GetsSourceFilesFromBinLogFile(string path, int expectedVersion)
     {
